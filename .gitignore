@@ -1,0 +1,21 @@
+# dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# vault data never lives in or leaves this repo (the vault is ~/.bousleh)
+.bousleh/
+vault/
+inbox/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# local env and OS noise
+.env
+.env.*
+.DS_Store
