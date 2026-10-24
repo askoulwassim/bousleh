@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Composes every module's op handlers and exports runOp(name, input, ctx), the single entry point every door calls.",
+  "description": "Opens ~/.bousleh, registers every package's handlers and runs runOp(name, input, ctx) with schema checks. Owns no ops.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -23,10 +23,10 @@
   "dependencies": {
     "@bousleh/contracts": "workspace:*",
     "@bousleh/vault": "workspace:*",
-    "@bousleh/capture": "workspace:*",
+    "@bousleh/intake": "workspace:*",
     "@bousleh/context": "workspace:*",
     "@bousleh/metrics": "workspace:*",
-    "@bousleh/horizon": "workspace:*",
+    "@bousleh/watch": "workspace:*",
     "zod": "^4.6.7"
   }
 }

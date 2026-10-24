@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Metrics registry and readings.",
+  "description": "The metrics registry, its lifecycle and readings. Owns metrics.*.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

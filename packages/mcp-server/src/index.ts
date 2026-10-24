@@ -1,2 +1,2 @@
-/* @bousleh/mcp-server: MCP server over stdio, generated from the ops registry; every tool call is runOp. */
+/* @bousleh/mcp-server: One MCP tool per op, generated from the ops registry over stdio; no logic of its own. */
 export {};

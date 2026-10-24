@@ -1,9 +1,9 @@
 {
-  "name": "@bousleh/horizon",
+  "name": "@bousleh/intake",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Watch lists and filing scan results.",
+  "description": "Inbox files, the Drive sweep, content-hash dedupe, the ambiguity queue, and feedback patterns for v0. Owns inbox.*, queue.*, signals.*.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

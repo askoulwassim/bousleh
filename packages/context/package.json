@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The brief: links, search, altitude.",
+  "description": "The brief at a given altitude, and Pulse's daily picture. Owns context.*, pulse.*.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -23,6 +23,8 @@
   "dependencies": {
     "@bousleh/contracts": "workspace:*",
     "@bousleh/vault": "workspace:*",
+    "@bousleh/metrics": "workspace:*",
+    "@bousleh/watch": "workspace:*",
     "zod": "^4.6.7"
   }
 }
