@@ -30,7 +30,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 | "I owe...", "X owes me...", "I'll send..." | `commitment` (attrs `due`), links `owed_by`, `owed_to` |
 | Feedback he gave one of his PMs, or their growth | `growth_note`, link `about` the person |
 | A fact about a stakeholder (what they care about, how they decide) | `observation`, link `about` the person |
-| Someone new | `person` (attrs `role`, `org`); people may have no scope |
+| Someone new | `person` (attrs `role`, `org`); people may have no scope. The person this Bousleh belongs to is marked `is_user: true`, once |
 
 Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a dump states one, queue it with the reason "for Shape" or "for Horizon".
 
@@ -38,7 +38,7 @@ Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a 
 
 **Scope.** Use slugs from `scopes_list`. The work instance has Alethea's scopes; the personal one has Perfect Placement, Specdr, Pandora, AI Anvil, Bousleh and so on. Never guess between two scopes.
 
-**Links.** Every atom links `from_moment` to the dump or meeting it came from. Also: `evidence_for` (signal, observation or finding to a problem or idea), `about` (to a person), `attended_by` (meeting to person), `owed_by` / `owed_to`, `part_of` (to an initiative or strategy), `related` when nothing else fits. Put links on the `deposits_write` call. Use `vault_link` only to link two objects that already exist.
+**Links.** Every atom links `from_moment` to the dump or meeting it came from. Also: `evidence_for` (signal, observation or finding to a problem or idea), `about` (to a person), `attended_by` (meeting to person), `owed_by` / `owed_to`, `part_of` (to an initiative or strategy), `addresses` (an idea to the problem it answers; optional, since an idea can be a pure opportunity), `related` when nothing else fits. Put links on the `deposits_write` call. Use `vault_link` only to link two objects that already exist.
 
 **Duplicates.** Before writing a problem, idea, person or decision, `vault_search` for it. If it exists, link the new evidence to it instead of writing a second one. If you aren't sure it's the same thing, queue it with the existing ids as candidates.
 

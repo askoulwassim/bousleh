@@ -157,10 +157,13 @@ export const KINDS = {
   person: {
     layer: 'people',
     prefix: 'per',
-    description: 'A person: a stakeholder, a PM, an engineer, an analyst. People may have no scope.',
+    description:
+      'A person: a stakeholder, a PM, an engineer, an analyst. People may have no scope. Exactly one person may be marked is_user: the person this Bousleh belongs to.',
     attrs: z.strictObject({
       role: z.enum(PERSON_ROLES).optional(),
       org: text.optional(),
+      /** The person this instance belongs to ("me" in Pulse). At most one current person has it. */
+      is_user: z.literal(true).optional(),
     }),
     scopeRequired: false,
   },

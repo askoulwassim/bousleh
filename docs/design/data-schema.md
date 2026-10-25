@@ -48,12 +48,13 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 | anchors | `strategy`, `principle`, `metric`, `watch_list` | strategy: `status` forming / contested / aligned / communicated. metric: lifecycle idea / defined / instrumented / measured / reviewed, `cadence`, `unit`; its owner and the strategy line it serves are links. watch_list: `entries`, each with a `type` (competitor, topic, outlet, person, podcast), `name`, optional `url` and `notes`; tied to its scope through `object_scopes` |
 | evidence | `signal` (feedback), `observation`, `finding` (Horizon) | signal: `source`, `sentiment`. finding: `url`, `published_at`; linked to its watch list with `from_watch_list`. Readings live in `metric_readings`, not as objects |
 | work | `problem`, `idea`, `initiative`, `decision` | idea: `status` open / bet / parked / dropped / concluded, plus `hypothesis` and `kill_criteria`, required once it becomes a bet. An idea reaches `concluded` only when a `decision` is linked to it with `concludes` (see below), never by setting the status directly. decision: `decided_at`, `reversible` |
-| people | `person`, `growth_note` | person: `role` (stakeholder, pm, engineer, analyst, other), `org`. A growth note is one coaching entry about a person |
+| people | `person`, `growth_note` | person: `role` (stakeholder, pm, engineer, analyst, other), `org`, `is_user` (true on the one person this instance belongs to: "me" in Pulse; at most one current person has it, enforced by the store). A growth note is one coaching entry about a person |
 | moments | `dump`, `meeting`, `commitment`, `daily_note` | meeting: `held_at`; attendees are `attended_by` links. commitment: `status` open / done / dropped, `due`; who owes it and to whom are `owed_by` and `owed_to` links |
 
 **Link kinds (v0):**
 - `evidence_for`: evidence to a problem or idea
 - `about`: anything to a person or topic
+- `addresses`: an idea to the problem it addresses. Optional: an idea can stand alone as an opportunity (Oct 25)
 - `part_of`: to an initiative or strategy
 - `serves`: metric to strategy
 - `owned_by`: to a person

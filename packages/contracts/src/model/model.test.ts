@@ -55,6 +55,12 @@ describe('idea statuses (Oct 25)', () => {
 });
 
 describe('links', () => {
+  it('lets addresses run only from an idea to a problem', () => {
+    expect(checkLink('addresses', 'idea', 'problem')).toBeNull();
+    expect(checkLink('addresses', 'problem', 'idea')).not.toBeNull();
+    expect(checkLink('addresses', 'decision', 'problem')).not.toBeNull();
+  });
+
   it('lets concludes run only from a decision to an idea', () => {
     expect(LINK_KIND_NAMES).toContain('concludes');
     expect(checkLink('concludes', 'decision', 'idea')).toBeNull();

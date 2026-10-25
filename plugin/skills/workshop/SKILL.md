@@ -12,7 +12,7 @@ Generate options for a problem and rank them against what Wassim's strategy and 
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief), `metrics_list` (metrics.list)
-- Writes: `deposits_write` (deposits.write)
+- Writes: `deposits_write` (deposits.write), `vault_link` (vault.link) to tie an existing idea to the problem
 - Added, read-only: `vault_search` (vault.search) to find the problem; `scopes_list` (scopes.list) for scope slugs
 
 `context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments and evidence around a focus at an altitude.
@@ -31,7 +31,7 @@ Generate at `1000`, his own surfaces. Go up to `10000` when the ideas need other
    - its riskiest assumption.
 4. **Rank** by: likely effect on the named metrics, fit with the strategy (an `aligned` line weighs more than a `forming` one), strength of the evidence behind the problem, and cost and reversibility. Give each rank a one-line reason. Say which ones you'd drop.
 5. **Adjust.** Ask one question at a time ("Anything missing before I save these?").
-6. **Deposit** the ideas he keeps with `deposits_write`: kind `idea`, status `open`, at their altitude, in the problem's scope, links `related` → the problem and `part_of` → its initiative or strategy if there is one. Put the rank and its reason in the body.
+6. **Deposit** the ideas he keeps with `deposits_write`: kind `idea`, status `open`, at their altitude, in the problem's scope, links `addresses` → the problem and `part_of` → its initiative or strategy if there is one. Put the rank and its reason in the body.
    - An idea he wants to bet on now can be written as `bet` straight away, but only with a `hypothesis` and `kill_criteria` he agrees to.
    - Changing an existing idea (to bet, parked, dropped) is Shape's job.
 

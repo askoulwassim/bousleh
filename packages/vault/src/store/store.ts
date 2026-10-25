@@ -348,12 +348,36 @@ export class Store {
     return bodyOf(content);
   }
 
+  /** The person marked `is_user` (the person this Bousleh belongs to), if any. */
+  userPerson(): { id: string; name: string } | undefined {
+    return this.db
+      .prepare(
+        `SELECT c.object_id AS id, c.title AS name FROM current c JOIN objects o ON o.id = c.object_id
+         WHERE o.kind = 'person' AND json_extract(c.attrs_json, '$.is_user') = 1
+         ORDER BY c.created_at LIMIT 1`,
+      )
+      .get() as { id: string; name: string } | undefined;
+  }
+
+  /** Only one person may be the user. */
+  private checkSingleUser(kind: Kind, attrs: Record<string, unknown>, self?: string): void {
+    if (kind !== 'person' || attrs.is_user !== true) return;
+    const user = this.userPerson();
+    if (user && user.id !== self) {
+      throw new OpError(
+        'conflict',
+        `${user.name} (${user.id}) is already marked as the user; unmark them first with vault.supersede (attrs is_user: null)`,
+      );
+    }
+  }
+
   /** Create one object with its first version, scopes and links. */
   createObject(input: NewObject): Written {
     this.files();
     const def = KINDS[input.kind];
     const checked = checkKindFields(input.kind, { status: input.status, attrs: input.attrs });
     if (!checked.ok) throw new OpError('invalid_input', `the ${input.kind} doesn't fit its kind`, checked.issues);
+    this.checkSingleUser(input.kind, checked.value.attrs);
 
     const slugs = [...new Set(input.scopes)];
     if (def.scopeRequired && slugs.length === 0) {
@@ -406,6 +430,7 @@ export class Store {
     }
     const checked = checkKindFields(object.kind, { status: patch.status, attrs: merged }, { status: previous.status });
     if (!checked.ok) throw new OpError('invalid_input', `the new version doesn't fit a ${object.kind}`, checked.issues);
+    this.checkSingleUser(object.kind, checked.value.attrs, id);
 
     const version = this.writeVersion(
       object,

@@ -17,7 +17,7 @@ This skill runs in two settings. Check which one you're in first:
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `watchlists_get` (watchlists.get), `watch_digest` (watch.digest)
-- Writes: `watchlists_set` (watchlists.set), `watch_file` (watch.file)
+- Writes: `watchlists_set` (watchlists.set), `watch_file` (watch.file), `vault_link` (vault.link) to link a filed finding `evidence_for` a problem or idea it bears on
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs
 
 ## Altitude
