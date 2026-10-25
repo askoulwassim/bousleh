@@ -1,0 +1,11 @@
+{
+  "name": "bousleh",
+  "displayName": "Bousleh",
+  "version": "0.1.0",
+  "description": "Bousleh (بوصلة, compass): Wassim's operating system for product leadership. Eight modes as skills (Capture, Pulse, Counsel, Shape, Workshop, Communicate, Coach, Horizon) over the local Bousleh MCP server.",
+  "author": {
+    "name": "Wassim"
+  },
+  "repository": "https://github.com/askoulwassim/bousleh",
+  "keywords": ["product-management", "personal-os", "mcp"]
+}

@@ -1,0 +1,95 @@
+---
+name: horizon
+description: Wassim's outside view - competitors, industry news, topics, people and podcasts on a watch list per scope. Reads the digest of what changed, flags what's worth acting on, edits watch lists, and files scan findings. Also the instructions the "Daily Horizon scan" scheduled task runs in the cloud. Use when he says "morning digest", "what's new outside", "what's new with [competitor]", "anything from the scan", "watch [company]", "add [podcast] to the watch list", "stop watching...", "set up the daily scan", or when the Daily Horizon scan runs.
+---
+
+# Horizon
+
+Watch the outside world for each scope Wassim works on and bring back what matters, tied to that scope, with links to read or listen. You judge relevance and what's worth acting on. The engine stores watch lists, dedupes findings by url, and builds the digest.
+
+This skill runs in two settings. Check which one you're in first:
+
+- **Interactive:** a session on the Mac with the Bousleh MCP server. Use the ops below.
+- **The Daily Horizon scan:** a scheduled task in the cloud. It can't reach the Mac or call the MCP server. Skip to "The Daily Horizon scan".
+
+## Ops (interactive)
+
+Tools on the Bousleh MCP server (op names in brackets):
+
+- Reads: `watchlists_get` (watchlists.get), `watch_digest` (watch.digest)
+- Writes: `watchlists_set` (watchlists.set), `watch_file` (watch.file)
+- Added, read-only: `scopes_list` (scopes.list) for scope slugs
+
+## Altitude
+
+Watch lists default to `10000` (cross-team: the market around a product). Use `50000` for a company-level competitor set and `1000` for a list tied to one surface. Findings take their watch list's altitude.
+
+## Flow: the digest
+
+1. `watch_digest`, with `since` set to the last time he looked if he says ("since Friday"), else the default week. Pass `scope` if he names one.
+2. Judge each group: what changed, which scope it touches, and whether it matters. Drop noise.
+3. Say the top items in a few lines, each with its source. Flag up to three worth acting on:
+   - "for Shape" when it bears on a strategy line or a problem,
+   - "for Workshop" when it suggests an idea.
+4. Ask one question at most ("Want a written brief of this week?").
+
+## Flow: editing a watch list
+
+1. `watchlists_get` for the scope.
+2. Make the change: each entry has a `type` (`competitor`, `topic`, `outlet`, `person`, `podcast`), a `name`, and optionally a `url` and `notes`.
+3. Say the change back in one line, then `watchlists_set` with the **complete** list. It replaces the old entries, so send every entry to keep.
+4. Refresh the scan's copy of the lists (below).
+
+## Flow: filing a scan file (from Capture)
+
+Capture reads Daily Horizon scan files from the inbox and hands them here. For each file:
+
+1. Read the frontmatter: `scope` and `watch_list_id`.
+2. `watch_file` with the `watch_list_id` (or the `scope`) and one finding per item: `title`, `url`, `published_at` if known, and `summary`.
+3. Report what was filed and what was skipped as already filed. Capture then settles the file.
+
+## Flow: setting up the Daily Horizon scan
+
+The scan is a Claude scheduled task in the cloud named "Daily Horizon scan", running daily. It can't read watch lists, so its prompt carries a copy of them.
+
+1. `watchlists_get` with no arguments for every list.
+2. Write the task prompt: "Run the Horizon skill in the Daily Horizon scan setting", followed by each list's scope slug, watch list id, altitude and entries.
+3. Create the task, or update it if it exists. Confirm the time with Wassim (once).
+4. Repeat steps 1-3 whenever a watch list changes.
+
+Work instance: Alethea's competitors and the narrative-intelligence space, from public sources only, set up in the work account.
+
+## The Daily Horizon scan
+
+You're in the cloud. You can't reach the Mac or the Bousleh MCP server: don't try. Your only output is new files in the Google Drive folder "Bousleh Inbox". The inbox sweep on the Mac picks them up, and Capture files them.
+
+1. Take the watch lists from the task prompt.
+2. For each entry, web search for what's new since the last run (default: the last two days; overlap is fine, filing dedupes by url):
+   - competitor: launches, pricing, blog and changelog posts, funding, hires, news coverage
+   - topic: notable articles and reports
+   - outlet: new posts
+   - person: new posts, talks, interviews
+   - podcast: new episodes with show notes; a transcript link only when the show publishes one. Never transcribe.
+3. Keep items that matter to that scope. For each: title, canonical url, published date if known, and a two- or three-sentence summary of what it is and why it matters to the scope. Public sources only.
+4. Write one new file per watch list with anything new, never appending to an existing file. Name it `horizon-<scope>-<YYYY-MM-DD>.md`:
+
+   ```markdown
+   ---
+   bousleh: horizon-scan
+   scope: <scope slug>
+   watch_list_id: <wls_ id>
+   scanned_at: <ISO date-time>
+   ---
+
+   ## <title>
+   - url: <url>
+   - published: <YYYY-MM-DD or unknown>
+
+   <summary>
+   ```
+
+5. Write nothing for a list with nothing new. End with a one-line count per list.
+
+## Output
+
+The digest stays in the conversation, and Home shows it daily (Home reads `watch_digest` itself). For a weekly competitive brief to share with his PMs or leadership, write a Claude Doc from the digest.
