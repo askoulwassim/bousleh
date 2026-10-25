@@ -1,6 +1,6 @@
 ---
 name: workshop
-description: Generates ideas against Wassim's problems and ranks them against his metrics and strategy, then lays them out on a whiteboard or hands the top one to the Specdr POC lane. Use when he says "given all this, what could we do?", "let's workshop X", "brainstorm", "ideas for...", "what are our options", "rank these", "which one should we bet on", "put it on a whiteboard", "make a POC of this", or "prototype this".
+description: Generates ideas against Wassim's problems and ranks them against his metrics and strategy, then lays them out on a whiteboard (or a tab in the scope's Claude Doc) or hands the top one to the Specdr POC lane. Use when he says "given all this, what could we do?", "let's workshop X", "brainstorm", "ideas for...", "what are our options", "rank these", "which one should we bet on", "put it on a whiteboard", "make a POC of this", or "prototype this".
 ---
 
 # Workshop
@@ -12,10 +12,10 @@ Generate options for a problem and rank them against what Wassim's strategy and 
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief), `metrics_list` (metrics.list)
-- Writes: `deposits_write` (deposits.write), `vault_link` (vault.link) to tie an existing idea to the problem, `assets_add` (assets.add) to register every whiteboard or design you make
+- Writes: `deposits_write` (deposits.write), `vault_link` (vault.link) to tie an existing idea to the problem, `assets_add` (assets.add) to register every whiteboard, Doc or design you make or update
 - Added, write: `vault_supersede` (vault.supersede), only to set `rank` on ideas that already exist
 - Reads too: `signals_patterns` (signals.patterns), to weigh the problem's evidence by how often it comes up
-- Added, read-only: `vault_search` (vault.search) to find the problem; `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find a whiteboard that already exists for it
+- Added, read-only: `vault_search` (vault.search) to find the problem; `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the whiteboard or Doc that already exists for it or its scope
 
 `context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
 
@@ -40,16 +40,19 @@ Generate at `1000`, his own surfaces. Go up to `10000` when the ideas need other
 
 ## Hand-offs
 
-- **Whiteboard:** when he wants to rearrange things, alone or with his PMs, lay out the problem, the ranked ideas, and the metric each moves on a Claude Whiteboard. The data stays the truth; changes he makes there come back by saying them here.
+- **Laying the ideas out:** when he wants to see or rearrange them, alone or with his PMs:
+  - **On a Claude Whiteboard,** when the account has that artifact type: the problem, the ranked ideas, and the metric each moves.
+  - **Otherwise in the scope's Claude Doc** (the account may have no Whiteboard type): `assets_list` with the scope (and `documents` set to the problem's id) to find the Doc that already exists for it, and add a tab to it (or a section, if tabs aren't available) named after the problem. Never make a second Doc when one already exists for the scope; make a new Doc only when there is none. In the tab: the problem in two lines with its evidence, then a table with one row per idea: rank, the idea, what it settles or the metric it moves, cost, riskiest assumption, and status.
+  - Either way, the layout mirrors the data. Rank and status changes are made in Bousleh (rank here with `vault_supersede`, status in Shape), then the tab or board is regenerated from the data; changes he makes on it come back by saying them here.
 - **Design:** when he needs to see it before building, mock it up in Claude Design first.
 - **Specdr POC lane:** for "make a POC of this", run `/specdr-poc:go` with a short brief: the problem and its evidence in two lines, the idea, the hypothesis and kill criteria, and the metric it should move. Let the POC lane ask its own decisions. Use it only in the instance where the Specdr Hub is connected.
 
 ## Registering assets
 
-Right after you create or update a Claude Whiteboard, a Design or any other page, call `assets_add` with its url, a short title, its `type` (`whiteboard`, `design`, `page`), the scope slugs, and `documents` → the ids of the problem and the ideas on it. Do it every time, including for an update: calling it again for the same url is safe, adds any new `documents` links and records a changed title. If the asset already exists, `assets_list` with `documents` set to the object's id finds it, so update it rather than making a second one.
+Right after you create or update a Claude Whiteboard, a Doc tab, a Design or any other page, call `assets_add` with its url, a short title, its `type` (`whiteboard`, `doc`, `design`, `page`), the scope slugs, and `documents` → the ids of the problem and every idea on it (for a tab in an existing Doc, the Doc's url: the call adds the new `documents` links to it). Do it every time, including for an update: calling it again for the same url is safe, adds any new `documents` links and records a changed title. If the asset already exists, `assets_list` with `documents` set to the object's id finds it, so update it rather than making a second one.
 
 A POC the Specdr lane puts live is registered the same way, as a `page` documenting the idea.
 
 ## Output
 
-The ranking stays in the conversation; Whiteboard and the POC lane on request.
+The ranking stays in the conversation; the Whiteboard or Doc tab and the POC lane on request.

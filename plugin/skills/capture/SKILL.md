@@ -14,7 +14,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Reads: `inbox_list` (inbox.list), `inbox_take` (inbox.take), `vault_search` (vault.search), `signals_patterns` (signals.patterns) for the signal tags already in use
 - Writes: `deposits_write` (deposits.write), `queue_add` (queue.add), `queue_resolve` (queue.resolve), `vault_link` (vault.link), `inbox_settle` (inbox.settle), `assets_add` (assets.add) for links to artifacts
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs, `queue_list` (queue.list) to clear the queue, `vault_get` (vault.get) to check a candidate
-- Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox; `vault_supersede` (vault.supersede) for one thing only: moving a planned meeting to `held` once it has happened (see "Meetings").
+- Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox; `vault_supersede` (vault.supersede) for two things only: moving a planned meeting to `held` once it has happened (see "Meetings"), and adding an email address to a person who exists (see "People's emails").
 - Google Drive connector (your Claude account's Drive): search the folder, read each file, and trash it after `inbox_drop` succeeds.
 
 ## What to judge
@@ -31,7 +31,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 | "I owe...", "X owes me...", "I'll send..." | `commitment` (attrs `due`), links `owed_by`, `owed_to` |
 | Feedback he gave one of his PMs, or their growth | `growth_note`, link `about` the person |
 | A fact about a stakeholder (what they care about, how they decide) | `observation`, link `about` the person |
-| Someone new | `person` (attrs `role`, `org`); people may have no scope. The person this Bousleh belongs to is marked `is_user: true`, once |
+| Someone new | `person` (attrs `role`, `org`, `emails` when an address is known); people may have no scope. The person this Bousleh belongs to is marked `is_user: true`, once |
 | "X reports to Y", "Y is X's manager" | a `reports_to` link from X to Y (both people; deposit either one first if new) |
 | A company word or acronym and what it means | `term` (attrs `aliases`, `definition`), usually at `50000` in the company's scope |
 | A meeting coming up ("I'm seeing Peter Thursday about...") | `meeting` with status `planned`, `held_at` the day or time it will happen, `attended_by` links |
@@ -56,6 +56,8 @@ Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a 
 
 **People map.** When a dump names someone's manager, link the person `reports_to` the manager. For two people who already exist, use `vault_link`. If the person already reports to someone else, queue it instead of adding a second manager.
 
+**People's emails.** A person's `emails` attr (lower-cased, each once, at most five) lets Pulse and Counsel match calendar attendees to people. When you create a person and their email is known (a transcript's attendee list, an email signature, a calendar invite in the dump), set `emails`. When a person already exists and the input gives an email they don't have, `vault_supersede` them with `attrs: { emails: [...] }`: the whole list, their current addresses plus the new one, since a new version replaces the key. Never guess an address from a name and a domain.
+
 **Duplicates.** Before writing a problem, idea, person, term or decision, `vault_search` for it. If it exists, link the new evidence to it instead of writing a second one. If you aren't sure it's the same thing, queue it with the existing ids as candidates.
 
 ## When to queue
@@ -67,7 +69,7 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 - New ideas are `open`. Write one as `bet` only when Wassim states both a hypothesis and kill criteria (attrs `hypothesis`, `kill_criteria`). Otherwise write it `open` and say which is missing.
 - Statuses are `open`, `bet`, `parked`, `dropped`, `concluded`. There is no won or lost.
 - A bet ends only through a `decision`: deposit the decision with a `concludes` link to the idea (or `vault_link` decision → idea if the decision exists). The engine moves the idea to `concluded`. Never set `concluded` yourself. If the idea isn't a bet yet, queue the decision.
-- Capture doesn't change existing objects (the one exception: a planned meeting that has happened, under "Meetings"). A request to park, drop or reword an idea, or to close a commitment, goes in your read-back as "for Shape" or "for Pulse". In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
+- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", and a person's email, under "People's emails"). A request to park, drop or reword an idea, or to close a commitment, goes in your read-back as "for Shape" or "for Pulse". In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
 
 ## Meetings
 

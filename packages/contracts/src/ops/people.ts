@@ -35,7 +35,7 @@ export const LinkedObjectSchema = z.object({
 export const peopleGet = defineOp({
   name: 'people.get',
   description:
-    'Everything kept about one person, by their per_ id: name, role, org, scopes and notes; their growth notes (coaching entries linked to them with about), newest first; the open commitments they owe and the open commitments owed to them; and the other objects most recently linked to them (meetings, decisions, signals and so on), newest first. To find a person id by name, use vault.search with kinds [person].',
+    'Everything kept about one person, by their per_ id: name, role, org, email addresses, scopes and notes; their growth notes (coaching entries linked to them with about), newest first; the open commitments they owe and the open commitments owed to them; and the other objects most recently linked to them (meetings, decisions, signals and so on), newest first. To find a person id by name, use vault.search with kinds [person].',
   input: z.object({
     id: IdSchema,
     recent: z.number().int().min(0).max(50).default(10).describe('How many recently linked objects to return.'),
@@ -46,6 +46,8 @@ export const peopleGet = defineOp({
       name: z.string(),
       role: z.enum(PERSON_ROLES).nullable(),
       org: z.string().nullable(),
+      /** Their email addresses, lower-cased; empty when none are known. */
+      emails: z.array(z.string()),
       scopes: z.array(ScopeSlugSchema),
       body: z.string(),
       created_at: isoDateTime,
@@ -84,6 +86,8 @@ export const PersonSummarySchema = z.object({
   name: z.string(),
   role: PersonRoleSchema.nullable(),
   org: z.string().nullable(),
+  /** Their email addresses, lower-cased; empty when none are known. Match calendar attendees by these. */
+  emails: z.array(z.string()),
   scopes: z.array(ScopeSlugSchema),
   /** True for the person this Bousleh belongs to. */
   is_user: z.boolean(),
@@ -103,7 +107,7 @@ export type PersonSummary = z.output<typeof PersonSummarySchema>;
 export const peopleList = defineOp({
   name: 'people.list',
   description: [
-    'List people, by name, each with role, org, who they report to, the open commitments they owe and are owed, and last_touchpoint: the later of the newest held meeting they attended and the newest object linked about them (a growth note, an observation, a signal…). Use it for "how are my PMs doing?" (role pm), to see who has gone quiet, or to map who reports to whom; then people.get on one id for everything about them.',
+    'List people, by name, each with role, org, email addresses (to match calendar attendees), who they report to, the open commitments they owe and are owed, and last_touchpoint: the later of the newest held meeting they attended and the newest object linked about them (a growth note, an observation, a signal…). Use it for "how are my PMs doing?" (role pm), to see who has gone quiet, or to map who reports to whom; then people.get on one id for everything about them.',
     'role is one role or a list (stakeholder, pm, engineer, analyst, other). org matches the org exactly, ignoring case. scopes (slugs) includes child scopes: a person is in a scope when they belong to it, or, for people with no scope of their own, when something linked to them is in it.',
   ].join(' '),
   input: z.object({

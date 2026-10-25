@@ -50,6 +50,10 @@ export const WATCH_ENTRY_TYPES = ['competitor', 'topic', 'outlet', 'person', 'po
 /** Who put an entry on a watch list: Wassim, or the Weekly Horizon scan's learning loop. Entries without it are Wassim's. */
 export const WATCH_ENTRY_ADDED_BY = ['wassim', 'horizon'] as const;
 export const PERSON_ROLES = ['stakeholder', 'pm', 'engineer', 'analyst', 'other'] as const;
+/** At most this many email addresses on one person. */
+export const MAX_PERSON_EMAILS = 5;
+/** An email address, trimmed and lower-cased, so calendar attendees match people whatever the case. */
+export const EmailSchema = z.string().trim().toLowerCase().pipe(z.email());
 /** What an asset is: a Claude Doc, a Slides deck, a sheet, a dashboard, a whiteboard, a design, a published page, a repo, a file. */
 export const ASSET_TYPES = ['doc', 'slides', 'sheet', 'dashboard', 'whiteboard', 'design', 'page', 'repo', 'file', 'other'] as const;
 
@@ -216,10 +220,16 @@ export const KINDS = {
     layer: 'people',
     prefix: 'per',
     description:
-      'A person: a stakeholder, a PM, an engineer, an analyst. People may have no scope. Exactly one person may be marked is_user: the person this Bousleh belongs to.',
+      'A person: a stakeholder, a PM, an engineer, an analyst. People may have no scope. Exactly one person may be marked is_user: the person this Bousleh belongs to. emails are their email addresses (lower-cased, each once), so calendar attendees can be matched to them; a new version replaces the whole list.',
     attrs: z.strictObject({
       role: z.enum(PERSON_ROLES).optional(),
       org: text.optional(),
+      /** Oct 25: people written before have none. Stored lower-cased, each once. */
+      emails: z
+        .array(EmailSchema)
+        .max(MAX_PERSON_EMAILS)
+        .refine((emails) => new Set(emails).size === emails.length, 'each email once')
+        .optional(),
       /** The person this instance belongs to ("me" in Pulse). At most one current person has it. */
       is_user: z.literal(true).optional(),
     }),

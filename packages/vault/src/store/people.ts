@@ -34,12 +34,13 @@ export function personProfile(store: Store, id: string, recent: number): PersonP
   if (!object) throw new OpError('not_found', `no person with id ${id}`);
   if (object.kind !== 'person') throw new OpError('invalid_input', `${id} is a ${object.kind}, not a person`);
 
-  const attrs = object.version.attrs as { role?: PersonProfile['person']['role']; org?: string };
+  const attrs = object.version.attrs as { role?: PersonProfile['person']['role']; org?: string; emails?: string[] };
   const person: PersonProfile['person'] = {
     id,
     name: object.version.title,
     role: attrs.role ?? null,
     org: attrs.org ?? null,
+    emails: attrs.emails ?? [],
     scopes: object.scopes,
     body: object.version.body,
     created_at: object.created_at,
@@ -190,13 +191,14 @@ export function listPeople(store: Store, filter: PeopleFilter): PeopleList {
 
   const ref = (c: CommitmentView) => ({ id: c.id, title: c.title, due: c.due });
   const people = matched.slice(0, filter.limit).map((person): PersonSummary => {
-    const attrs = person.version.attrs as { role?: Role; org?: string; is_user?: true };
+    const attrs = person.version.attrs as { role?: Role; org?: string; emails?: string[]; is_user?: true };
     const manager = person.links.out.filter((l) => l.kind === 'reports_to' && l.to_kind === 'person').at(-1);
     return {
       id: person.id,
       name: person.version.title,
       role: attrs.role ?? null,
       org: attrs.org ?? null,
+      emails: attrs.emails ?? [],
       scopes: person.scopes,
       is_user: attrs.is_user === true,
       reports_to: manager ? { id: manager.to, name: manager.to_title } : null,
