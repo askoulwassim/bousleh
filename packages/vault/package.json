@@ -1,9 +1,9 @@
 {
-  "name": "@bousleh/capture",
+  "name": "@bousleh/vault",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Inbox handling and deposit mechanics (feedback patterns live here for v0).",
+  "description": "Storage, migrations, history and typed objects in ~/.bousleh. Owns vault.*, deposits.*, commitments.*, people.*.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -22,7 +22,6 @@
   },
   "dependencies": {
     "@bousleh/contracts": "workspace:*",
-    "@bousleh/vault": "workspace:*",
     "zod": "^4.6.7"
   }
 }

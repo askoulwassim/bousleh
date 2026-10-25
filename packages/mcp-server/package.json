@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "MCP server over stdio, generated from the ops registry; every tool call is runOp.",
+  "description": "One MCP tool per op, generated from the ops registry over stdio; no logic of its own.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

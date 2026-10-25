@@ -4,10 +4,8 @@ dist/
 *.tsbuildinfo
 coverage/
 
-# vault data never lives in or leaves this repo (the vault is ~/.bousleh)
+# your data lives in ~/.bousleh, outside this repo; never commit a copy of it
 .bousleh/
-vault/
-inbox/
 *.db
 *.db-journal
 *.db-wal

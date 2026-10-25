@@ -1,2 +1,2 @@
-/* @bousleh/engine: Composes every module's op handlers and exports runOp(name, input, ctx), the single entry point every door calls. */
+/* @bousleh/engine: Opens ~/.bousleh, registers every package's handlers and runs runOp(name, input, ctx) with schema checks. Owns no ops. */
 export {};

@@ -1,2 +1,2 @@
-/* @bousleh/contracts: Typed schemas and the ops registry: every action is a named op with zod input and output schemas. */
+/* @bousleh/contracts: Object kinds, layers, altitude and scope, and every op's name and zod schemas. Definitions only; imports nothing. */
 export {};
