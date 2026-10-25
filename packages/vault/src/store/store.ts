@@ -150,6 +150,21 @@ export interface Written {
   path: string;
 }
 
+export interface AddedLink {
+  id: string;
+  created: boolean;
+  /** A new `concludes` link: the idea and the version that set it to concluded. */
+  concluded?: { idea: string; version: { id: string; n: number } };
+}
+
+export interface RetractedLink {
+  id: string;
+  kind: LinkKind;
+  from: string;
+  to: string;
+  already_retracted: boolean;
+}
+
 const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
 
 export class Store {
@@ -292,6 +307,12 @@ export class Store {
     return this.db.prepare('SELECT * FROM current WHERE object_id = ?').get(objectId) as VersionRow | undefined;
   }
 
+  /** The markdown body of an object's current version ('' when the object doesn't exist). */
+  currentBody(objectId: string): string {
+    const version = this.currentVersion(objectId);
+    return version ? this.readBody(version) : '';
+  }
+
   /** The body of one version, from its markdown file. Refuses a missing file or one whose hash doesn't match. */
   private readBody(version: VersionRow): string {
     const file = join(this.home, version.body_path);
@@ -382,7 +403,7 @@ export class Store {
    * Link two existing objects. Allowed pairs come from contracts. An identical live link is
    * returned as is. `concludes` also moves the idea to `concluded` (the idea must be a bet).
    */
-  addLink(fromId: string, kind: LinkKind, toId: string, note?: string): { id: string; created: boolean } {
+  addLink(fromId: string, kind: LinkKind, toId: string, note?: string): AddedLink {
     this.files();
     if (fromId === toId) throw new OpError('invalid_input', 'an object cannot link to itself');
     const from = this.objectRow(fromId);
@@ -400,13 +421,14 @@ export class Store {
       .get(fromId, toId, kind) as { id: string } | undefined;
     if (existing) return { id: existing.id, created: false };
 
+    let concluded: AddedLink['concluded'];
     if (kind === 'concludes') {
       const idea = this.currentVersion(toId);
       if (!idea) throw new OpError('not_found', `no object with id ${toId}`);
       if (idea.status === 'concluded') throw new OpError('conflict', 'this idea is already concluded');
       if (idea.status !== 'bet')
         throw new OpError('conflict', `only a bet can be concluded (this idea is ${idea.status ?? 'without status'})`);
-      this.writeVersion(
+      const version = this.writeVersion(
         to,
         {
           title: idea.title,
@@ -418,13 +440,38 @@ export class Store {
         idea,
       );
       this.refreshSearch(toId);
+      concluded = { idea: toId, version };
     }
 
     const id = newId(ROW_PREFIXES.link, this.meta.now());
     this.db
       .prepare('INSERT INTO links (id, from_id, to_id, kind, note, op, actor, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
       .run(id, fromId, toId, kind, note ?? null, this.meta.op, this.meta.actor, this.now());
-    return { id, created: true };
+    return concluded ? { id, created: true, concluded } : { id, created: true };
+  }
+
+  /**
+   * Retract a link: a `link_retractions` row, never a delete. A `concludes` link can't be
+   * retracted, because a concluded idea stays concluded. Retracting twice writes nothing.
+   */
+  retractLink(linkId: string, reason?: string): RetractedLink {
+    this.files();
+    const link = this.db
+      .prepare(
+        `SELECT l.id, l.kind, l.from_id, l.to_id, EXISTS (SELECT 1 FROM link_retractions r WHERE r.link_id = l.id) AS retracted
+         FROM links l WHERE l.id = ?`,
+      )
+      .get(linkId) as { id: string; kind: LinkKind; from_id: string; to_id: string; retracted: number } | undefined;
+    if (!link) throw new OpError('not_found', `no link with id ${linkId}`);
+    if (link.kind === 'concludes') {
+      throw new OpError('conflict', 'a concludes link cannot be retracted: a concluded idea stays concluded');
+    }
+    const base = { id: link.id, kind: link.kind, from: link.from_id, to: link.to_id };
+    if (link.retracted === 1) return { ...base, already_retracted: true };
+    this.db
+      .prepare('INSERT INTO link_retractions (link_id, reason, op, actor, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(link.id, reason ?? null, this.meta.op, this.meta.actor, this.now());
+    return { ...base, already_retracted: false };
   }
 
   /** One object with its current version, scopes and live links, or undefined. */
