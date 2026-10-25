@@ -111,7 +111,7 @@ export const contextStrataHandler = defineHandler(contextStrata, async (input, h
     }
     if (object.kind === 'meeting' && status === 'held') {
       const heldDay = typeof attrs.held_at === 'string' ? dayOf(attrs.held_at) : dayOf(object.version.created_at);
-      if (daysBetween(heldDay, day) > STRATA_HELD_MEETING_DAYS) continue;
+      if (heldDay !== null && daysBetween(heldDay, day) > STRATA_HELD_MEETING_DAYS) continue;
     }
     live.push({ object: summarise(object, status), scopes: placed });
   }
