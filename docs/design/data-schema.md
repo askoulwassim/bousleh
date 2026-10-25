@@ -1,6 +1,6 @@
 # Data schema
 
-Status: **updated with Wassim's decisions of Oct 24** (KICKOFF.md, "Schema decisions", and the review of PR #2). Migrations and `vault.search` follow in the next PR once this version is accepted. Two small questions remain open at the end.
+Status: **approved.** Updated with Wassim's decisions of Oct 24 (the review of PR #2) and Oct 25 (the two remaining questions). Nothing is open. Migrations follow in the next PR.
 
 The rules this follows: SQLite for structure, markdown for long-form, linked by id. Nothing is overwritten, and history runs through "supersedes" links. Only op handlers, called through `runOp`, write to your data, and only the `vault` and `intake` packages touch it on disk. The work instance on the work Mac uses the same schema in its own `~/.bousleh`.
 
@@ -47,7 +47,7 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 | --- | --- | --- |
 | anchors | `strategy`, `principle`, `metric`, `watch_list` | strategy: `status` forming / contested / aligned / communicated. metric: lifecycle idea / defined / instrumented / measured / reviewed, `cadence`, `unit`; its owner and the strategy line it serves are links. watch_list: `entries`, each with a `type` (competitor, topic, outlet, person, podcast), `name`, optional `url` and `notes`; tied to its scope through `object_scopes` |
 | evidence | `signal` (feedback), `observation`, `finding` (Horizon) | signal: `source`, `sentiment`. finding: `url`, `published_at`; linked to its watch list with `from_watch_list`. Readings live in `metric_readings`, not as objects |
-| work | `problem`, `idea`, `initiative`, `decision` | idea: `status` (open question 2 below), plus `hypothesis` and `kill_criteria` once it becomes a bet (required at that status). decision: `decided_at`, `reversible` |
+| work | `problem`, `idea`, `initiative`, `decision` | idea: `status` open / bet / parked / dropped / concluded, plus `hypothesis` and `kill_criteria`, required once it becomes a bet. An idea reaches `concluded` only when a `decision` is linked to it with `concludes` (see below), never by setting the status directly. decision: `decided_at`, `reversible` |
 | people | `person`, `growth_note` | person: `role` (stakeholder, pm, engineer, analyst, other), `org`. A growth note is one coaching entry about a person |
 | moments | `dump`, `meeting`, `commitment`, `daily_note` | meeting: `held_at`, `attendees` (links). commitment: `status` open / done / dropped, `due`, owed to/by (links) |
 
@@ -59,6 +59,7 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 - `owned_by`: to a person
 - `from_moment`: an object to the dump or meeting it came from
 - `from_watch_list`: a finding to its watch list
+- `concludes`: a decision to the idea it concludes. A bet's outcome (scale it, pivot, kill criteria met) is that decision; linking it writes a new version of the idea with status `concluded`, in the same transaction
 - `supersedes`
 - `related`
 
@@ -77,10 +78,11 @@ New link kinds are added in contracts, not freehand.
 - **Local inbox:** `~/.bousleh/inbox/`, for files dropped on the Mac and meeting transcripts handed over directly (`source` `local` or `transcript`).
 - **Drive inbox:** the Google Drive desktop app syncs the "Bousleh Inbox" folder to the Mac. The inbox sweep reads that local copy (`source = 'drive'`). The engine never calls the Drive connector, and file contents never pass through Claude on their way in. Phone dictations and the Daily Horizon scan's findings both arrive this way.
 - **Config:** the synced folder's path is set by `BOUSLEH_DRIVE_INBOX`, next to `BOUSLEH_HOME`: in the MCP server's `env` and in the Daily inbox sweep's environment. Google Drive puts it under `~/Library/CloudStorage/GoogleDrive-<account>/My Drive/Bousleh Inbox`. There's no auto-detection: if the variable is unset, `inbox.sweep` reports that the Drive inbox isn't configured and sweeps only the local inbox.
-- Each file is hashed, then logged in `inbox_log` and skipped if its hash has been seen. Once filed or queued it moves to `~/.bousleh/inbox/processed/<yyyy-mm>/<sha256-prefix>-<original name>` (open question 1 covers files from Drive).
+- Each file is hashed, then logged in `inbox_log` and skipped if its hash has been seen. Once filed or queued it moves to `~/.bousleh/inbox/processed/<yyyy-mm>/<sha256-prefix>-<original name>`. Files from the Drive inbox are moved too, not copied: moving a file out of the synced folder takes it out of Google Drive, which keeps it in its trash for 30 days. After that it exists only on the Mac.
 
 ## 6. Writes and safety
 
+- **Backups.** `~/.bousleh` is the only copy of all data: it's local only, never pushed and not a git repo. Time Machine must cover it on the personal Mac; on the work Mac, Alethea's backup does. A later `vault.doctor` check can warn when no recent backup is detected (not built yet).
 - Each top-level write op runs in one SQLite transaction (WAL mode). File writes are staged, then moved into place after commit. If a write fails before commit, nothing lands.
 - **No hand edits in v0.** Your data is engine-written only. A later `vault.doctor` op checks every current file's `body_sha256` against disk. On a mismatch (a hand-edited file), it records the file's content as a new version through an op, so even a hand edit goes through the engine and keeps history. It also reports objects outside any scope, other than people.
 
@@ -94,7 +96,8 @@ New link kinds are added in contracts, not freehand.
 6. **Drive inbox:** read from the locally synced Google Drive folder, set by `BOUSLEH_DRIVE_INBOX`.
 7. **Altitude:** limited to 50000, 10000, 1000 and 100 by a CHECK constraint.
 
-## Still open
+## Decisions (Oct 25)
 
-1. **What happens to a Drive file after the sweep.** Moving it into `~/.bousleh/inbox/processed` takes it out of Google Drive. Drive keeps it in its trash for 30 days, and after that it exists only on the Mac. That matches "moved to `inbox/processed`" and keeps Drive empty. The alternative copies it into `processed` and moves the Drive original to a `Bousleh Inbox/processed` subfolder, so Drive keeps a copy forever. I recommend the move.
-2. **Idea statuses.** I propose `open`, `bet`, `parked` and `dropped`, with `hypothesis` and `kill_criteria` required once an idea is a `bet`. Should there be a status after a bet plays out (e.g. `won` / `lost`), or does that become a `decision` linked to the idea?
+8. **Drive files after the sweep** are moved into `~/.bousleh/inbox/processed`, not copied. Drive keeps them in its trash for 30 days (section 5).
+9. **Backups:** `~/.bousleh` is the only copy of all data and must be covered by Time Machine (Alethea's backup on the work Mac). Section 6.
+10. **Idea statuses:** `open`, `bet`, `parked`, `dropped`, `concluded`. No won/lost statuses: a bet's outcome is a `decision` linked to the idea with the new `concludes` link kind, which moves the idea to `concluded`. That link is the only way to get there.
