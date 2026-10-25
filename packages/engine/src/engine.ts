@@ -35,6 +35,7 @@ export interface Engine {
 export function openEngine(options: OpenEngineOptions = {}): Engine {
   const home = options.home ?? vault.resolveHome();
   const registry = options.registry ?? OPS;
-  const runOp = createRunOp({ registry, handlers: options.handlers ?? ALL_HANDLERS, home });
-  return { runOp, home, registry, close: () => {} };
+  const data = new vault.Vault(home);
+  const runOp = createRunOp({ registry, handlers: options.handlers ?? ALL_HANDLERS, vault: data });
+  return { runOp, home, registry, close: () => data.close() };
 }

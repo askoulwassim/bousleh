@@ -35,7 +35,7 @@ Op names are provisional; the "Package map" tab is the source of truth.
 | Package | Owns | Op namespaces | Depends on |
 | --- | --- | --- | --- |
 | contracts | Object kinds, layers, altitude, scope; every op's name and schemas | none (definitions only) | nothing |
-| vault | Storage, migrations, history, typed objects | `vault.*` (health, get, search, link, supersede), `deposits.*` (write), `commitments.*`, `people.*` | contracts |
+| vault | Storage, migrations, history, typed objects, scopes | `vault.*` (health, get, search, link, supersede), `deposits.*` (write), `scopes.*` (list, add), `commitments.*`, `people.*` | contracts |
 | intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (list, take, sweep), `queue.*` (add, resolve), `signals.*` (patterns) | contracts, vault |
 | context | The brief at a given altitude, and Pulse's daily picture | `context.*` (brief), `pulse.*` (today) | contracts, vault, metrics, watch |
 | metrics | The registry, its lifecycle and readings | `metrics.*` (upsert, reading, list) | contracts, vault |
@@ -62,9 +62,16 @@ Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes noth
 
 ### Adding an op
 
-1. Define it in `packages/contracts/src/ops/registry.ts` with `defineOp` and add it to `OPS`. It needs a dotted name in its package's namespace, a description, zod `input` and `output`, and `readOnly` if it writes nothing.
-2. Write the handler with `defineHandler` in the package that owns that namespace (`vault`, `intake`, `context`, `metrics` or `watch`; never `engine` or `mcp-server`), and add it to that package's exported `handlers` list.
+1. Define it with `defineOp` in its namespace's file, `packages/contracts/src/ops/<namespace>.ts`, and add it to that file's ops object (`vaultOps`, `depositOps`, …). A new namespace gets a new file and one spread line in `ops/registry.ts`. An op needs a dotted name in its package's namespace, a description written for the model that calls it, zod `input` and `output`, and `readOnly` if it writes nothing. Reuse the shared shapes in `ops/shapes.ts` and the object model in `contracts/src/model/` (kinds, layers, altitude, link kinds).
+2. Write the handler with `defineHandler` in the package that owns that namespace (`vault`, `intake`, `context`, `metrics` or `watch`; never `engine` or `mcp-server`), and add it to that package's exported `handlers` list. Handlers reach your data only through `h.store`; to use another package's op, call `h.runOp`, which joins the caller's transaction.
 3. That's all. The engine refuses to start if an op has no handler, and the MCP tool appears automatically. Never add per-op code to `packages/mcp-server`; a test fails if an op name shows up there.
+
+### How writes work
+
+- Every op that isn't `readOnly` runs in one SQLite transaction. Its markdown files are staged in `~/.bousleh/.staging` and moved into place only after COMMIT, so a failed op leaves no rows and no files.
+- Top-level calls run one at a time. Every top-level write, ok or failed, lands in `op_log`.
+- A `readOnly` op gets a store that refuses writes, including through `h.runOp`.
+- Kind rules (statuses, attrs, the bet rules) live in `contracts` (`checkKindFields`), link rules too (`checkLink`); the store enforces both, so every door gets the same answers.
 
 ## Layout
 

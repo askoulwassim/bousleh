@@ -1,6 +1,6 @@
 # Data schema
 
-Status: **approved.** Updated with Wassim's decisions of Oct 24 (the review of PR #2) and Oct 25 (the two remaining questions). Nothing is open. Migrations follow in the next PR.
+Status: **approved and implemented** (migration 1). Updated with Wassim's decisions of Oct 24 (the review of PR #2) and Oct 25 (the two remaining questions). Nothing is open.
 
 The rules this follows: SQLite for structure, markdown for long-form, linked by id. Nothing is overwritten, and history runs through "supersedes" links. Only op handlers, called through `runOp`, write to your data, and only the `vault` and `intake` packages touch it on disk. The work instance on the work Mac uses the same schema in its own `~/.bousleh`.
 
@@ -35,7 +35,7 @@ So history has two levels. Versions cover "this thing changed". The `supersedes`
 
 Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in the same transaction as the version or scope change that affects it.
 
-**Scopes.** An object can belong to several scopes, for example a person who sits in both Alethea and Specdr, or a decision that spans two projects. Every object needs at least one scope, except people, who may have none because they span scopes. SQLite can't express "at least one row elsewhere" as a constraint, so `deposits.write` enforces it per kind (a zod rule in contracts), and a later `vault.doctor` reports violations. An object's current scopes are its `object_scopes` rows with no matching retraction. Scope changes don't create a new version: membership has its own append-only history, as links do.
+**Scopes.** An object can belong to several scopes, for example a person who sits in both Alethea and Specdr, or a decision that spans two projects. Every object needs at least one scope, except people, who may have none because they span scopes. SQLite can't express "at least one row elsewhere" as a constraint, so `deposits.write` enforces it per kind (a zod rule in contracts), and a later `vault.doctor` reports violations. An object's current scopes are its `object_scopes` rows with no matching retraction. Scope changes don't create a new version: membership has its own append-only history, as links do. Scopes themselves are created with `scopes.add` (slug, name, kind, optional parent) and listed with `scopes.list`; objects name their scopes by slug.
 
 **Altitude** is stored as feet and limited by a CHECK constraint to four values: `50000` company, `10000` cross-team, `1000` own surfaces, `100` one engineer or requirement. It lives on the version, so an object can change altitude over time. Altitude is required. Anything Capture can't place goes to `deposit_queue` and doesn't become an object until it's placed.
 
@@ -49,7 +49,7 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 | evidence | `signal` (feedback), `observation`, `finding` (Horizon) | signal: `source`, `sentiment`. finding: `url`, `published_at`; linked to its watch list with `from_watch_list`. Readings live in `metric_readings`, not as objects |
 | work | `problem`, `idea`, `initiative`, `decision` | idea: `status` open / bet / parked / dropped / concluded, plus `hypothesis` and `kill_criteria`, required once it becomes a bet. An idea reaches `concluded` only when a `decision` is linked to it with `concludes` (see below), never by setting the status directly. decision: `decided_at`, `reversible` |
 | people | `person`, `growth_note` | person: `role` (stakeholder, pm, engineer, analyst, other), `org`. A growth note is one coaching entry about a person |
-| moments | `dump`, `meeting`, `commitment`, `daily_note` | meeting: `held_at`, `attendees` (links). commitment: `status` open / done / dropped, `due`, owed to/by (links) |
+| moments | `dump`, `meeting`, `commitment`, `daily_note` | meeting: `held_at`; attendees are `attended_by` links. commitment: `status` open / done / dropped, `due`; who owes it and to whom are `owed_by` and `owed_to` links |
 
 **Link kinds (v0):**
 - `evidence_for`: evidence to a problem or idea
@@ -59,8 +59,10 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 - `owned_by`: to a person
 - `from_moment`: an object to the dump or meeting it came from
 - `from_watch_list`: a finding to its watch list
-- `concludes`: a decision to the idea it concludes. A bet's outcome (scale it, pivot, kill criteria met) is that decision; linking it writes a new version of the idea with status `concluded`, in the same transaction
-- `supersedes`
+- `concludes`: a decision to the idea it concludes; the idea must be a `bet`. A bet's outcome (scale it, pivot, kill criteria met) is that decision; linking it writes a new version of the idea with status `concluded`, in the same transaction
+- `attended_by`: a meeting to a person who attended it
+- `owed_by`, `owed_to`: a commitment to the person who owes it and the person it's owed to
+- `supersedes`: an object to the object it replaces (same kind)
 - `related`
 
 New link kinds are added in contracts, not freehand.
@@ -70,7 +72,7 @@ New link kinds are added in contracts, not freehand.
 - One file per object: `~/.bousleh/<layer>/<id>.md`, for example `work/prb_01JBX….md`. It always holds the **current** version.
 - Frontmatter mirrors the version: id, kind, layer, title, altitude, status, version `n`, version id, created, updated. SQLite is authoritative; the frontmatter is there so a file reads on its own. Scopes and links change without a new version, so they live only in SQLite and stay out of the frontmatter. That way a file never needs rewriting.
 - The body is the long-form: free markdown, no required headings in v0.
-- A file's content is never edited in place. On a new version, the old file moves to `<layer>/.versions/<id>/<n>.md` and a fresh file is written. Every past body stays on disk as markdown, and `versions.body_path` and `body_sha256` point at each one. Markdown stays the long-form store.
+- A file's content is never edited in place. Every version is written once, to `<layer>/.versions/<id>/<n>.md`, and never touched again; `versions.body_path` and `body_sha256` point at it, so they never need updating. `<layer>/<id>.md` is a copy of the current version, replaced when a new one is written. Every past body stays on disk as markdown, and markdown stays the long-form store. (This replaces "the old file moves on a new version", which would have needed an UPDATE to `body_path`.)
 - Short objects (a commitment, a link-only note) may have an empty body. The file still exists, so every object has a home.
 
 ## 5. The inbox

@@ -29,7 +29,8 @@ describe('MCP server', () => {
   it('serves vault_health through runOp', async () => {
     const client = await connect({ runOp: openEngine({ home }).runOp });
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name)).toEqual(['vault_health']);
+    expect(tools.map((t) => t.name)).toEqual(Object.keys(OPS).map((op) => op.replaceAll('.', '_')));
+    expect(tools.map((t) => t.name)).toContain('vault_health');
     const res = await client.callTool({ name: 'vault_health', arguments: {} });
     expect(res.isError).toBeFalsy();
     expect(res.structuredContent).toMatchObject({ status: 'ok', output: { ok: true, home, data: { exists: true, db: false } } });
