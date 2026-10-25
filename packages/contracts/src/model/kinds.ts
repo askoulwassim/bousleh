@@ -10,6 +10,11 @@ import type { Layer } from './layers.js';
 const date = z.iso.date();
 const dateOrDateTime = z.union([z.iso.date(), z.iso.datetime({ offset: true })]);
 const text = z.string().trim().min(1);
+/** A short lower-case slug, for signal tags: `onboarding`, `export-speed`. */
+export const TagSchema = z
+  .string()
+  .max(40)
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'a tag is a short lower-case slug, words joined by hyphens, like export-speed');
 
 export interface KindDef {
   layer: Layer;
@@ -34,6 +39,12 @@ export const METRIC_STATUSES = ['idea', 'defined', 'instrumented', 'measured', '
 /** Oct 25: no won/lost. `concluded` is reached only through a `concludes` link from a decision. */
 export const IDEA_STATUSES = ['open', 'bet', 'parked', 'dropped', 'concluded'] as const;
 export const COMMITMENT_STATUSES = ['open', 'done', 'dropped'] as const;
+/** Oct 25: initiatives written before this have no status; they read as `active`. */
+export const INITIATIVE_STATUSES = ['proposed', 'active', 'paused', 'done', 'dropped'] as const;
+/** Horizon's reading queue. Findings filed before this have no status; they read as `new`. */
+export const FINDING_STATUSES = ['new', 'to_read', 'read', 'dismissed'] as const;
+/** A planned meeting is one coming up (Counsel's prep lives on it); held is one that happened. Meetings with no status read as `held`. */
+export const MEETING_STATUSES = ['planned', 'held'] as const;
 
 export const WATCH_ENTRY_TYPES = ['competitor', 'topic', 'outlet', 'person', 'podcast'] as const;
 export const PERSON_ROLES = ['stakeholder', 'pm', 'engineer', 'analyst', 'other'] as const;
@@ -88,14 +99,31 @@ export const KINDS = {
     }),
     scopeRequired: true,
   },
+  term: {
+    layer: 'anchors',
+    prefix: 'trm',
+    description:
+      'A glossary term: a word or acronym as the company uses it. The title is the term, aliases are other names for it, definition is one or two sentences; the body can hold more.',
+    attrs: z.strictObject({
+      aliases: z.array(text).default([]),
+      definition: text.optional(),
+    }),
+    scopeRequired: true,
+  },
   // ------------------------------------------------------------ evidence
   signal: {
     layer: 'evidence',
     prefix: 'sig',
-    description: 'A piece of feedback, atomised: one thing someone said or asked for.',
+    description:
+      'A piece of feedback, atomised: one thing someone said or asked for. tags are short lower-case slugs naming what it is about, so feedback can be counted as patterns; reuse existing tags.',
     attrs: z.strictObject({
       source: text.optional(),
       sentiment: z.enum(['positive', 'neutral', 'negative', 'mixed']).optional(),
+      tags: z
+        .array(TagSchema)
+        .max(10)
+        .refine((tags) => new Set(tags).size === tags.length, 'each tag once')
+        .default([]),
     }),
     scopeRequired: true,
   },
@@ -109,7 +137,10 @@ export const KINDS = {
   finding: {
     layer: 'evidence',
     prefix: 'fnd',
-    description: 'Something Horizon found outside: an article, a launch, a podcast episode. Links to its watch list.',
+    description:
+      'Something Horizon found outside: an article, a launch, a podcast episode. Links to its watch list. Status is the reading queue: new, to_read, read, dismissed.',
+    statuses: FINDING_STATUSES,
+    defaultStatus: 'new',
     attrs: z.strictObject({
       url: z.url(),
       published_at: dateOrDateTime.optional(),
@@ -128,21 +159,28 @@ export const KINDS = {
     layer: 'work',
     prefix: 'ida',
     description:
-      'An idea. As a bet it needs a hypothesis and kill criteria. It is concluded only by linking a decision to it with `concludes`.',
+      'An idea. As a bet it needs a hypothesis and kill criteria. It is concluded only by linking a decision to it with `concludes`. rank orders ideas against each other: 1 is the top.',
     statuses: IDEA_STATUSES,
     defaultStatus: 'open',
     reservedStatuses: ['concluded'],
     attrs: z.strictObject({
       hypothesis: text.optional(),
       kill_criteria: text.optional(),
+      rank: z.number().int().min(1).optional(),
     }),
     scopeRequired: true,
   },
   initiative: {
     layer: 'work',
     prefix: 'ini',
-    description: 'An initiative that problems, ideas and decisions are part of.',
-    attrs: z.strictObject({}),
+    description:
+      'An initiative that problems, ideas and decisions are part of. Status: proposed, active, paused, done, dropped. Its owner is an `owned_by` link to a person.',
+    statuses: INITIATIVE_STATUSES,
+    defaultStatus: 'active',
+    attrs: z.strictObject({
+      started_at: date.optional(),
+      target_date: date.optional(),
+    }),
     scopeRequired: true,
   },
   decision: {
@@ -198,7 +236,10 @@ export const KINDS = {
   meeting: {
     layer: 'moments',
     prefix: 'mtg',
-    description: 'A meeting. Attendees are `attended_by` links to people.',
+    description:
+      'A meeting. Attendees are `attended_by` links to people. Status planned for one coming up (prep goes in its body), held once it happened. held_at is when it was or will be held.',
+    statuses: MEETING_STATUSES,
+    defaultStatus: 'held',
     attrs: z.strictObject({
       held_at: dateOrDateTime.optional(),
     }),
@@ -232,6 +273,16 @@ export const KindSchema = z.enum(KIND_NAMES as [Kind, ...Kind[]]);
 
 export function kindDef(kind: Kind): KindDef {
   return KINDS[kind];
+}
+
+/**
+ * The status an object reads as. Objects written before their kind had statuses (initiatives,
+ * meetings and findings until Oct 25) have none stored; they read as the kind's default.
+ */
+export function effectiveStatus(kind: Kind, stored: string | null | undefined): string | null {
+  const def: KindDef = KINDS[kind];
+  if (!def.statuses) return null;
+  return stored ?? def.defaultStatus ?? null;
 }
 
 /** A problem with what a caller asked to write, phrased for the model that sent it. */

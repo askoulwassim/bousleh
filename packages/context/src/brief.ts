@@ -6,6 +6,7 @@ import {
   type BriefSection,
   type CommitmentView,
   contextBrief,
+  effectiveStatus,
   type Kind,
   type MetricSummary,
   type ObjectView,
@@ -18,7 +19,8 @@ import { ancestorsOf, call, coverScopes, inCover, isReplaced, Objects, shorten }
  * context.brief: what to know before advising at an altitude.
  * 1. The centre: the ids asked for, and the best matches for focus (vault.search).
  * 2. One hop out: everything linked to the centre, in either direction.
- * 3. With no centre, the scopes as a whole: open problems and ideas, decisions, metrics, open commitments.
+ * 3. With no centre, the scopes as a whole: live initiatives, open problems and ideas, decisions, metrics,
+ *    open commitments.
  * 4. Anchors of the scopes (and their parent scopes) at or above one level below the altitude, and
  *    the metrics that serve them.
  * 5. Evidence linked to what is shown, then the people involved in it.
@@ -33,6 +35,7 @@ type Output = OpOutput<'context.brief'>;
 const SECTION_OF: Partial<Record<Kind, BriefSection>> = {
   strategy: 'anchors',
   principle: 'anchors',
+  initiative: 'initiatives',
   problem: 'problems',
   idea: 'ideas',
   decision: 'decisions',
@@ -47,13 +50,17 @@ const SECTION_OF: Partial<Record<Kind, BriefSection>> = {
 const ANCHOR_KINDS: readonly Kind[] = ['strategy', 'principle'];
 const EVIDENCE_KINDS: readonly Kind[] = ['signal', 'observation', 'finding'];
 /** Sections that carry a snippet of the body. */
-const SNIPPETS: ReadonlySet<BriefSection> = new Set(['anchors', 'problems', 'ideas', 'decisions', 'evidence']);
+const SNIPPETS: ReadonlySet<BriefSection> = new Set(['anchors', 'initiatives', 'problems', 'ideas', 'decisions', 'evidence']);
 /** How many search matches become the centre. */
 export const CENTRE_FROM_SEARCH = 5;
 const SNIPPET_CHARS = 200;
 const MAX_REASONS = 4;
 /** Idea statuses, in the order the ideas section lists them. */
 const IDEA_ORDER = ['bet', 'open', 'parked', 'concluded', 'dropped'];
+/** Initiative statuses, in the order the initiatives section lists them. */
+const INITIATIVE_ORDER = ['active', 'proposed', 'paused', 'done', 'dropped'];
+/** Initiatives the brief leaves out when it has no centre. */
+const CLOSED_INITIATIVES = ['done', 'dropped'];
 
 /** How close an object is to the centre: 0 the centre, 1 linked to it, 2 the rest. */
 type Tier = 0 | 1 | 2;
@@ -113,6 +120,8 @@ function involvement(kind: string, object: ObjectView): string {
       return `is owed ${quoted(object)}`;
     case 'about':
       return `${quoted(object)} is about them`;
+    case 'reports_to':
+      return `${quoted(object)} reports to them`;
     default:
       return `linked to ${quoted(object)} (${kind})`;
   }
@@ -186,8 +195,9 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
 
   // ------------------------------------------------------------ 3. no centre: the scopes as a whole
   if (centre.length === 0) {
-    for (const object of objects.ofKinds(['problem', 'idea', 'decision', 'metric', 'commitment', 'asset'])) {
+    for (const object of objects.ofKinds(['initiative', 'problem', 'idea', 'decision', 'metric', 'commitment', 'asset'])) {
       if (!eligible(object)) continue;
+      if (object.kind === 'initiative' && CLOSED_INITIATIVES.includes(effectiveStatus('initiative', object.version.status) ?? '')) continue;
       if (object.kind === 'idea' && !['open', 'bet'].includes(object.version.status ?? '')) continue;
       if (object.kind === 'commitment' && object.version.status !== 'open') continue;
       picked.add(object, 2, scopeReason(object));
@@ -238,10 +248,17 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
   const newestFirst = (a: Entry, b: Entry) => updated(b).localeCompare(updated(a));
 
   const anchors = take('anchors', picked.inSection('anchors'), (a, b) => b.object.version.altitude - a.object.version.altitude);
+  const initiativeStatus = (entry: Entry) => effectiveStatus('initiative', entry.object.version.status) ?? 'active';
+  const targetDate = (entry: Entry) => (entry.object.version.attrs.target_date as string | undefined) ?? '9999-12-31';
+  const initiatives = take('initiatives', picked.inSection('initiatives'), (a, b) => {
+    const order = (entry: Entry) => INITIATIVE_ORDER.indexOf(initiativeStatus(entry));
+    return order(a) - order(b) || targetDate(a).localeCompare(targetDate(b)) || newestFirst(a, b);
+  });
   const problems = take('problems', picked.inSection('problems'), newestFirst);
+  const ideaRank = (entry: Entry) => (entry.object.version.attrs.rank as number | undefined) ?? Number.MAX_SAFE_INTEGER;
   const ideas = take('ideas', picked.inSection('ideas'), (a, b) => {
-    const rank = (entry: Entry) => IDEA_ORDER.indexOf(entry.object.version.status ?? 'open');
-    return rank(a) - rank(b) || newestFirst(a, b);
+    const order = (entry: Entry) => IDEA_ORDER.indexOf(entry.object.version.status ?? 'open');
+    return order(a) - order(b) || ideaRank(a) - ideaRank(b) || newestFirst(a, b);
   });
   const decidedAt = (entry: Entry) => (entry.object.version.attrs.decided_at as string | undefined) ?? updated(entry);
   const decisions = take('decisions', picked.inSection('decisions'), (a, b) => decidedAt(b).localeCompare(decidedAt(a)));
@@ -258,7 +275,7 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
   );
 
   // ------------------------------------------------------------ 5. evidence linked to what is shown
-  const shown = [...anchors, ...problems, ...ideas, ...decisions, ...metricEntries, ...commitmentEntries];
+  const shown = [...anchors, ...initiatives, ...problems, ...ideas, ...decisions, ...metricEntries, ...commitmentEntries];
   for (const { object } of [...centreObjects.map((object) => ({ object })), ...shown]) {
     const linked = [
       ...object.links.out.map((link) => ({ id: link.to, kind: link.kind, otherKind: link.to_kind, fromLinked: false })),
@@ -326,6 +343,11 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
     };
   };
   const attr = <T>(object: ObjectView, key: string): T | null => (object.version.attrs[key] as T | undefined) ?? null;
+  /** The person at the end of the newest live link of this kind, or null. */
+  const personVia = (object: ObjectView, kind: string) => {
+    const link = object.links.out.filter((l) => l.kind === kind && l.to_kind === 'person').at(-1);
+    return link ? { id: link.to, name: link.to_title } : null;
+  };
 
   return {
     altitude: input.altitude,
@@ -334,11 +356,19 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
     centre,
     match,
     anchors: anchors.map((entry) => ref(entry, 'anchors')),
+    initiatives: initiatives.map((entry) => ({
+      ...ref(entry, 'initiatives'),
+      status: initiativeStatus(entry) as Output['initiatives'][number]['status'],
+      started_at: attr<string>(entry.object, 'started_at'),
+      target_date: attr<string>(entry.object, 'target_date'),
+      owner: personVia(entry.object, 'owned_by'),
+    })),
     problems: problems.map((entry) => ref(entry, 'problems')),
     ideas: ideas.map((entry) => ({
       ...ref(entry, 'ideas'),
       hypothesis: attr<string>(entry.object, 'hypothesis'),
       kill_criteria: attr<string>(entry.object, 'kill_criteria'),
+      rank: attr<number>(entry.object, 'rank'),
     })),
     decisions: decisions.map((entry) => ({
       ...ref(entry, 'decisions'),
@@ -359,6 +389,7 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
       ...ref(entry, 'people'),
       role: attr<NonNullable<Output['people'][number]['role']>>(entry.object, 'role'),
       org: attr<string>(entry.object, 'org'),
+      reports_to: personVia(entry.object, 'reports_to'),
     })),
     commitments: commitmentEntries.map((entry) => {
       const commitment = commitments.get(entry.object.id) as CommitmentView;

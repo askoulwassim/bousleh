@@ -284,6 +284,89 @@ describe('context.brief', () => {
   });
 });
 
+describe('context.brief: initiatives and the people map', () => {
+  it('lists initiatives one hop out from the centre, with status, dates and owner', async () => {
+    const lisa = await deposit('person', 'Lisa', { attrs: { role: 'pm' } });
+    const provenance = await deposit('initiative', 'Provenance everywhere', {
+      attrs: { started_at: '2026-10-01', target_date: '2027-01-31' },
+      links: [{ kind: 'owned_by', to: lisa }],
+    });
+    const problem = await deposit('problem', 'Analysts cannot trace a narrative', { links: [{ kind: 'part_of', to: provenance }] });
+    const unrelated = await deposit('initiative', 'Exports rework');
+
+    const result = await brief({ ids: [problem] });
+    expect(result.initiatives).toEqual([
+      expect.objectContaining({
+        id: provenance,
+        kind: 'initiative',
+        status: 'active',
+        started_at: '2026-10-01',
+        target_date: '2027-01-31',
+        owner: { id: lisa, name: 'Lisa' },
+        why: ['linked to "Analysts cannot trace a narrative" (part_of)'],
+      }),
+    ]);
+    expect(ids(result.initiatives)).not.toContain(unrelated);
+    // The owner is among the people involved.
+    expect(result.people.find((p) => p.id === lisa)?.why).toEqual(['owns "Provenance everywhere"']);
+    expect(result.more.initiatives).toBe(0);
+  });
+
+  it('with no centre, lists the live initiatives in scope: active first, soonest target first', async () => {
+    const later = await deposit('initiative', 'Later', { attrs: { target_date: '2027-06-30' } });
+    const sooner = await deposit('initiative', 'Sooner', { attrs: { target_date: '2026-12-31' } });
+    const proposed = await deposit('initiative', 'Maybe', { status: 'proposed' });
+    const paused = await deposit('initiative', 'On hold', { status: 'paused' });
+    const done = await deposit('initiative', 'Shipped', { status: 'done' });
+    const dropped = await deposit('initiative', 'Abandoned', { status: 'dropped' });
+    const elsewhere = await deposit('initiative', 'Elsewhere', { scopes: ['bousleh'] });
+
+    const result = await brief({ scopes: ['alethea'] });
+    expect(result.initiatives.map((i) => [i.id, i.status, i.owner])).toEqual([
+      [sooner, 'active', null],
+      [later, 'active', null],
+      [proposed, 'proposed', null],
+      [paused, 'paused', null],
+    ]);
+    expect(result.initiatives[0]?.why).toEqual(['in scope narratives']);
+    for (const left of [done, dropped, elsewhere]) expect(ids(result.initiatives)).not.toContain(left);
+
+    // Asked for, a done initiative is shown.
+    const centred = await brief({ ids: [done] });
+    expect(centred.initiatives.map((i) => [i.id, i.status])).toEqual([[done, 'done']]);
+  });
+
+  it('says who each person reports to', async () => {
+    const peter = await deposit('person', 'Peter', { attrs: { role: 'stakeholder' } });
+    const lisa = await deposit('person', 'Lisa', { attrs: { role: 'pm' }, links: [{ kind: 'reports_to', to: peter }] });
+    const sam = await deposit('person', 'Sam', { attrs: { role: 'engineer' } });
+    const meeting = await deposit('meeting', 'Provenance sync', { attrs: { held_at: '2026-10-19' } });
+    await link(meeting, 'attended_by', lisa);
+    await link(meeting, 'attended_by', sam);
+
+    const result = await brief({ ids: [meeting] });
+    const people = Object.fromEntries(result.people.map((p) => [p.title, p]));
+    expect(people.Lisa?.reports_to).toEqual({ id: peter, name: 'Peter' });
+    expect(people.Sam?.reports_to).toBeNull();
+
+    const aroundLisa = await brief({ ids: [lisa] });
+    expect(aroundLisa.people.find((p) => p.id === lisa)?.reports_to).toEqual({ id: peter, name: 'Peter' });
+    expect(aroundLisa.people.find((p) => p.id === peter)?.why).toEqual(['"Lisa" reports to them']);
+  });
+
+  it('orders ideas of the same status by rank', async () => {
+    const third = await deposit('idea', 'Third', { attrs: { rank: 3 } });
+    const unranked = await deposit('idea', 'Unranked');
+    const first = await deposit('idea', 'First', { attrs: { rank: 1 } });
+    const result = await brief();
+    expect(result.ideas.map((i) => [i.id, i.rank])).toEqual([
+      [first, 1],
+      [third, 3],
+      [unranked, null],
+    ]);
+  });
+});
+
 describe('pulse.today', () => {
   it('answers an empty vault', async () => {
     at(2026, 10, 25, 9);
@@ -375,6 +458,13 @@ describe('pulse.today', () => {
     const result = await pulse({ date: '2026-10-25' });
     expect(ids(result.meetings)).toEqual([allDay, midnight, lastMinute]);
     expect(result.meetings[1]?.attendees).toEqual([{ id: peter, name: 'Peter' }]);
+    expect(result.meetings.map((m) => m.status)).toEqual(['held', 'held', 'held']);
+  });
+
+  it('shows a planned meeting with its status, so its prep is easy to find', async () => {
+    const planned = await deposit('meeting', '1:1 with Peter', { status: 'planned', altitude: 1000, attrs: { held_at: '2026-10-25' } });
+    const result = await pulse({ date: '2026-10-25' });
+    expect(result.meetings.map((m) => [m.id, m.status])).toEqual([[planned, 'planned']]);
   });
 
   it('counts the inbox and the queue', async () => {

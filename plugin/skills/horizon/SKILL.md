@@ -19,6 +19,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Reads: `watchlists_get` (watchlists.get), `watch_digest` (watch.digest)
 - Writes: `watchlists_set` (watchlists.set), `watch_file` (watch.file), `vault_link` (vault.link) to link a filed finding `evidence_for` a problem or idea it bears on, `assets_add` (assets.add) to register every Doc or dashboard you write
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the competitive brief that already exists for a scope
+- Added, write: `vault_supersede` (vault.supersede), only to move a finding through the reading queue
 
 ## Altitude
 
@@ -32,6 +33,16 @@ Watch lists default to `10000` (cross-team: the market around a product). Use `5
    - "for Shape" when it bears on a strategy line or a problem,
    - "for Workshop" when it suggests an idea.
 4. Ask one question at most ("Want a written brief of this week?").
+
+## Flow: the reading and listening queue
+
+Every finding has a reading-queue status: `new` when filed (findings filed before Oct 25 read as `new` too), `to_read` when Wassim wants to read or listen to it later, `read` once he has, `dismissed` when it isn't worth it.
+
+- "Save that for later", "add it to my reading list": `vault_supersede` the finding with status `to_read`.
+- "Read it", "listened to it": status `read`. If it changed his mind about something, offer Capture or Shape for what he took from it.
+- "Not interested", "skip it": status `dismissed`. When he dismisses several from the same watch list entry, say so: it's a sign the entry is noise.
+- "What's on my reading list?": `watch_digest` with `status: [to_read]` (no `since`: the whole queue). Give titles, sources and links.
+- Use the digest's `status` to leave out what he already read or dismissed when you present a digest.
 
 ## Flow: editing a watch list
 

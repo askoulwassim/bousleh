@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { IdSchema, ScopeSlugSchema } from '../model/ids.js';
-import { KINDS } from '../model/kinds.js';
+import { FINDING_STATUSES, KINDS } from '../model/kinds.js';
 import { AltitudeSchema } from '../model/layers.js';
 import { defineOp } from './define.js';
 import { ObjectRefSchema } from './shapes.js';
@@ -97,9 +97,13 @@ export const watchFile = defineOp({
   }),
 });
 
+/** Where a finding is in the reading queue. Findings filed before Oct 25 read as new. */
+export const FindingStatusSchema = z.enum(FINDING_STATUSES);
+
 export const DigestFindingSchema = z.object({
   id: IdSchema,
   title: z.string(),
+  status: FindingStatusSchema,
   url: z.string(),
   published_at: z.string().nullable(),
   filed_at: isoDateTime,
@@ -109,11 +113,12 @@ export const DigestFindingSchema = z.object({
 export const watchDigest = defineOp({
   name: 'watch.digest',
   description:
-    'Recent findings, grouped by the watch list they were filed under: each with its title, url, published date and a short summary. Covers findings filed since a date (default: the last 7 days), optionally only one scope (by slug) or one watch list (by id). Findings filed without a watch list come last, under a null watch list. Newest first within each group, at most limit findings in all.',
+    'Recent findings, grouped by the watch list they were filed under: each with its title, url, reading-queue status (new, to_read, read, dismissed), published date and a short summary. Covers findings filed since a date (default: the last 7 days), optionally only one scope (by slug) or one watch list (by id). status keeps only findings in those reading-queue statuses; with status and no since, there is no time window, so status [to_read] is the whole reading queue. Move a finding through the queue with vault.supersede (status). Findings filed without a watch list come last, under a null watch list. Newest first within each group, at most limit findings in all.',
   input: z.object({
     since: z.union([z.iso.date(), isoDateTime]).optional(),
     scope: ScopeSlugSchema.optional(),
     watch_list_id: IdSchema.optional(),
+    status: z.array(FindingStatusSchema).min(1).optional(),
     limit: z.number().int().min(1).max(500).default(100),
   }),
   output: z.object({

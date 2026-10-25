@@ -13,6 +13,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief), `metrics_list` (metrics.list)
 - Writes: `deposits_write` (deposits.write), `vault_link` (vault.link) to tie an existing idea to the problem, `assets_add` (assets.add) to register every whiteboard or design you make
+- Added, write: `vault_supersede` (vault.supersede), only to set `rank` on ideas that already exist
 - Added, read-only: `vault_search` (vault.search) to find the problem; `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find a whiteboard that already exists for it
 
 `context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
@@ -29,9 +30,10 @@ Generate at `1000`, his own surfaces. Go up to `10000` when the ideas need other
    - the metric it would move,
    - the strategy line it serves,
    - its riskiest assumption.
-4. **Rank** by: likely effect on the named metrics, fit with the strategy (an `aligned` line weighs more than a `forming` one), strength of the evidence behind the problem, and cost and reversibility. Give each rank a one-line reason. Say which ones you'd drop.
+4. **Rank** (existing ideas included; the brief shows their current `rank`) by: likely effect on the named metrics, fit with the strategy (an `aligned` line weighs more than a `forming` one), strength of the evidence behind the problem, and cost and reversibility. Give each rank a one-line reason. Say which ones you'd drop.
 5. **Adjust.** Ask one question at a time ("Anything missing before I save these?").
-6. **Deposit** the ideas he keeps with `deposits_write`: kind `idea`, status `open`, at their altitude, in the problem's scope, links `addresses` → the problem and `part_of` → its initiative or strategy if there is one. Put the rank and its reason in the body.
+6. **Deposit** the ideas he keeps with `deposits_write`: kind `idea`, status `open`, at their altitude, in the problem's scope, attrs `rank` (1 is the top), links `addresses` → the problem and `part_of` → its initiative or strategy if there is one. Put the reason for the rank in the body.
+   - Ideas already on the problem that you re-ranked: `vault_supersede` each one with only `attrs: { rank }`. Rank the whole set together, so two ideas never share a rank. Leave status alone.
    - An idea he wants to bet on now can be written as `bet` straight away, but only with a `hypothesis` and `kill_criteria` he agrees to.
    - Changing an existing idea (to bet, parked, dropped) is Shape's job.
 
