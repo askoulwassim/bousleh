@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import { commitmentOps } from './commitments.js';
+import { contextOps } from './context.js';
 import { depositOps } from './deposits.js';
 import { inboxOps } from './inbox.js';
 import { metricOps } from './metrics.js';
@@ -28,6 +29,7 @@ export const OPS = {
   ...watchOps,
   ...inboxOps,
   ...queueOps,
+  ...contextOps,
 } as const;
 
 export type Ops = typeof OPS;
