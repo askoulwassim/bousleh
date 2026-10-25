@@ -28,5 +28,8 @@
   },
   "bin": {
     "bousleh-mcp": "./dist/bin.js"
+  },
+  "devDependencies": {
+    "@bousleh/vault": "workspace:*"
   }
 }
