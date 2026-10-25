@@ -5,6 +5,8 @@ export * from './ops/define.js';
 export * from './ops/deposits.js';
 export * from './ops/metrics.js';
 export * from './ops/people.js';
+export * from './ops/inbox.js';
+export * from './ops/queue.js';
 export * from './ops/registry.js';
 export * from './ops/schema.js';
 export * from './ops/scopes.js';

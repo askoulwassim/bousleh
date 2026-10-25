@@ -1,6 +1,20 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, normalize, relative, sep } from 'node:path';
+import {
+  constants,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  rmdirSync,
+  rmSync,
+  statSync,
+  unlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path';
 
 /*
  * File writes inside your data home, tied to the op's SQLite transaction.
@@ -11,6 +25,10 @@ import { dirname, isAbsolute, join, normalize, relative, sep } from 'node:path';
  * back the way it was. A marker in `.staging` says a transaction is open; if a process dies before
  * clearing it, the next one to open your data repairs the files from the database
  * (see `Vault.recover`).
+ *
+ * File moves (an inbox file to inbox/processed, a Drive file into the local inbox) are different:
+ * they run only after COMMIT, and never if the op fails. If a process dies between the two, the
+ * file is still in the inbox with its hash logged, and the next sweep moves it as a duplicate.
  *
  * Version files (`<layer>/.versions/…`) are only written by the store. Other packages get the same
  * stager through `Store.stagedFiles` and may write anywhere else inside the data home.
@@ -24,9 +42,16 @@ interface Undo {
   previous: string | null;
 }
 
+interface StagedMove {
+  /** Absolute path of the file to move. It may live outside the data home (the synced Drive folder). */
+  source: string;
+  target: string;
+}
+
 /** A point to roll back to: `FileStager.mark()`. */
 export interface StagerMark {
   writes: number;
+  moves: number;
 }
 
 /** Resolve `relPath` inside `home`, refusing anything that escapes it or touches Bousleh's own files. */
@@ -54,11 +79,47 @@ export function writeAtomic(home: string, target: string, content: string): void
   renameSync(temp, target);
 }
 
+/**
+ * Move a file, also across volumes: `rename` first, and on `EXDEV` (the synced Google Drive folder can
+ * sit on another volume) copy to a temporary name beside the target, keep the modification time,
+ * rename it into place and only then unlink the source. Never overwrites an existing target.
+ * `rename` is injectable so tests can simulate a cross-volume move.
+ */
+export function moveFile(source: string, target: string, rename: (from: string, to: string) => void = renameSync): void {
+  mkdirSync(dirname(target), { recursive: true });
+  if (existsSync(target)) throw new Error(`cannot move ${source}: ${target} already exists`);
+  try {
+    rename(source, target);
+    return;
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'EXDEV') throw e;
+  }
+  const partial = `${target}.${randomBytes(6).toString('hex')}.partial`;
+  try {
+    copyFileSync(source, partial, constants.COPYFILE_EXCL);
+    const { atime, mtime } = statSync(source);
+    utimesSync(partial, atime, mtime);
+    renameSync(partial, target);
+  } catch (e) {
+    rmSync(partial, { force: true });
+    throw e;
+  }
+  unlinkSync(source);
+}
+
 export class FileStager {
   private undo: Undo[] = [];
+  private moves: StagedMove[] = [];
   private marker: string | undefined;
 
-  constructor(private readonly home: string) {}
+  /**
+   * @param options.rename what staged moves use to rename a file; tests pass one that fails with
+   *   `EXDEV` to exercise the cross-volume path.
+   */
+  constructor(
+    private readonly home: string,
+    private readonly options: { rename?: (from: string, to: string) => void } = {},
+  ) {}
 
   /** Write `content` to `relPath` (relative to the data home) now; undone if the op rolls back. */
   stage(relPath: string, content: string, options: { allowVersions?: boolean } = {}): void {
@@ -69,13 +130,41 @@ export class FileStager {
     writeAtomic(this.home, target, content);
   }
 
-  /** Where a nested op starts, so its writes alone can be undone. */
-  mark(): StagerMark {
-    return { writes: this.undo.length };
+  /**
+   * Stage a move of the file at `source` (absolute; it may be outside the data home) to `relPath`
+   * (relative to the data home). It runs after COMMIT and never if the op fails. Refuses a source
+   * that isn't a file, a source already staged to move, and a target that exists or that this op
+   * already claimed (check with `isFree` first).
+   */
+  stageMove(source: string, relPath: string): void {
+    const target = safeDataPath(this.home, relPath);
+    const from = resolve(source);
+    if (!existsSync(from) || !statSync(from).isFile()) throw new Error(`cannot move ${from}: it is not a file`);
+    if (this.isMoving(from)) throw new Error(`${from} is already staged to move`);
+    if (!this.isFree(relPath)) throw new Error(`cannot move ${from} to ${relPath}: that path is taken`);
+    this.moves.push({ source: from, target });
   }
 
-  /** Undo every write made after `mark`, newest first. */
+  /** True when nothing exists at `relPath` and no staged move in this op targets it. */
+  isFree(relPath: string): boolean {
+    const target = join(this.home, relPath);
+    return !existsSync(target) && !this.moves.some((m) => m.target === target);
+  }
+
+  /** True when the file at `source` is staged to move in this op. */
+  isMoving(source: string): boolean {
+    const from = resolve(source);
+    return this.moves.some((m) => m.source === from);
+  }
+
+  /** Where a nested op starts, so its writes and moves alone can be undone. */
+  mark(): StagerMark {
+    return { writes: this.undo.length, moves: this.moves.length };
+  }
+
+  /** Undo every write made after `mark`, newest first, and drop the moves staged after it. */
   rollbackTo(mark: StagerMark): void {
+    this.moves.length = Math.min(this.moves.length, mark.moves);
     while (this.undo.length > mark.writes) {
       const entry = this.undo.pop();
       if (!entry) break;
@@ -88,24 +177,38 @@ export class FileStager {
     }
   }
 
-  /** The op committed: keep every write. Call after COMMIT. */
+  /**
+   * The op committed: keep every write, then run the staged moves. Call after COMMIT. A move that
+   * fails doesn't stop the others; the failures are reported together at the end.
+   */
   commit(): void {
     this.undo = [];
     this.close();
+    const moves = this.moves;
+    this.moves = [];
+    const failures: string[] = [];
+    for (const { source, target } of moves) {
+      try {
+        moveFile(source, target, this.options.rename);
+      } catch (e) {
+        failures.push(e instanceof Error ? e.message : String(e));
+      }
+    }
+    if (failures.length > 0) throw new Error(`some files did not move: ${failures.join('; ')}`);
   }
 
   /** The op rolled back: undo every write. Call after ROLLBACK. */
   discard(): void {
     try {
-      this.rollbackTo({ writes: 0 });
+      this.rollbackTo({ writes: 0, moves: 0 });
     } finally {
       this.close();
     }
   }
 
-  /** Writes this op has made so far. */
+  /** Writes this op has made so far, plus moves not yet run. */
   get pending(): number {
-    return this.undo.length;
+    return this.undo.length + this.moves.length;
   }
 
   private open(): void {

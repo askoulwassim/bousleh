@@ -3,6 +3,8 @@ import { commitmentOps } from './commitments.js';
 import { depositOps } from './deposits.js';
 import { metricOps } from './metrics.js';
 import { peopleOps } from './people.js';
+import { inboxOps } from './inbox.js';
+import { queueOps } from './queue.js';
 import { scopeOps } from './scopes.js';
 import { vaultOps } from './vault.js';
 import { watchOps } from './watch.js';
@@ -24,6 +26,8 @@ export const OPS = {
   ...peopleOps,
   ...metricOps,
   ...watchOps,
+  ...inboxOps,
+  ...queueOps,
 } as const;
 
 export type Ops = typeof OPS;
