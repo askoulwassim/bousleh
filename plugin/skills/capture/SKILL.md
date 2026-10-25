@@ -11,7 +11,7 @@ Turn raw input into typed, linked deposits. You decide what the input means. The
 
 Tools on the Bousleh MCP server (op names in brackets):
 
-- Reads: `inbox_list` (inbox.list), `inbox_take` (inbox.take), `vault_search` (vault.search)
+- Reads: `inbox_list` (inbox.list), `inbox_take` (inbox.take), `vault_search` (vault.search), `signals_patterns` (signals.patterns) for the signal tags already in use
 - Writes: `deposits_write` (deposits.write), `queue_add` (queue.add), `queue_resolve` (queue.resolve), `vault_link` (vault.link), `inbox_settle` (inbox.settle), `assets_add` (assets.add) for links to artifacts
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs, `queue_list` (queue.list) to clear the queue, `vault_get` (vault.get) to check a candidate
 - Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox; `vault_supersede` (vault.supersede) for one thing only: moving a planned meeting to `held` once it has happened (see "Meetings").
@@ -46,7 +46,11 @@ Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a 
 
 **Assets.** When a dump, transcript or inbox file mentions the url of a Claude artifact (a Doc, deck, dashboard, whiteboard, design or page), a Google Doc or sheet, or a GitHub repo, register it with `assets_add`: the url, a short title, its `type` (`doc`, `slides`, `sheet`, `dashboard`, `whiteboard`, `design`, `page`, `repo`, `file`, `other`), the scope, and `documents` → the atoms it relates to (write them first, then add the asset). It is never its own atom: no `signal` or `observation` just to hold a link. The same url twice is safe; `assets_add` returns the one already registered and adds the new links. If you can't tell what it documents, register it with no `documents` and say so in the read-back.
 
-**Signal tags.** Give every signal one to three `tags`: short lower-case slugs for what it is about (`export-speed`, `onboarding`, `pricing`), so the same feedback from different people can be counted as a pattern. Reuse a tag already on similar signals (`vault_search` with `kinds: [signal]` shows them) rather than inventing a near-synonym. Never put a person's name or a sentiment in a tag; those have their own fields.
+**Signal tags.** Give every signal one to three `tags`: short lower-case slugs for what it is about (`export-speed`, `onboarding`, `pricing`), so the same feedback from different people can be counted as a pattern. Tag consistently, or the patterns split:
+- Before tagging, call `signals_patterns` with `min_count: 1` and a wide window (`since` a year back) in the signal's scope, once per session or run: it lists every tag in use. Reuse one that fits before inventing a new one, even if your word would be slightly better.
+- One concept, one tag: singular nouns or noun phrases (`export-speed`, not `slow-exports` next to `export-performance`).
+- A new tag only when nothing in use fits; say so in the read-back ("new tag: data-residency").
+- Never put a person's name, a customer or a sentiment in a tag; those have their own fields and links (`source`, `sentiment`, `about`).
 
 **Glossary terms.** When a dump defines a word or acronym the company uses, deposit a `term`: the term as the title, other spellings and expansions in `aliases`, one or two sentences in `definition`. `vault_search` with `kinds: [term]` first; if it exists with a different meaning, queue it ("conflicting definition") with the existing id as a candidate.
 

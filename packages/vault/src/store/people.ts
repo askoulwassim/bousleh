@@ -1,4 +1,13 @@
-import type { Kind, Layer, LinkKind, OpOutput } from '@bousleh/contracts';
+import {
+  type CommitmentView,
+  effectiveStatus,
+  type Kind,
+  type Layer,
+  type LinkKind,
+  type ObjectView,
+  type OpOutput,
+} from '@bousleh/contracts';
+import { instantOf } from '../days.js';
 import { OpError } from '../handler.js';
 import { LIVE_LINK, listCommitments } from './commitments.js';
 import type { Store } from './store.js';
@@ -95,4 +104,108 @@ export function personProfile(store: Store, id: string, recent: number): PersonP
     .slice(0, recent);
 
   return { person, growth_notes: growthNotes, commitments: { owes, owed }, recent: recentObjects };
+}
+
+// ---------------------------------------------------------------- people.list
+
+type PeopleList = OpOutput<'people.list'>;
+type PersonSummary = PeopleList['people'][number];
+type Role = NonNullable<PersonSummary['role']>;
+
+export interface PeopleFilter {
+  roles?: readonly Role[] | undefined;
+  scopes?: readonly string[] | undefined;
+  org?: string | undefined;
+  limit: number;
+  now: Date;
+}
+
+/**
+ * The latest touchpoint with a person: the newest held meeting they attended (by held_at, or when
+ * it was filed if it has none), or the newest object linked about them (by when it was filed),
+ * whichever is later. Planned meetings don't count; meetings with no status read as held, but one
+ * dated after `now` hasn't happened (before Oct 25, Counsel filed prep as a future-dated meeting).
+ */
+export function lastTouchpoint(store: Store, personId: string, now: Date): PersonSummary['last_touchpoint'] {
+  const rows = store.db
+    .prepare(
+      `SELECT l.kind, o.id, o.kind AS other_kind, o.created_at, c.title, c.status, json_extract(c.attrs_json, '$.held_at') AS held_at
+       FROM links l JOIN objects o ON o.id = l.from_id JOIN current c ON c.object_id = o.id
+       WHERE l.to_id = ? AND l.kind IN ('attended_by', 'about') AND ${LIVE_LINK}`,
+    )
+    .all(personId) as {
+    kind: 'attended_by' | 'about';
+    id: string;
+    other_kind: Kind;
+    created_at: string;
+    title: string;
+    status: string | null;
+    held_at: string | null;
+  }[];
+  let best: { touchpoint: NonNullable<PersonSummary['last_touchpoint']>; t: number } | null = null;
+  for (const row of rows) {
+    let at: string;
+    let via: 'attended' | 'about';
+    if (row.kind === 'attended_by') {
+      if (effectiveStatus('meeting', row.status) !== 'held') continue;
+      at = row.held_at ?? row.created_at;
+      via = 'attended';
+    } else {
+      at = row.created_at;
+      via = 'about';
+    }
+    const t = instantOf(at)?.getTime();
+    if (t === undefined || (via === 'attended' && t > now.getTime())) continue;
+    if (best === null || t > best.t) best = { touchpoint: { at, via, object: { id: row.id, kind: row.other_kind, title: row.title } }, t };
+  }
+  return best?.touchpoint ?? null;
+}
+
+/** True when a person is in one of the covered scopes: their own, or, with none of their own, those of anything linked to them. */
+function personInScopes(store: Store, person: ObjectView, covered: Set<string>): boolean {
+  if (person.scopes.length > 0) return person.scopes.some((slug) => covered.has(slug));
+  const linked = new Set([...person.links.out.map((l) => l.to), ...person.links.in.map((l) => l.from)]);
+  for (const id of linked) if (store.scopeSlugsOf(id).some((slug) => covered.has(slug))) return true;
+  return false;
+}
+
+/** People matching the filter, by name. */
+export function listPeople(store: Store, filter: PeopleFilter): PeopleList {
+  const covered = filter.scopes && filter.scopes.length > 0 ? store.expandScopes(filter.scopes) : undefined;
+  const roles = filter.roles ? new Set<string>(filter.roles) : undefined;
+  const org = filter.org?.trim().toLowerCase();
+
+  const ids = store.db.prepare("SELECT id FROM objects WHERE kind = 'person' ORDER BY created_at, id").all() as { id: string }[];
+  const matched: ObjectView[] = [];
+  for (const { id } of ids) {
+    const person = store.getObject(id);
+    if (!person) continue;
+    const attrs = person.version.attrs as { role?: Role; org?: string; is_user?: true };
+    if (roles && (attrs.role === undefined || !roles.has(attrs.role))) continue;
+    if (org !== undefined && attrs.org?.trim().toLowerCase() !== org) continue;
+    if (covered && !personInScopes(store, person, covered)) continue;
+    matched.push(person);
+  }
+  matched.sort((a, b) => a.version.title.localeCompare(b.version.title, undefined, { sensitivity: 'base' }) || a.id.localeCompare(b.id));
+
+  const ref = (c: CommitmentView) => ({ id: c.id, title: c.title, due: c.due });
+  const people = matched.slice(0, filter.limit).map((person): PersonSummary => {
+    const attrs = person.version.attrs as { role?: Role; org?: string; is_user?: true };
+    const manager = person.links.out.filter((l) => l.kind === 'reports_to' && l.to_kind === 'person').at(-1);
+    return {
+      id: person.id,
+      name: person.version.title,
+      role: attrs.role ?? null,
+      org: attrs.org ?? null,
+      scopes: person.scopes,
+      is_user: attrs.is_user === true,
+      reports_to: manager ? { id: manager.to, name: manager.to_title } : null,
+      commitments: {
+        owes: listCommitments(store, { status: 'open', owed_by: person.id }).map(ref),
+        owed: listCommitments(store, { status: 'open', owed_to: person.id }).map(ref),
+      },
+      last_touchpoint: lastTouchpoint(store, person.id, filter.now),
+    };
+  });
+  return { people, more: Math.max(0, matched.length - filter.limit) };
 }

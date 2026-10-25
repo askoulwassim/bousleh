@@ -6,16 +6,17 @@ import type { OpHandler } from './handler.js';
 import { vaultHealthHandler } from './health.js';
 import { vaultLinkHandler, vaultSearchHandler, vaultUnlinkHandler } from './links.js';
 import { depositsWriteHandler, scopesAddHandler, scopesListHandler, vaultGetHandler, vaultSupersedeHandler } from './objects.js';
-import { commitmentsCloseHandler, commitmentsListHandler, peopleGetHandler } from './people.js';
+import { commitmentsCloseHandler, commitmentsListHandler, peopleGetHandler, peopleListHandler } from './people.js';
 
 export { assetsAddHandler, assetsListHandler, normalizeAssetUrl, toAssetView } from './assets.js';
 export { backupDir, latestSnapshotTime, listSnapshots, snapshotName, takeSnapshot, vaultBackupHandler } from './backup.js';
+export { addDays, dayOf, daysBetween, instantOf, isDateOnly, localDay, startOfDay, windowEnd, windowStart } from './days.js';
 export * from './handler.js';
 export { vaultHealthHandler } from './health.js';
 export * from './home.js';
 export { vaultLinkHandler, vaultSearchHandler, vaultUnlinkHandler } from './links.js';
 export { depositsWriteHandler, scopesAddHandler, scopesListHandler, vaultGetHandler, vaultSupersedeHandler } from './objects.js';
-export { commitmentsCloseHandler, commitmentsListHandler, peopleGetHandler } from './people.js';
+export { commitmentsCloseHandler, commitmentsListHandler, peopleGetHandler, peopleListHandler } from './people.js';
 export { FileStager, OPEN_MARKER_PREFIX, STAGING_DIR, type StagerMark, safeDataPath } from './store/files.js';
 export { bodyOf, currentPath, renderMarkdown, versionPath } from './store/markdown.js';
 export { MIGRATIONS, type Migration, migrate } from './store/migrations.js';
@@ -46,6 +47,7 @@ export const handlers: readonly OpHandler[] = [
   commitmentsListHandler,
   commitmentsCloseHandler,
   peopleGetHandler,
+  peopleListHandler,
   assetsAddHandler,
   assetsListHandler,
 ];

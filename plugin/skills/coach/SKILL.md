@@ -11,7 +11,7 @@ Help Wassim coach each PM he leads. Show their surface at a glance, their goals,
 
 Tools on the Bousleh MCP server (op names in brackets):
 
-- Reads: `people_get` (people.get), `context_brief` (context.brief)
+- Reads: `people_list` (people.list), `people_get` (people.get), `context_brief` (context.brief)
 - Writes: `deposits_write` (deposits.write), `assets_add` (assets.add) to register every coaching Doc you write
 - Added, read-only: `vault_search` (vault.search) to find a person's id by name, as `people_get` itself directs; `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the PM's coaching Doc if one exists
 
@@ -21,7 +21,13 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 `1000` for their surface and how it's going. `100` for one specific moment of feedback. `10000` when their growth is about influence across teams.
 
-## Flow
+## Flow: "how are my PMs doing?"
+
+1. `people_list` with `role: pm` (add `scopes` if he names a team or company). Leave out the person marked `is_user`.
+2. For each PM: who they report to, what they owe and are owed, and `last_touchpoint`. A PM with no touchpoint in over two weeks, or with overdue commitments, comes first.
+3. Say it in a line per PM, then offer to go deep on the one who needs it most (the flow below).
+
+## Flow: one PM
 
 1. **Who.** `vault_search` with `kinds: [person]`. If two people match, ask which one.
 2. **Their record.** `people_get`: role, growth notes newest first, open commitments both ways, recently linked objects.

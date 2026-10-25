@@ -1,8 +1,8 @@
-import { type CommitmentView, effectiveStatus, type OpOutput, pulseToday } from '@bousleh/contracts';
-import { defineHandler, OpError } from '@bousleh/vault';
+import { type CommitmentView, effectiveStatus, type OpOutput, pulseToday, TOUCHPOINT_DUE_DAYS } from '@bousleh/contracts';
+import { defineHandler, instantOf, OpError } from '@bousleh/vault';
 import { addDays, call, coverScopes, dayOf, daysBetween, inCover, localDay, Objects, shorten, startOfDay } from './shared.js';
 
-/* pulse.today: the daily picture. Built from commitments.list, metrics.list, watch.digest, inbox.list and queue.list. */
+/* pulse.today: the daily picture. Built from commitments.list, metrics.list, people.list, watch.digest, inbox.list and queue.list. */
 
 type Output = OpOutput<'pulse.today'>;
 type Me = NonNullable<Output['me']>;
@@ -12,6 +12,8 @@ type Direction = 'by_me' | 'to_me' | 'other';
 export const CADENCE_DAYS = { daily: 1, weekly: 7, monthly: 31, quarterly: 92 } as const;
 /** For a metric with no cadence. */
 export const DEFAULT_STALE_DAYS = 30;
+/** The roles Pulse keeps in touch with. */
+const TOUCHPOINT_ROLES = ['pm', 'stakeholder', 'engineer'] as const;
 /** Lifecycle statuses where readings are expected. */
 const MEASURED = ['instrumented', 'measured', 'reviewed'] as const;
 const SUMMARY_CHARS = 280;
@@ -127,6 +129,59 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
     return lateness(b) - lateness(a) || a.title.localeCompare(b.title);
   });
 
+  // ------------------------------------------------------------ metrics that moved at their last reading
+  const metricMovement: Output['metric_movement'] = [];
+  for (const metric of (await call(h, 'metrics.list', {})).metrics) {
+    if (!inCover(cover, metric.scopes) || !metric.latest_reading || !metric.change || metric.change.delta === 0) continue;
+    const ref = (r: { value: number; unit: string | null; observed_at: string }) => ({
+      value: r.value,
+      unit: r.unit,
+      observed_at: r.observed_at,
+    });
+    metricMovement.push({
+      id: metric.id,
+      title: metric.title,
+      status: metric.status,
+      altitude: metric.altitude,
+      scopes: metric.scopes,
+      cadence: metric.cadence,
+      unit: metric.unit,
+      latest_reading: ref(metric.latest_reading),
+      previous_reading: ref(metric.change.previous),
+      delta: metric.change.delta,
+      owner: metric.owner,
+    });
+  }
+  // Most recently read first.
+  const readAt = (m: (typeof metricMovement)[number]) => instantOf(m.latest_reading.observed_at)?.getTime() ?? 0;
+  metricMovement.sort((a, b) => readAt(b) - readAt(a) || a.title.localeCompare(b.title));
+
+  // ------------------------------------------------------------ people not touched for a while
+  const touchpointsDue: Output['touchpoints_due'] = [];
+  const people = await call(h, 'people.list', {
+    role: [...TOUCHPOINT_ROLES],
+    ...(cover.slugs ? { scopes: [...cover.slugs] } : {}),
+    limit: 200,
+  });
+  for (const person of people.people) {
+    if (person.id === me?.id || person.is_user || person.role === null) continue;
+    const touchDay = person.last_touchpoint ? dayOf(person.last_touchpoint.at) : null;
+    const daysSince = touchDay === null ? null : daysBetween(touchDay, day);
+    if (daysSince !== null && daysSince <= TOUCHPOINT_DUE_DAYS) continue;
+    touchpointsDue.push({
+      id: person.id,
+      name: person.name,
+      role: person.role,
+      org: person.org,
+      last_touchpoint: person.last_touchpoint,
+      days_since: daysSince,
+    });
+  }
+  // Never touched first, then the longest ago.
+  touchpointsDue.sort(
+    (a, b) => (b.days_since ?? Number.POSITIVE_INFINITY) - (a.days_since ?? Number.POSITIVE_INFINITY) || a.name.localeCompare(b.name),
+  );
+
   // ------------------------------------------------------------ findings filed since the start of yesterday
   const since = startOfDay(addDays(day, -1));
   const until = startOfDay(addDays(day, 1));
@@ -166,6 +221,8 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
     inbox: { waiting: inbox.files.length, oldest_arrived_at: inbox.files[0]?.arrived_at ?? null, queued: queue.items.length },
     stale_metrics: staleMetrics,
     new_findings: { since: since.toISOString(), total: findings.length, findings },
+    metric_movement: metricMovement,
+    touchpoints_due: touchpointsDue,
     open_bets: openBets,
   };
 });

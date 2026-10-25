@@ -8,6 +8,7 @@ import { metricOps } from './metrics.js';
 import { peopleOps } from './people.js';
 import { queueOps } from './queue.js';
 import { scopeOps } from './scopes.js';
+import { signalOps } from './signals.js';
 import { vaultOps } from './vault.js';
 import { watchOps } from './watch.js';
 
@@ -31,6 +32,7 @@ export const OPS = {
   ...watchOps,
   ...inboxOps,
   ...queueOps,
+  ...signalOps,
   ...contextOps,
 } as const;
 

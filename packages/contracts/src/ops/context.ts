@@ -6,6 +6,7 @@ import { AssetTypeSchema } from './assets.js';
 import { CommitmentViewSchema, PersonRefSchema } from './commitments.js';
 import { defineOp } from './define.js';
 import { MetricCadenceSchema } from './metrics.js';
+import { PersonRoleSchema, TouchpointSchema } from './people.js';
 import { ObjectRefSchema } from './shapes.js';
 
 /*
@@ -165,12 +166,17 @@ export const PulseCommitmentGroupSchema = z.object({
   other: z.array(PulseCommitmentSchema),
 });
 
+/** Pulse lists a stakeholder, PM or engineer under touchpoints_due when the last touchpoint is more than this many days old. */
+export const TOUCHPOINT_DUE_DAYS = 14;
+
 export const pulseToday = defineOp({
   name: 'pulse.today',
   description: [
     "The daily picture for Pulse and Home, for one day (date, default today on this machine's clock).",
     'commitments: open ones overdue and due that day, each split into owed by me, owed to me and other, plus counts of every open commitment by direction. me is the person marked is_user (the person this Bousleh belongs to); pass me to override. With neither, the person on the most open commitments is taken as me, and me.inferred says so.',
     'meetings: meetings on that day (by their held_at), planned or held, with attendees. inbox: files waiting for Capture and open items in the ambiguity queue. stale_metrics: metrics in use (instrumented, measured or reviewed) with no reading within their cadence (daily 1 day, weekly 7, monthly 31, quarterly 92; 30 days when they have no cadence). new_findings: Horizon findings filed since the start of the day before. open_bets: ideas that are bets, with hypothesis and kill criteria.',
+    'metric_movement: metrics with at least two readings whose last change is not zero, with the latest and previous readings and the delta, most recently read first.',
+    `touchpoints_due: the stakeholders, PMs and engineers (not me) whose last touchpoint (the newest held meeting they attended, or the newest object linked about them) is more than ${TOUCHPOINT_DUE_DAYS} days before the date, or who have none; never touched first, then the longest ago.`,
     'scopes (slugs, child scopes included) narrows everything except the inbox and the queue, which have no scope. Read-only.',
   ].join(' '),
   input: z.object({
@@ -244,6 +250,33 @@ export const pulseToday = defineOp({
         }),
       ),
     }),
+    metric_movement: z.array(
+      z.object({
+        id: IdSchema,
+        title: z.string(),
+        status: z.enum(METRIC_STATUSES),
+        altitude: AltitudeSchema,
+        scopes: z.array(ScopeSlugSchema),
+        cadence: MetricCadenceSchema.nullable(),
+        unit: z.string().nullable(),
+        latest_reading: ReadingRefSchema,
+        previous_reading: ReadingRefSchema,
+        /** Latest minus previous. Never zero. */
+        delta: z.number(),
+        owner: ObjectRefSchema.nullable(),
+      }),
+    ),
+    touchpoints_due: z.array(
+      z.object({
+        id: IdSchema,
+        name: z.string(),
+        role: PersonRoleSchema,
+        org: z.string().nullable(),
+        last_touchpoint: TouchpointSchema.nullable(),
+        /** Days from the last touchpoint to the date; null when there has never been one. */
+        days_since: z.number().int().nullable(),
+      }),
+    ),
     open_bets: z.array(
       z.object({
         id: IdSchema,

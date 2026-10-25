@@ -1,5 +1,5 @@
 import { type MetricReading, metricsReading, ROW_PREFIXES } from '@bousleh/contracts';
-import { defineHandler, newId, OpError, type Store } from '@bousleh/vault';
+import { defineHandler, instantOf, newId, OpError, type Store } from '@bousleh/vault';
 
 /*
  * metrics.reading: readings live in `metric_readings`, a table this package owns. Rows are never
@@ -31,17 +31,29 @@ export function toReading(row: ReadingRow): MetricReading {
   };
 }
 
-/** The newest effective reading of a metric: by observed_at, then by when it was recorded. */
-export function latestReading(store: Store, metricId: string): MetricReading | null {
-  const row = store.db
+/** When a reading was observed, as a moment: a plain date at local midnight, so dates and date-times sort together. */
+const observedAt = (reading: MetricReading) => instantOf(reading.observed_at)?.getTime() ?? 0;
+
+/**
+ * A metric's effective readings, oldest first: a reading a correction supersedes is left out, and
+ * the correction stands in its place. Ordered by observed_at (a plain date counts from local
+ * midnight), then by when each was recorded.
+ */
+export function effectiveReadings(store: Store, metricId: string): MetricReading[] {
+  const rows = store.db
     .prepare(
       `SELECT r.* FROM metric_readings r
-       WHERE r.metric_id = ? AND NOT EXISTS (SELECT 1 FROM metric_readings c WHERE c.supersedes_id = r.id)
-       ORDER BY r.observed_at DESC, r.created_at DESC, r.id DESC
-       LIMIT 1`,
+       WHERE r.metric_id = ? AND NOT EXISTS (SELECT 1 FROM metric_readings c WHERE c.supersedes_id = r.id)`,
     )
-    .get(metricId) as ReadingRow | undefined;
-  return row ? toReading(row) : null;
+    .all(metricId) as ReadingRow[];
+  return rows
+    .map(toReading)
+    .sort((a, b) => observedAt(a) - observedAt(b) || a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
+}
+
+/** The newest effective reading of a metric: by observed_at, then by when it was recorded. */
+export function latestReading(store: Store, metricId: string): MetricReading | null {
+  return effectiveReadings(store, metricId).at(-1) ?? null;
 }
 
 /** Dates stay dates; date-times are stored in UTC so they sort as text. */

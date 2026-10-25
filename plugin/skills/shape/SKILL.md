@@ -13,6 +13,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief), `metrics_list` (metrics.list)
 - Writes: `deposits_write` (deposits.write), `vault_supersede` (vault.supersede), `metrics_upsert` (metrics.upsert), `vault_link` (vault.link) to link objects that already exist, `assets_add` (assets.add) to register every Doc you write
+- Reads too: `signals_patterns` (signals.patterns) to weigh how often a problem comes up: "we have heard this N times from M people"
 - Added, read-only: `vault_search` (vault.search) and `vault_get` (vault.get) to find and read the object being shaped; `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the Doc that already exists for it
 
 `context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
@@ -29,7 +30,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 2. `context_brief` with it as `focus` (and its id in `ids`), at its altitude. `metrics_list` for its scope.
 3. Spar, one point at a time:
    - Say the claim back in one sentence.
-   - Give the strongest counter the evidence supports, citing it by title.
+   - Give the strongest counter the evidence supports, citing it by title. For a problem built on feedback, `signals_patterns` in its scope tells you whether it's a pattern (many signals, many people) or one loud voice.
    - Name what's missing: evidence, the metric it would move, who disagrees, the decision it conflicts with.
    - Ask one question. Wait for the answer before the next point.
 4. Record each change when Wassim agrees to it (below).
