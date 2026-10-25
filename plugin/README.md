@@ -55,7 +55,7 @@ Ops or data a mode needs that don't exist yet. Not invented here.
 3. **Coach has no list of people by role.** "How are my PMs doing?" needs something like a `people.list` filtered by role; `vault.search` needs a word to search for.
 4. **Pulse has no metric history.** `metrics.list` returns only the latest reading, so "metric movement" needs the previous readings (a readings-history op).
 5. **Horizon scan files cross two skills.** Reading and settling inbox files are Capture's ops; filing findings (`watch.file`) is Horizon's. The skills hand off: Capture takes the file, Horizon files it, Capture settles.
-6. **The cloud scan can't read watch lists.** v0 copies them into the "Daily Horizon scan" task prompt, which Horizon must refresh after every `watchlists.set`.
+6. **The cloud scan can't read watch lists.** v0 copies them into the "Daily Horizon scan" task prompt (defined in `docs/scheduled-tasks.md`), refreshed by applying that file again after every `watchlists.set`.
 7. **Idea ranking has no field.** Idea attrs are `hypothesis` and `kill_criteria` only, so Workshop keeps the rank in the idea body. (Ideas now link to their problem with `addresses`, added Oct 25.)
 8. **Horizon's reading and listening queue** has no op or kind.
 9. **Feedback patterns** (`signals.patterns`) and **load across both worlds** (the signal bridge) aren't built, so Pulse leaves them out.
