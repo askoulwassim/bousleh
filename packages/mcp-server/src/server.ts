@@ -5,6 +5,7 @@
 import { BOUSLEH_VERSION, OPS, type OpContext, type OpRegistry, type RunOp } from '@bousleh/contracts';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { SERVER_ICONS } from './icon.js';
 import { buildTools, outcomeToToolResult, toolNameMap } from './tools.js';
 
 export const SERVER_NAME = 'bousleh';
@@ -30,7 +31,7 @@ export function createBouslehMcpServer(options: BouslehMcpServerOptions): McpSer
   const ctx = (): OpContext => ({ actor: 'agent', now });
 
   const mcp = new McpServer(
-    { name: SERVER_NAME, version: BOUSLEH_VERSION },
+    { name: SERVER_NAME, version: BOUSLEH_VERSION, icons: SERVER_ICONS },
     { capabilities: { tools: { listChanged: false } }, instructions: INSTRUCTIONS },
   );
 

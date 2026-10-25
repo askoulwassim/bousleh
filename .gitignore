@@ -17,3 +17,6 @@ coverage/
 .env
 .env.*
 .DS_Store
+
+# Home preview output (fixtures from a throwaway engine, screenshots)
+packages/home/preview/out/

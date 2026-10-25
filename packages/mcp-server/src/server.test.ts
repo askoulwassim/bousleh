@@ -64,6 +64,15 @@ describe('MCP server', () => {
     expect(bad.structuredContent).toMatchObject({ status: 'error', code: 'invalid_input' });
   });
 
+  it('names itself with the Bousleh icon', async () => {
+    const client = await connect({ runOp: openEngine({ home }).runOp });
+    const info = client.getServerVersion();
+    expect(info?.name).toBe('bousleh');
+    expect(info?.icons?.[0]).toMatchObject({ mimeType: 'image/svg+xml', sizes: ['any'] });
+    const svg = Buffer.from(info?.icons?.[0]?.src.replace('data:image/svg+xml;base64,', '') ?? '', 'base64').toString();
+    expect(svg).toContain('stroke-dasharray="190.6 232.5"');
+  });
+
   it('rejects unknown tools', async () => {
     const client = await connect({ runOp: openEngine({ home }).runOp });
     await expect(client.callTool({ name: 'nope_nothing', arguments: {} })).rejects.toThrow(/unknown tool/);

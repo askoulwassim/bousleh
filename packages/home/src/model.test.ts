@@ -1,0 +1,381 @@
+import { describe, expect, it } from 'vitest';
+import { glyphState } from './glyph.js';
+import { abbreviate, buildViewModel, clockDays, mergeMeetings, needsAltitude, needsYouCount, shortTitle } from './model.js';
+import type { Pulse, Sources, Strata, StrataCell, StrataObj } from './types.js';
+
+/* The pure view model: op outputs in, what Home draws out. Data here is invented for the test. */
+
+const NOW = new Date(2026, 9, 25, 9, 30); // Sun 25 Oct 2026, 09:30 local
+
+let n = 0;
+const id = (prefix: string) => {
+  n += 1;
+  return `${prefix}_01JBX${String(n).padStart(21, '0')}`;
+};
+
+function obj(kind: StrataObj['kind'], title: string, more: Partial<StrataObj> = {}): StrataObj {
+  const layer: StrataObj['layer'] =
+    kind === 'strategy' || kind === 'metric' || kind === 'principle' || kind === 'watch_list'
+      ? 'anchors'
+      : kind === 'finding' || kind === 'signal' || kind === 'observation'
+        ? 'evidence'
+        : kind === 'person'
+          ? 'people'
+          : kind === 'meeting' || kind === 'commitment'
+            ? 'moments'
+            : 'work';
+  return {
+    id: id(kind.slice(0, 3)),
+    kind,
+    layer,
+    title,
+    status: null,
+    altitude: 1000,
+    scopes: ['lantern'],
+    needs_you: false,
+    updated_at: '2026-10-24T10:00:00.000Z',
+    ...more,
+  };
+}
+
+function cell(scope: string, altitude: StrataCell['altitude'], objects: StrataObj[], count = objects.length): StrataCell {
+  const kinds: Record<string, number> = {};
+  for (const o of objects) kinds[o.kind] = (kinds[o.kind] ?? 0) + 1;
+  return { scope, altitude, objects, count, more: Math.max(0, count - objects.length), closed: 0, kinds };
+}
+
+/** Two columns: Lantern with a strategy, a bet and a meeting; Quill with an undated commitment owed by me. */
+function strata(): Strata {
+  const strategy = obj('strategy', 'Own the brownfield loop', { altitude: 50000, status: 'forming' });
+  const bet = obj('idea', 'The POC lane', {
+    status: 'bet',
+    kill_criteria: 'Stop if fewer than 3 promoted in 30 days',
+    since: '2026-10-15T09:00:00.000Z',
+  });
+  const ideas = [1, 2, 3].map((rank) => obj('idea', `Experiment ${rank}`, { status: rank === 1 ? 'running' : 'open', rank }));
+  const problem = obj('problem', 'Code is truth', { status: 'open' });
+  const dana = obj('person', 'Dana Reyes', { altitude: 10000, role: 'stakeholder', scopes: [] });
+  const meeting = obj('meeting', 'Lantern Weekly', { altitude: 100, status: 'planned', held_at: '2026-10-30T15:00:00' });
+  const owe = obj('commitment', 'Answer the seeding questions', {
+    altitude: 100,
+    status: 'open',
+    needs_you: true,
+    due: null,
+    owed: 'by_me',
+    scopes: ['quill'],
+  });
+  return {
+    date: '2026-10-25',
+    me: { id: 'per_01JBX000000000000000000ME1', name: 'Rowan Vale' },
+    columns: [
+      {
+        slug: 'lantern',
+        name: 'Lantern',
+        kind: 'product',
+        strategy: { id: strategy.id, title: strategy.title, status: 'forming' },
+        assets: 3,
+      },
+      { slug: 'quill', name: 'Quill', kind: 'project', strategy: null, assets: 1 },
+    ],
+    rows: [
+      { altitude: 50000, label: 'company' },
+      { altitude: 10000, label: 'cross-team' },
+      { altitude: 1000, label: 'own surfaces' },
+      { altitude: 100, label: 'one engineer or requirement' },
+    ],
+    cells: [
+      cell('lantern', 50000, [strategy]),
+      cell('lantern', 10000, [dana]),
+      cell('lantern', 1000, [bet, ...ideas, problem]),
+      cell('lantern', 100, [meeting]),
+      cell('quill', 50000, []),
+      cell('quill', 10000, []),
+      cell('quill', 1000, []),
+      cell('quill', 100, [owe]),
+    ],
+    totals: { layers: { anchors: 1, evidence: 0, work: 5, people: 1, moments: 2 }, needs_you: 1, empty_cells: 3, closed: 0 },
+  };
+}
+
+function pulse(over: Partial<Pulse> = {}): Pulse {
+  const group = () => ({ by_me: [], to_me: [], other: [] });
+  return {
+    date: '2026-10-25',
+    scopes: [],
+    me: { id: 'per_01JBX000000000000000000ME1', name: 'Rowan Vale', inferred: false },
+    commitments: {
+      overdue: group(),
+      due_today: group(),
+      no_due: { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 } },
+      open: { by_me: 2, to_me: 1, other: 0 },
+    },
+    meetings: [],
+    inbox: { waiting: 0, oldest_arrived_at: null, queued: 3 },
+    stale_metrics: [],
+    new_findings: { since: '2026-10-24T00:00:00.000Z', total: 0, findings: [] },
+    metric_movement: [],
+    touchpoints_due: [],
+    open_bets: [],
+    ...over,
+  };
+}
+
+describe('glyph state', () => {
+  it('maps each status to its colour, needs-you first', () => {
+    const state = (kind: StrataObj['kind'], status: string | null, needs_you = false) => glyphState({ kind, status, needs_you });
+    expect(state('commitment', 'open', true)).toBe('needs');
+    expect(state('commitment', 'open')).toBe('idle');
+    expect(state('idea', 'bet')).toBe('yours');
+    expect(state('idea', 'running')).toBe('moving');
+    expect(state('idea', 'open')).toBe('idle');
+    expect(state('idea', 'dropped')).toBe('closed');
+    expect(state('initiative', 'active')).toBe('moving');
+    expect(state('initiative', 'done')).toBe('yours');
+    expect(state('strategy', 'forming')).toBe('idle');
+    expect(state('strategy', 'aligned')).toBe('yours');
+    expect(state('metric', 'measured')).toBe('moving');
+    expect(state('finding', 'new')).toBe('moving');
+    expect(state('finding', 'dismissed')).toBe('closed');
+    expect(state('meeting', 'planned')).toBe('moving');
+    expect(state('decision', null)).toBe('yours');
+    expect(state('person', null)).toBe('idle');
+  });
+});
+
+describe('small pieces', () => {
+  it('counts what needs you from the strata, else from Pulse', () => {
+    expect(needsYouCount({ strata: strata() })).toBe(1);
+    const p = pulse();
+    p.commitments.overdue.by_me.push({
+      id: 'cmt_01JBX000000000000000000001',
+      title: 'Late',
+      status: 'open',
+      altitude: 100,
+      due: '2026-10-20',
+      scopes: ['quill'],
+      owed_by: [],
+      owed_to: [],
+      days_late: 5,
+    });
+    p.commitments.no_due.more.by_me = 2;
+    expect(needsYouCount({ pulse: p })).toBe(3);
+    expect(needsYouCount({})).toBe(0);
+  });
+
+  it('finds the band that needs you', () => {
+    expect(needsAltitude(strata())).toBe(100);
+    expect(needsAltitude(undefined)).toBeNull();
+  });
+
+  it('reads a clock from kill criteria', () => {
+    expect(clockDays('Stop if fewer than 3 promoted in 30 days')).toBe(30);
+    expect(clockDays('Kill after 6 weeks')).toBe(42);
+    expect(clockDays('Two months, 2 months max')).toBe(60);
+    expect(clockDays('If nobody uses it')).toBeNull();
+    expect(clockDays(undefined)).toBeNull();
+  });
+
+  it('abbreviates scopes and shortens meeting titles', () => {
+    expect(['specdr', 'perfect-placement', 'ai-anvil', 'bousleh', 'pandora'].map(abbreviate)).toEqual(['SPC', 'PLC', 'ANV', 'BSL', 'PND']);
+    expect(shortTitle('Lantern Weekly', ['Lantern', 'Quill'])).toBe('Weekly');
+    expect(shortTitle('Quarterly planning with the whole team', ['Lantern'], 16)).toBe('Quarterly…');
+  });
+
+  it('merges calendar events with filed meetings by start time, or by title for a date-only meeting', () => {
+    const merged = mergeMeetings(
+      [
+        {
+          id: 'mtg_01JBX000000000000000000001',
+          title: 'Dana 1:1',
+          held_at: '2026-10-25T14:00:00.000Z',
+          status: 'planned',
+          altitude: 100,
+          scopes: ['lantern'],
+          attendees: [],
+        },
+        {
+          id: 'mtg_01JBX000000000000000000002',
+          title: 'Design review',
+          held_at: '2026-10-25',
+          status: 'held',
+          altitude: 100,
+          scopes: ['lantern'],
+          attendees: [],
+        },
+      ],
+      [
+        { title: '1:1 Dana / Rowan', start: '2026-10-25T14:00:00Z', allDay: false },
+        { title: 'design review', start: '2026-10-25T16:00:00Z', allDay: false },
+        { title: 'Offsite', start: '2026-10-25', allDay: true },
+        { title: 'Focus', start: '2026-10-25T08:00:00Z', allDay: false },
+      ],
+      NOW,
+    );
+    expect(merged.map((m) => [m.title, m.planned])).toEqual([
+      ['Focus', false],
+      ['Dana 1:1', true],
+      ['Design review', false],
+    ]);
+  });
+});
+
+describe('buildViewModel', () => {
+  const sources = (): Sources => ({
+    strata: strata(),
+    pulse: pulse(),
+    commitments: {
+      commitments: [
+        {
+          id: 'cmt_01JBX000000000000000000003',
+          title: 'Plan',
+          status: 'open',
+          altitude: 1000,
+          due: '2026-11-06',
+          scopes: ['lantern'],
+          owed_by: [{ id: 'per_01JBX000000000000000000ME1', name: 'Rowan Vale' }],
+          owed_to: [],
+        },
+      ],
+    },
+  });
+
+  it('builds the header: hero, readouts and one primary action', () => {
+    const vm = buildViewModel(sources(), NOW);
+    expect(vm.dateLabel).toBe('Sun 25 Oct');
+    expect(vm.instance).toBe('Personal');
+    expect(vm.hero).toEqual({ needs: 1, altitude: 100, band: 'at 100 ft' });
+    expect(vm.readouts.map((r) => [r.label, r.value, r.tone])).toEqual([
+      ['Owed me', '1', 'fg'],
+      ['Meetings', '0', 'zero'],
+      ['Inbox', '3', 'needs'],
+      ['Touch due', 'Clear', 'accent'],
+      ['Next due', 'Nov 6', 'fg'],
+    ]);
+    expect(vm.primary?.label).toBe('Answer 3');
+    expect(vm.prompts[vm.primary?.prompt ?? '']).toMatch(/^Capture: let's clear the queue/);
+    // The planned Lantern Weekly is the next meeting worth prepping.
+    expect(vm.secondary?.label).toBe('Prep Weekly');
+    expect(vm.prompts[vm.secondary?.prompt ?? '']).toMatch(/^Counsel: prep me for "Lantern Weekly"/);
+  });
+
+  it('draws each cell in its variant, and every button resolves to a prompt', () => {
+    const vm = buildViewModel(sources(), NOW);
+    const variant = (r: number, col: number) => vm.cells[r]?.[col]?.variant;
+    expect([variant(0, 0), variant(1, 0), variant(2, 0), variant(3, 0)]).toEqual(['strategy', 'filled', 'bet', 'filled']);
+    expect([variant(0, 1), variant(3, 1)]).toEqual(['void', 'needs']);
+    const bet = vm.cells[2]?.[0]?.bet;
+    expect(bet?.clock).toEqual({ days: 30, elapsed: 10 });
+    expect(bet?.groups.map((g) => [g.label, g.note])).toEqual([
+      ['Experiments', '3 ranked'],
+      ['Problems', '1 open'],
+    ]);
+    expect(vm.cells[3]?.[1]?.needs).toMatchObject({ eyebrow: 'You owe · no date', title: 'Answer the seeding questions', scope: 'Quill' });
+    expect(vm.rows.find((r) => r.here)?.altitude).toBe(100);
+    expect(vm.columns.map((c) => [c.short, c.tone, c.quiet])).toEqual([
+      ['LNT', 'fg', false],
+      ['QLL', 'accent', false],
+    ]);
+    const keys = [
+      ...vm.cells.flat().map((c) => c.prompt),
+      ...vm.rows.flatMap((r) => [r.prompt, ...r.launchers.flatMap((l) => (l.prompt ? [l.prompt] : []))]),
+    ];
+    for (const key of keys) expect(vm.prompts[key], key).toBeTruthy();
+  });
+
+  it('builds launch prompts from the data in view', () => {
+    const vm = buildViewModel(sources(), NOW);
+    const launch = Object.fromEntries(vm.rows.flatMap((r) => r.launchers).map((l) => [l.mode, l]));
+    expect(launch.Shape?.label).toBe('Work the strategy');
+    expect(vm.prompts[launch.Shape?.prompt ?? '']).toBe(
+      'Shape: let\'s work on the Lantern strategy, "Own the brownfield loop". It is forming. Push back with the evidence.',
+    );
+    expect(launch.Communicate?.label).toBe('Brief Dana');
+    expect(launch.Workshop?.label).toBe('Code is truth');
+    expect(vm.prompts[launch.Workshop?.prompt ?? '']).toBe('Workshop: let\'s workshop "Code is truth". Given all this, what could we do?');
+    expect(launch.Coach).toEqual({ mode: 'Coach', label: 'No PMs yet' });
+    expect(launch.Counsel?.label).toBe('Prep Weekly');
+    expect(vm.prompts[launch.Capture?.prompt ?? '']).toBe('Capture this: ');
+  });
+
+  it('says nothing it does not know when there is no data', () => {
+    const vm = buildViewModel({}, NOW);
+    expect(vm.have).toEqual([]);
+    expect(vm.columns).toEqual([]);
+    expect(vm.readouts.every((r) => r.value === '—')).toBe(true);
+    expect(vm.primary?.label).toBe('Where am I?');
+    expect(vm.horizon.lead).toBeNull();
+    expect(JSON.parse(JSON.stringify(vm))).toEqual(vm);
+  });
+
+  it('builds Horizon: lead on a scope with a bet, day bars, the beat, list changes, unwatched scopes', () => {
+    const src = sources();
+    const listId = 'wls_01JBX000000000000000000001';
+    src.watchlists = {
+      watch_lists: [
+        {
+          id: listId,
+          title: 'Lantern watch list',
+          altitude: 10000,
+          scopes: ['lantern'],
+          entries: [
+            { type: 'competitor', name: 'Gizmo Build', url: 'https://gizmo.example.com', added_by: 'wassim' },
+            { type: 'topic', name: 'Brownfield agents', added_by: 'horizon', reason: 'Came up' },
+          ],
+          version: { id: 'ver_01JBX000000000000000000001', n: 1 },
+          updated_at: '2026-10-20T08:00:00.000Z',
+        },
+      ],
+    };
+    const finding = (title: string, url: string, status: 'new' | 'dismissed' | 'read', filed: string) => ({
+      id: id('fnd'),
+      title,
+      status,
+      url,
+      published_at: null,
+      filed_at: filed,
+      summary: `${title}.`,
+    });
+    src.digest = {
+      since: '2026-10-18T00:00:00.000Z',
+      until: '2026-10-25T09:30:00.000Z',
+      total: 3,
+      groups: [
+        {
+          watch_list: { id: listId, title: 'Lantern watch list' },
+          findings: [
+            finding('Old read item', 'https://other.example.org/a', 'read', '2026-10-21T07:00:00.000Z'),
+            finding('Gizmo Build ships', 'https://gizmo.example.com/blog', 'new', '2026-10-19T07:00:00.000Z'),
+            finding('Ignore me', 'https://x.example.org', 'dismissed', '2026-10-24T07:00:00.000Z'),
+          ],
+        },
+      ],
+    };
+    src.queue = {
+      items: [
+        {
+          id: 'que_01JBX000000000000000000001',
+          draft: { title: 'Remove "Gizmo Build" from the lantern watch list?', kind: 'observation' },
+          reason: 'Horizon suggests removing an entry Wassim added; Wassim decides',
+          candidates: [{ id: listId, kind: 'watch_list', title: 'Lantern watch list' }],
+          source: null,
+          created_at: '2026-10-21T07:00:00.000Z',
+        },
+      ],
+    };
+    const h = buildViewModel(src, NOW).horizon;
+    expect(h.lead?.title).toBe('Gizmo Build ships');
+    expect(h.lead).toMatchObject({ scopeName: 'Lantern', altitude: 10000, source: 'gizmo.example.com', age: '6d' });
+    expect(h.stories.map((s) => s.title)).toEqual(['Old read item']);
+    expect(h.dayBars).toEqual([1, 0, 1, 0, 0, 0, 0]);
+    expect(h.beat).toEqual([
+      { name: 'Gizmo Build', count: 1, horizon: false },
+      { name: 'Brownfield agents', count: 0, horizon: true },
+    ]);
+    expect(h.changes).toEqual([
+      { kind: 'add', text: 'Brownfield agents' },
+      { kind: 'remove', text: 'Gizmo Build' },
+    ]);
+    expect(h.noWatch.map((s) => s.name)).toEqual(['Quill']);
+    expect(h.eyebrow).toBe('Wk 43 · Wed 21 Oct · Lantern');
+  });
+});

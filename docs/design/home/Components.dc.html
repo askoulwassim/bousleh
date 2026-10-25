@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bousleh components</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Figtree:wght@500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0809}
+button{font:inherit;color:inherit;cursor:pointer}
+.eb{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8C7B83;font-weight:500}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.disp{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;letter-spacing:-.04em}
+.t{background:#110D0F;border:1px solid #2C2227;border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.nm{font-family:'JetBrains Mono',monospace;font-size:13px;color:#F2EAED;font-weight:500}
+.pr{font-family:'JetBrains Mono',monospace;font-size:10px;color:#8C7B83;letter-spacing:.03em;line-height:1.5}
+.op{font-family:'JetBrains Mono',monospace;font-size:10px;color:#62C4BC;letter-spacing:.03em}
+.stage{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.cell{background:#171215;border:1px solid #2C2227;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.btn{height:44px;padding:0 18px;border-radius:10px;border:0;background:#A3264C;color:#FFF0F4;font-weight:600;font-size:14px;display:inline-flex;align-items:center}
+.btn2{height:44px;padding:0 16px;border-radius:10px;border:1px solid #3D2F36;background:transparent;color:#F2EAED;font-weight:600;font-size:14px;display:inline-flex;align-items:center}
+.sm{height:34px;padding:0 12px;font-size:13px}
+.chip{height:24px;padding:0 10px;border-radius:999px;border:1px solid #3D2F36;display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#AE9EA5;white-space:nowrap;background:transparent}
+.lb{height:40px;border-radius:10px;border:1px solid #3D2F36;background:transparent;display:flex;align-items:center;gap:10px;padding:0 12px;text-align:left;font-weight:600;font-size:13px}
+.lb .m{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;color:#8C7B83;text-transform:uppercase;display:block;font-weight:500}
+.skel{height:6px;border-radius:3px;background:#2C2227}
+.gl{display:grid;grid-template-columns:72px repeat(6,minmax(0,1fr));gap:8px;align-items:center}
+</style>
+</helmet>
+<div style="width:1440px;height:1760px;box-sizing:border-box;padding:56px;background:#0B0809;color:#F2EAED;font-family:Figtree,system-ui,sans-serif;font-size:14px;font-weight:500;display:flex;flex-direction:column;gap:28px">
+
+<div style="display:flex;justify-content:space-between;align-items:flex-end"><div style="display:flex;flex-direction:column;gap:8px"><span class="eb">Components · PascalCase · one op or one prompt each</span><span class="disp" style="font-size:44px;line-height:1">Parts of Home</span></div><span class="mono" style="font-size:11px;color:#62C4BC">TEAL LINE = THE OP OR PROMPT IT CALLS</span></div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px">
+
+<div class="t" style="grid-column:span 2">
+<span class="nm">Glyph</span><span class="pr">layer: anchor | evidence | work | person | moment · state: idle | yours | needs | moving | closed | ghost · size: 9 | 12 | 16</span>
+<div class="gl">
+<span></span><span class="eb" style="font-size:9px">Idle</span><span class="eb" style="font-size:9px;color:#E8668C">Yours</span><span class="eb" style="font-size:9px;color:#E3B65C">Needs</span><span class="eb" style="font-size:9px;color:#62C4BC">Moving</span><span class="eb" style="font-size:9px;color:#7E8696">Closed</span><span class="eb" style="font-size:9px">Ghost</span>
+<span class="pr">anchor</span>
+<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#C93A63"></rect></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#E3B65C"></rect></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#62C4BC"></rect></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="none" stroke="#7E8696" stroke-width="1.4"></rect><line x1="2" y1="10" x2="10" y2="2" stroke="#7E8696" stroke-width="1.4"></line></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="none" stroke="#5A4650" stroke-dasharray="2 1.5"></rect></svg>
+<span class="pr">evidence</span>
+<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#3D2F36" stroke="#AE9EA5"></circle></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#C93A63"></circle></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#E3B65C"></circle></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#62C4BC"></circle></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="none" stroke="#7E8696" stroke-width="1.4"></circle><line x1="2.8" y1="9.2" x2="9.2" y2="2.8" stroke="#7E8696" stroke-width="1.4"></line></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="none" stroke="#5A4650" stroke-dasharray="2 1.5"></circle></svg>
+<span class="pr">work</span>
+<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#C93A63"></polygon></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#E3B65C"></polygon></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#62C4BC"></polygon></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11,6 6,11 1,6" fill="none" stroke="#7E8696" stroke-width="1.4"></polygon><line x1="3" y1="9" x2="9" y2="3" stroke="#7E8696" stroke-width="1.4"></line></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11,6 6,11 1,6" fill="none" stroke="#5A4650" stroke-dasharray="2 1.5"></polygon></svg>
+<span class="pr">person</span>
+<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#AE9EA5" stroke-width="2"></circle></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#C93A63" stroke-width="2"></circle></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#E3B65C" stroke-width="2"></circle></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#62C4BC" stroke-width="2"></circle></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#7E8696" stroke-width="2"></circle><line x1="2.8" y1="9.2" x2="9.2" y2="2.8" stroke="#7E8696" stroke-width="1.4"></line></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#5A4650" stroke-width="1.6" stroke-dasharray="2 1.5"></circle></svg>
+<span class="pr">moment</span>
+<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11.5,11 0.5,11" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11.5,11 0.5,11" fill="#C93A63"></polygon></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11.5,11 0.5,11" fill="#E3B65C"></polygon></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11.5,11 0.5,11" fill="#62C4BC"></polygon></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1.5 11,10.5 1,10.5" fill="none" stroke="#7E8696" stroke-width="1.4"></polygon><line x1="3.5" y1="10" x2="8.5" y2="4" stroke="#7E8696" stroke-width="1.4"></line></svg><svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1.5 11,10.5 1,10.5" fill="none" stroke="#5A4650" stroke-dasharray="2 1.5"></polygon></svg>
+</div>
+<span class="pr">Layer comes from contracts LAYERS; state is mapped from each kind's status (forming, idea, open → idle · bet, decided, solved, done → yours · overdue, owed, no date → needs · active, running, planned, new → moving · dropped, dismissed → closed · forecast → ghost)</span>
+</div>
+
+<div class="t">
+<span class="nm">ScreenHeader · Readout</span><span class="pr">eyebrow · hero (count + noun) · readouts[] · actions[]</span>
+<div style="display:flex;flex-direction:column;gap:8px"><span class="eb">Sun 25 Oct · Personal · Live</span><span class="disp" style="font-size:30px;line-height:1"><span style="color:#E3B65C">1</span> needs you at 100 ft</span></div>
+<div class="stage" style="gap:16px"><div style="display:flex;flex-direction:column;gap:2px"><span class="eb">Inbox</span><span class="disp" style="font-size:24px;color:#C93A63">Clear</span></div><div style="display:flex;flex-direction:column;gap:2px"><span class="eb">Touch due</span><span class="disp" style="font-size:24px">Nov 6</span></div><div style="display:flex;flex-direction:column;gap:2px"><span class="eb">Owed me</span><span class="disp" style="font-size:24px;color:#74626A">0</span></div></div>
+<span class="op">pulse.today · commitments.list · inbox.list · queue.list</span>
+</div>
+
+<div class="t">
+<span class="nm">AltitudeLabel</span><span class="pr">altitude: 50000 | 10000 | 1000 | 100 · density: Glyph-dots[] · here: bool</span>
+<div style="display:flex;gap:24px">
+<button style="display:flex;flex-direction:column;gap:4px;padding:0 14px 0 0;border:0;border-right:2px solid #3D2F36;background:transparent;text-align:left;height:90px;justify-content:center"><span class="disp" style="font-size:24px;line-height:1">10,000</span><span class="eb" style="font-size:10px">Cross-team</span><span style="display:flex;gap:2px;margin-top:6px"><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#62C4BC"></span></span></button>
+<button style="display:flex;flex-direction:column;gap:4px;padding:0 14px 0 0;border:0;border-right:2px solid #C93A63;background:transparent;text-align:left;height:90px;justify-content:center;position:relative"><span class="disp" style="font-size:24px;line-height:1">100</span><span class="eb" style="font-size:10px">One thing</span><span style="display:flex;gap:2px;margin-top:6px"><span style="width:6px;height:6px;background:#E3B65C"></span><span style="width:6px;height:6px;background:#C93A63"></span></span><span style="position:absolute;right:-9px;top:50%;margin-top:-8px;width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-right:9px solid #C93A63"></span></button>
+</div>
+<span class="op">click → context.brief(altitude) · here = band holding a needs item</span>
+</div>
+
+<div class="t">
+<span class="nm">StrataCell</span><span class="pr">variant: filled | void | needs | bet · scope · altitude · items: ItemRow[]</span>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+<div class="cell"><div style="display:flex;align-items:center;gap:8px;font-size:13px"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11.5,11 0.5,11" fill="#62C4BC"></polygon></svg><span style="flex:1">Weekly</span><span class="mono" style="font-size:10px;color:#62C4BC">FRI</span></div><div style="display:flex;align-items:center;gap:8px;font-size:13px"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#AE9EA5" stroke-width="2"></circle></svg><span>David</span></div></div>
+<button style="border:1px dashed #2C2227;border-radius:10px;background:transparent;color:#3D2F36;font-family:'JetBrains Mono',monospace" aria-label="Empty cell">·</button>
+<div class="cell" style="border-color:rgba(227,182,92,.5);background:rgba(227,182,92,.08)"><span class="eb" style="font-size:9px;color:#E3B65C">You owe · no date</span><span style="font-weight:600;font-size:13px">Seeding questions</span></div>
+<div class="cell" style="border-color:rgba(201,58,99,.45)"><span class="eb" style="font-size:9px;color:#E8668C">Bet</span><span style="font-weight:600;font-size:13px">POC lane</span></div>
+</div>
+<span class="op">click → context.brief(scopes:[scope], altitude)</span>
+</div>
+
+<div class="t">
+<span class="nm">StageRail</span><span class="pr">stages: strategy 4 | metric 5 · at: index</span>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;gap:3px"><span style="flex:1;height:5px;border-radius:2px;background:#AE9EA5"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span></div>
+<div style="display:flex;justify-content:space-between" class="pr"><span>FORMING</span><span>CONTESTED</span><span>ALIGNED</span><span>COMMUNICATED</span></div>
+<div style="display:flex;gap:3px"><span style="flex:1;height:5px;border-radius:2px;background:#C93A63"></span><span style="flex:1;height:5px;border-radius:2px;background:#C93A63"></span><span style="flex:1;height:5px;border-radius:2px;background:#C93A63"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span></div>
+<div style="display:flex;justify-content:space-between" class="pr"><span>IDEA</span><span>DEF</span><span>INST</span><span>MEAS</span><span>REV</span></div>
+</div>
+<span class="op">read only · status from vault</span>
+</div>
+
+<div class="t">
+<span class="nm">BetCard · ClockRing · SlotBar</span><span class="pr">title · scope · altitude · clock {days, elapsed, started} · targets [{label, n, of}]</span>
+<div class="cell" style="border-color:rgba(201,58,99,.45);gap:12px">
+<div style="display:flex;justify-content:space-between;gap:8px"><div style="display:flex;flex-direction:column;gap:4px"><span class="eb" style="font-size:9px;color:#E8668C">Bet · Specdr · 1K</span><span style="font-weight:600;font-size:14px;line-height:1.25">The POC lane is the killer feature</span></div>
+<svg width="52" height="52" viewBox="0 0 44 44" role="img" aria-label="Clock, day 12 of 30"><circle cx="22" cy="22" r="18" fill="none" stroke="#2C2227" stroke-width="4"></circle><circle cx="22" cy="22" r="18" fill="none" stroke="#C93A63" stroke-width="4" stroke-linecap="round" stroke-dasharray="45.2 113.1" transform="rotate(-90 22 22)"></circle><text x="22" y="26" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="11" fill="#F2EAED">18d</text></svg></div>
+<div style="display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:2px"><span style="height:4px;background:#C93A63"></span><span style="height:4px;background:#C93A63"></span><span style="height:4px;background:#C93A63"></span><span style="height:4px;background:#C93A63"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span></div>
+<span class="mono" style="font-size:10px;color:#8C7B83">STATE SHOWN RUNNING · TODAY IT IS 30D, NOT STARTED</span>
+</div>
+<span class="op">click → prompt Shape "pressure-test the bet" · clock turns gold under 7d</span>
+</div>
+
+<div class="t">
+<span class="nm">Launcher</span><span class="pr">mode: Capture | Pulse | Counsel | Shape | Workshop | Communicate | Coach | Horizon · prompt · altitude · disabled</span>
+<div style="display:flex;flex-direction:column;gap:6px;width:220px">
+<button class="lb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8668C" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h11v8H8l-4 3z"></path><path d="M15 9h5v8l-3-2h-6v-2"></path></svg><span><span class="m">Counsel</span>Prep Weekly</span></button>
+<button class="lb" style="opacity:.55"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8C7B83" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M18 14V6M15 9l3-3 3 3"></path></svg><span><span class="m">Coach</span>PMs from Nov 9</span></button>
+</div>
+<span class="op">click → one ready prompt to Claude, built from the item in view</span>
+</div>
+
+<div class="t">
+<span class="nm">Button · Chip</span><span class="pr">Button kind: primary | secondary · size: md 44 | sm 34 · Chip tone: neutral | accent | needs | moving | closed · dashed</span>
+<div class="stage"><button class="btn">Answer 3</button><button class="btn2">Prep Weekly</button><button class="btn2 sm">Save</button></div>
+<div class="stage"><span class="chip">Bousleh</span><span class="chip" style="border-color:rgba(201,58,99,.5);color:#E8668C">Bet</span><span class="chip" style="border-color:rgba(227,182,92,.45);color:#E3B65C">No date</span><span class="chip" style="border-color:rgba(98,196,188,.45);color:#62C4BC">New</span><span class="chip" style="border-color:rgba(126,134,150,.45);color:#7E8696">Skipped</span><span class="chip" style="border-style:dashed">Sample</span></div>
+<span class="op">primary fill is reserved for the one most useful move</span>
+</div>
+
+<div class="t" style="grid-column:span 2">
+<span class="nm">Masthead · StoryLead · Story · DayBars</span><span class="pr">issue no · scan date · scopes · filter · Story {title, url, status, published_at, filed_at, summary, scope, altitude} · lead = newest new finding on a scope with an open bet</span>
+<div style="border-top:2px solid #F2EAED;padding-top:12px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px">
+<div style="display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:baseline;gap:12px"><span class="disp" style="font-size:40px;line-height:.9;letter-spacing:-.05em">Horizon</span><span class="eb">No. 1 · Mon 26 Oct</span></div>
+<div style="height:70px;border-radius:8px;background:#171215;border:1px solid #2C2227;display:flex;align-items:flex-end;padding:10px;box-sizing:border-box;gap:5px"><span style="flex:1;height:30%;background:#2C2227;border-radius:2px"></span><span style="flex:1;height:55%;background:#2C2227;border-radius:2px"></span><span style="flex:1;height:40%;background:#2C2227;border-radius:2px"></span><span style="flex:1;height:85%;background:#5A1A30;border-radius:2px"></span><span style="flex:1;height:35%;background:#2C2227;border-radius:2px"></span><span style="flex:1;height:20%;background:#2C2227;border-radius:2px"></span><span style="flex:1;height:45%;background:#2C2227;border-radius:2px"></span></div>
+<h3 class="disp" style="margin:0;font-size:24px;line-height:1.05;color:#AE9EA5">[Lead headline]</h3><span class="skel"></span>
+<div class="stage" style="gap:6px"><button class="btn2 sm">Open</button><button class="btn2 sm">Save</button><button class="btn2 sm">Skip</button><button class="btn2 sm" style="color:#E8668C">For Shape</button></div></div>
+<div style="display:flex;flex-direction:column;gap:12px"><div style="display:flex;flex-direction:column;gap:6px;padding-bottom:12px;border-bottom:1px solid #2C2227"><span class="eb" style="font-size:10px">Specdr · [source] · 3d</span><span class="disp" style="font-size:18px;color:#AE9EA5">[Story]</span></div>
+<span class="op">watch.digest(since, scope) · Open → url</span><span class="op">Save → vault.supersede(status: to_read)</span><span class="op">Skip → vault.supersede(status: dismissed)</span><span class="op">For Shape → prompt Shape with the finding id</span></div>
+</div>
+</div>
+
+<div class="t">
+<span class="nm">BeatRow · ListChange · ReadingQueue</span><span class="pr">entry {name, type, added_by} · count this week · change add | remove-queued</span>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:grid;grid-template-columns:100px minmax(0,1fr) 22px;gap:10px;align-items:center"><span style="font-size:13px">Kiro</span><span style="height:6px;border-radius:3px;background:linear-gradient(90deg,#C93A63 0 40%,#2C2227 40%)"></span><span class="mono" style="font-size:11px">2</span></div>
+<div style="display:grid;grid-template-columns:100px minmax(0,1fr) 22px;gap:10px;align-items:center"><span style="font-size:13px">Tessl</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<span class="mono" style="font-size:12px;color:#62C4BC">+ [entry the scan added]</span><span class="mono" style="font-size:12px;color:#E3B65C">? [removal queued for you]</span>
+</div>
+<span class="op">watchlists.get · queue.list · queue.resolve on yes</span>
+</div>
+
+<div class="t">
+<span class="nm">Rail · RailButton · SweepIndicator · InstanceSwitch · AskButton</span><span class="pr">active · badge (8px gold square) · run state</span>
+<div class="stage"><span style="width:44px;height:44px;border-radius:10px;background:#211A1E;display:flex;align-items:center;justify-content:center;color:#E8668C;position:relative"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"></path></svg><span style="position:absolute;right:6px;top:6px;width:8px;height:8px;background:#E3B65C"></span></span><span style="width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#AE9EA5"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"></path><path d="M14 3v5h5"></path></svg></span><span style="display:flex;flex-direction:column;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:999px;background:#62C4BC"></span><span class="mono" style="font-size:10px;color:#8C7B83">20:43</span></span><span style="width:44px;height:44px;border-radius:10px;border:1px solid #2C2227;display:flex;align-items:center;justify-content:center" class="mono">P·W</span><span style="width:44px;height:44px;border-radius:10px;background:#A3264C;color:#FFF0F4;display:flex;align-items:center;justify-content:center;font-size:20px">›</span></div>
+<span class="op">assets.list · Hub link · Ask → free prompt</span>
+</div>
+
+<div class="t">
+<span class="nm">TabBar · DropButton · SnapshotStamp · StrataMini</span><span class="pr">phone only · snapshot time · heat by object count</span>
+<div class="stage"><span class="chip" style="border-style:dashed">Snapshot 20:43</span><button style="height:50px;padding:0 24px;border-radius:999px;border:0;background:#A3264C;color:#FFF0F4;font-weight:600;font-size:15px">Drop</button></div>
+<div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;width:200px"><span style="height:20px;border-radius:4px;background:#211A1E"></span><span style="height:20px;border-radius:4px;background:#211A1E"></span><span style="height:20px;border-radius:4px;background:#211A1E"></span><span style="height:20px;border-radius:4px;background:#211A1E"></span><span style="height:20px;border-radius:4px;background:#211A1E"></span><span style="height:20px;border-radius:4px;background:#5A1A30;border:1px solid #C93A63"></span><span style="height:20px;border-radius:4px;border:1px dashed #2C2227"></span><span style="height:20px;border-radius:4px;border:1px dashed #2C2227"></span><span style="height:20px;border-radius:4px;border:1px dashed #2C2227"></span><span style="height:20px;border-radius:4px;background:rgba(227,182,92,.18);border:1px solid #E3B65C"></span></div>
+<span class="op">Drop → the Drop skill (Drive "Bousleh Inbox") · no engine writes on phone</span>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1760}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
