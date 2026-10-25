@@ -209,20 +209,23 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
   }
   findings.sort((a, b) => b.filed_at.localeCompare(a.filed_at) || a.id.localeCompare(b.id));
 
-  // ------------------------------------------------------------ open bets
+  // ------------------------------------------------------------ open bets, and ideas being tried right now
+  const BET_ORDER = ['bet', 'running'] as const;
+  type BetStatus = (typeof BET_ORDER)[number];
   const openBets: Output['open_bets'] = objects
     .ofKinds(['idea'])
-    .filter((idea) => idea.version.status === 'bet' && inCover(cover, idea.scopes))
+    .filter((idea) => BET_ORDER.includes(idea.version.status as BetStatus) && inCover(cover, idea.scopes))
     .map((idea) => ({
       id: idea.id,
       title: idea.version.title,
+      status: idea.version.status as BetStatus,
       altitude: idea.version.altitude,
       scopes: idea.scopes,
       hypothesis: (idea.version.attrs.hypothesis as string | undefined) ?? null,
       kill_criteria: (idea.version.attrs.kill_criteria as string | undefined) ?? null,
       updated_at: idea.version.created_at,
     }))
-    .sort((a, b) => b.altitude - a.altitude || a.title.localeCompare(b.title));
+    .sort((a, b) => BET_ORDER.indexOf(a.status) - BET_ORDER.indexOf(b.status) || b.altitude - a.altitude || a.title.localeCompare(b.title));
 
   return {
     date: day,

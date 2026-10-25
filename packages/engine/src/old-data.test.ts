@@ -87,6 +87,22 @@ describe('objects written before Oct 25', () => {
     expect((await get(id)).version).toMatchObject({ n: 4, status: 'done', attrs: { target_date: '2026-12-31' } });
   });
 
+  it('a problem with no status reads as open in the brief and search, and supersedes', async () => {
+    const id = await deposit('problem', 'Analysts rebuild the same report');
+    makeOld(home, id, { status: null, attrs: {} });
+
+    expect((await get(id)).version.status).toBeNull();
+    const brief = ok<OpOutput<'context.brief'>>(await run('context.brief', { altitude: 1000 }));
+    expect(brief.problems.map((p) => [p.id, p.status])).toEqual([[id, 'open']]);
+    const search = ok<OpOutput<'vault.search'>>(await run('vault.search', { query: 'rebuild report', kinds: ['problem'] }));
+    expect(search.hits.map((hit) => [hit.id, hit.status])).toEqual([[id, 'open']]);
+
+    ok(await run('vault.supersede', { id, body: 'Every single week.' }));
+    expect((await get(id)).version).toMatchObject({ n: 3, status: 'open' });
+    ok(await run('vault.supersede', { id, status: 'solved' }));
+    expect((await get(id)).version).toMatchObject({ n: 4, status: 'solved' });
+  });
+
   it('a meeting with no status reads as held in Pulse, and supersedes', async () => {
     const id = await deposit('meeting', 'Analyst council', { attrs: { held_at: '2026-10-20' } });
     makeOld(home, id, { status: null, attrs: { held_at: '2026-10-20' } });

@@ -36,8 +36,15 @@ export interface KindDef {
 
 export const STRATEGY_STATUSES = ['forming', 'contested', 'aligned', 'communicated'] as const;
 export const METRIC_STATUSES = ['idea', 'defined', 'instrumented', 'measured', 'reviewed'] as const;
-/** Oct 25: no won/lost. `concluded` is reached only through a `concludes` link from a decision. */
-export const IDEA_STATUSES = ['open', 'bet', 'parked', 'dropped', 'concluded'] as const;
+/**
+ * Oct 25: no won/lost. `concluded` is reached only through a `concludes` link from a decision.
+ * `running`: being tried right now (an experiment under way, a build in progress); no attrs required.
+ */
+export const IDEA_STATUSES = ['open', 'running', 'bet', 'parked', 'dropped', 'concluded'] as const;
+/** Idea statuses a `concludes` link may end. */
+export const CONCLUDABLE_IDEA_STATUSES = ['bet', 'running'] as const;
+/** Oct 25 (statuses): problems written before this have no status; they read as `open`. */
+export const PROBLEM_STATUSES = ['open', 'solved', 'dropped'] as const;
 export const COMMITMENT_STATUSES = ['open', 'done', 'dropped'] as const;
 /** Oct 25: initiatives written before this have no status; they read as `active`. */
 export const INITIATIVE_STATUSES = ['proposed', 'active', 'paused', 'done', 'dropped'] as const;
@@ -162,7 +169,10 @@ export const KINDS = {
   problem: {
     layer: 'work',
     prefix: 'prb',
-    description: 'A problem definition, with its evidence linked.',
+    description:
+      'A problem definition, with its evidence linked. Status: open (the default), solved or dropped; record why with a decision linked `related`.',
+    statuses: PROBLEM_STATUSES,
+    defaultStatus: 'open',
     attrs: z.strictObject({}),
     scopeRequired: true,
   },
@@ -170,7 +180,7 @@ export const KINDS = {
     layer: 'work',
     prefix: 'ida',
     description:
-      'An idea. As a bet it needs a hypothesis and kill criteria. It is concluded only by linking a decision to it with `concludes`. rank orders ideas against each other: 1 is the top.',
+      'An idea. Status: open, running (being tried right now: an experiment under way, a build in progress), bet (needs a hypothesis and kill criteria), parked, dropped, concluded. A bet or a running idea is concluded only by linking a decision to it with `concludes`. rank orders ideas against each other: 1 is the top.',
     statuses: IDEA_STATUSES,
     defaultStatus: 'open',
     reservedStatuses: ['concluded'],
@@ -294,7 +304,7 @@ export function kindDef(kind: Kind): KindDef {
 
 /**
  * The status an object reads as. Objects written before their kind had statuses (initiatives,
- * meetings and findings until Oct 25) have none stored; they read as the kind's default.
+ * meetings and findings until Oct 25, then problems) have none stored; they read as the kind's default.
  */
 export function effectiveStatus(kind: Kind, stored: string | null | undefined): string | null {
   const def: KindDef = KINDS[kind];
@@ -315,14 +325,15 @@ export interface CheckedFields {
 
 /**
  * Validate status and attrs for a kind and apply defaults. `previous` is the current version
- * when this writes a new version of an existing object.
+ * when this writes a new version of an existing object (`attrs` its attrs, when known).
  * Rules: statuses must belong to the kind; reserved statuses can't be set directly; a bet needs a
- * hypothesis and kill criteria, and so does a concluded idea; a concluded idea stays concluded.
+ * hypothesis and kill criteria; a concluded idea stays concluded and keeps the hypothesis and kill
+ * criteria it had (a running idea may have been concluded without them).
  */
 export function checkKindFields(
   kind: Kind,
   input: { status?: string | null | undefined; attrs?: Record<string, unknown> | undefined },
-  previous?: { status: string | null },
+  previous?: { status: string | null; attrs?: Record<string, unknown> | undefined },
 ): { ok: true; value: CheckedFields } | { ok: false; issues: DepositIssue[] } {
   const def: KindDef = KINDS[kind];
   const issues: DepositIssue[] = [];
@@ -358,10 +369,20 @@ export function checkKindFields(
   }
 
   const attrs = parsed.success ? (parsed.data as Record<string, unknown>) : {};
-  // A concluded idea was a bet, so it keeps the hypothesis and kill criteria it was judged against.
-  if (kind === 'idea' && (status === 'bet' || status === 'concluded')) {
+  if (kind === 'idea' && status === 'bet') {
     if (attrs.hypothesis === undefined) issues.push({ path: 'attrs.hypothesis', message: 'a bet needs a hypothesis' });
     if (attrs.kill_criteria === undefined) issues.push({ path: 'attrs.kill_criteria', message: 'a bet needs kill criteria' });
+  }
+  // A concluded idea keeps the hypothesis and kill criteria it was judged against, if it had them.
+  if (kind === 'idea' && status === 'concluded' && previous?.status === 'concluded') {
+    for (const key of ['hypothesis', 'kill_criteria'] as const) {
+      if (previous.attrs?.[key] !== undefined && attrs[key] === undefined) {
+        issues.push({
+          path: `attrs.${key}`,
+          message: `a concluded idea keeps its ${key === 'hypothesis' ? 'hypothesis' : 'kill criteria'}`,
+        });
+      }
+    }
   }
 
   if (issues.length > 0) return { ok: false, issues };

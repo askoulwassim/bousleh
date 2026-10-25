@@ -13,7 +13,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief), `metrics_list` (metrics.list)
 - Writes: `deposits_write` (deposits.write), `vault_link` (vault.link) to tie an existing idea to the problem, `assets_add` (assets.add) to register every whiteboard, Doc or design you make or update
-- Added, write: `vault_supersede` (vault.supersede), only to set `rank` on ideas that already exist
+- Added, write: `vault_supersede` (vault.supersede), only to set `rank` on ideas that already exist and to mark an idea `running` when Wassim starts it
 - Reads too: `signals_patterns` (signals.patterns), to weigh the problem's evidence by how often it comes up
 - Added, read-only: `vault_search` (vault.search) to find the problem; `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the whiteboard or Doc that already exists for it or its scope
 
@@ -25,7 +25,7 @@ Generate at `1000`, his own surfaces. Go up to `10000` when the ideas need other
 
 ## Flow
 
-1. **The problem.** `vault_search` with `kinds: [problem]`. If several fit, ask which one. If none exists, offer to frame it in Shape first, or work from what he says.
+1. **The problem.** `vault_search` with `kinds: [problem]`. Workshop only works on `open` problems (older ones with no status read as open). If several fit, ask which one. If none exists, offer to frame it in Shape first, or work from what he says. If the one he means is `solved` or `dropped`, don't workshop it: say so, and offer Shape to reopen it if it has come back.
 2. **The brief.** `context_brief` with the problem as `focus` and its id in `ids`. `metrics_list` for its scope. Note existing ideas on it so you don't repeat them.
 3. **Generate** five to eight distinct ideas: at least one cheap and boring, one ambitious. For each, one line plus:
    - the metric it would move,
@@ -36,13 +36,14 @@ Generate at `1000`, his own surfaces. Go up to `10000` when the ideas need other
 6. **Deposit** the ideas he keeps with `deposits_write`: kind `idea`, status `open`, at their altitude, in the problem's scope, attrs `rank` (1 is the top), links `addresses` → the problem and `part_of` → its initiative or strategy if there is one. Put the reason for the rank in the body.
    - Ideas already on the problem that you re-ranked: `vault_supersede` each one with only `attrs: { rank }`. Rank the whole set together, so two ideas never share a rank. Leave status alone.
    - An idea he wants to bet on now can be written as `bet` straight away, but only with a `hypothesis` and `kill_criteria` he agrees to.
-   - Changing an existing idea (to bet, parked, dropped) is Shape's job.
+   - Starting an idea: when Wassim says he is starting or picking one up (an experiment under way, a build in progress), `vault_supersede` it to `running` right away, without asking, and say so. Never set `running` speculatively, only on his word that it's being tried now. When it finishes, a decision concludes it (Shape), or it's parked or dropped.
+   - Any other change to an existing idea (to bet, parked, dropped, concluded) is Shape's job.
 
 ## Hand-offs
 
 - **Laying the ideas out:** when he wants to see or rearrange them, alone or with his PMs:
   - **On a Claude Whiteboard,** when the account has that artifact type: the problem, the ranked ideas, and the metric each moves.
-  - **Otherwise in the scope's Claude Doc** (the account may have no Whiteboard type): `assets_list` with the scope (and `documents` set to the problem's id) to find the Doc that already exists for it, and add a tab to it (or a section, if tabs aren't available) named after the problem. Never make a second Doc when one already exists for the scope; make a new Doc only when there is none. In the tab: the problem in two lines with its evidence, then a table with one row per idea: rank, the idea, what it settles or the metric it moves, cost, riskiest assumption, and status.
+  - **Otherwise in the scope's Claude Doc** (the account may have no Whiteboard type): `assets_list` with the scope (and `documents` set to the problem's id) to find the Doc that already exists for it, and add a tab to it (or a section, if tabs aren't available) named after the problem. Never make a second Doc when one already exists for the scope; make a new Doc only when there is none. In the tab: the problem in two lines with its evidence, then a table with one row per idea: rank, the idea, what it settles or the metric it moves, cost, riskiest assumption, and status (`open`, `running`, `bet`, `parked`, `dropped`, `concluded`, exactly as the data has it, never typed by hand).
   - Either way, the layout mirrors the data. Rank and status changes are made in Bousleh (rank here with `vault_supersede`, status in Shape), then the tab or board is regenerated from the data; changes he makes on it come back by saying them here.
 - **Design:** when he needs to see it before building, mock it up in Claude Design first.
 - **Specdr POC lane:** for "make a POC of this", run `/specdr-poc:go` with a short brief: the problem and its evidence in two lines, the idea, the hypothesis and kill criteria, and the metric it should move. Let the POC lane ask its own decisions. Use it only in the instance where the Specdr Hub is connected.

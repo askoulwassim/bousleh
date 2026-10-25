@@ -68,7 +68,7 @@ describe('deposits.write and vault.get', () => {
     expect(object).toMatchObject({
       id,
       scopes: ['bousleh'],
-      version: { title: 'Analysts rebuild the same report', altitude: 1000, body: 'Every week.', status: null },
+      version: { title: 'Analysts rebuild the same report', altitude: 1000, body: 'Every week.', status: 'open' },
     });
   });
 

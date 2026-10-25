@@ -50,7 +50,7 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 | Capture, Counsel | `vault.supersede` (write) | To move a planned meeting to `held` once it has happened (Counsel also updates the prep on it), and to add an email address to a person who exists (Counsel only on Wassim's yes). |
 | Pulse, Counsel | `people.list` (read) | To match calendar attendees to people by their `emails`. |
 | Pulse, Counsel | Google Calendar connector (read) | The calendar is the source for the schedule; Bousleh keeps only meetings with prep or notes. Pulse reads today's events, Counsel the event for the meeting it preps. |
-| Workshop | `vault.supersede` (write) | Only to set `rank` on ideas that already exist. |
+| Workshop | `vault.supersede` (write) | Only to set `rank` on ideas that already exist, and to mark an idea `running` when Wassim says he is starting it. |
 | Horizon | `vault.supersede` (write) | Only to move a finding through the reading queue (`to_read`, `read`, `dismissed`). |
 | Horizon | `queue.list` (read), `queue.resolve` (write) | Only for the removals `watchlists.apply` queued for Wassim: list them, and resolve one once he has decided. |
 
@@ -70,3 +70,4 @@ Ops or data a mode needs that don't exist yet. Not invented here.
 10. ~~A planned meeting.~~ Resolved Oct 25: meetings are `planned` or `held`. Counsel deposits prep as a planned meeting, superseded to held once it happens.
 11. ~~Initiatives in the brief.~~ Resolved Oct 25: initiatives have a status, `started_at` and `target_date`, and `context.brief` has an `initiatives` section with each one's owner. People in the brief carry `reports_to`.
 12. ~~Recurring meetings.~~ Resolved Oct 25: Bousleh doesn't store the schedule. Pulse and Counsel read the Google Calendar connector and merge its events with Bousleh's planned and held meetings, matching attendees by the person `emails` attr. `pulse.today` also lists open commitments with no due date (`no_due`).
+13. ~~Problems that are done, ideas under way.~~ Resolved Oct 25: problems are `open`, `solved` or `dropped` (old ones read as open), and the brief leaves solved and dropped ones out unless they're near its centre. Ideas can be `running` (being tried now); a decision with `concludes` ends a bet or a running idea, and `pulse.today`'s `open_bets` lists both.

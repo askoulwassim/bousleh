@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   type Actor,
   type Altitude,
+  CONCLUDABLE_IDEA_STATUSES,
   checkKindFields,
   checkLink,
   KINDS,
@@ -423,12 +424,17 @@ export class Store {
     const previous = object ? this.currentVersion(id) : undefined;
     if (!object || !previous) throw new OpError('not_found', `no object with id ${id}`);
 
-    const merged: Record<string, unknown> = { ...(JSON.parse(previous.attrs_json) as Record<string, unknown>) };
+    const previousAttrs = JSON.parse(previous.attrs_json) as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...previousAttrs };
     for (const [key, value] of Object.entries(patch.attrs ?? {})) {
       if (value === null) delete merged[key];
       else merged[key] = value;
     }
-    const checked = checkKindFields(object.kind, { status: patch.status, attrs: merged }, { status: previous.status });
+    const checked = checkKindFields(
+      object.kind,
+      { status: patch.status, attrs: merged },
+      { status: previous.status, attrs: previousAttrs },
+    );
     if (!checked.ok) throw new OpError('invalid_input', `the new version doesn't fit a ${object.kind}`, checked.issues);
     this.checkSingleUser(object.kind, checked.value.attrs, id);
 
@@ -449,7 +455,7 @@ export class Store {
 
   /**
    * Link two existing objects. Allowed pairs come from contracts. An identical live link is
-   * returned as is. `concludes` also moves the idea to `concluded` (the idea must be a bet).
+   * returned as is. `concludes` also moves the idea to `concluded` (the idea must be a bet or running).
    */
   addLink(fromId: string, kind: LinkKind, toId: string, note?: string): AddedLink {
     this.files();
@@ -474,8 +480,8 @@ export class Store {
       const idea = this.currentVersion(toId);
       if (!idea) throw new OpError('not_found', `no object with id ${toId}`);
       if (idea.status === 'concluded') throw new OpError('conflict', 'this idea is already concluded');
-      if (idea.status !== 'bet')
-        throw new OpError('conflict', `only a bet can be concluded (this idea is ${idea.status ?? 'without status'})`);
+      if (!(CONCLUDABLE_IDEA_STATUSES as readonly (string | null)[]).includes(idea.status))
+        throw new OpError('conflict', `only a bet or a running idea can be concluded (this idea is ${idea.status ?? 'without status'})`);
       const version = this.writeVersion(
         to,
         {

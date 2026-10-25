@@ -367,6 +367,68 @@ describe('context.brief: initiatives and the people map', () => {
   });
 });
 
+describe('statuses: solved and dropped problems, running ideas', () => {
+  it('leaves solved and dropped problems out with no centre, and shows them with their status near the centre', async () => {
+    const open = await deposit('problem', 'Analysts cannot trace a narrative');
+    const solved = await deposit('problem', 'Exports time out', { status: 'solved' });
+    const dropped = await deposit('problem', 'Nobody reads the weekly email', { status: 'dropped' });
+    const decision = await deposit('decision', 'Stream exports', { links: [{ kind: 'related', to: solved }] });
+
+    const whole = await brief();
+    expect(whole.problems.map((p) => [p.id, p.status])).toEqual([[open, 'open']]);
+
+    // In the centre, or one hop out from it, they show with their status.
+    expect((await brief({ ids: [solved] })).problems.map((p) => [p.id, p.status])).toEqual([[solved, 'solved']]);
+    const near = await brief({ ids: [decision] });
+    expect(near.problems.map((p) => [p.id, p.status])).toEqual([[solved, 'solved']]);
+    // Open first, then solved, then dropped.
+    ok(await run('vault.link', { from: decision, kind: 'related', to: dropped }));
+    ok(await run('vault.link', { from: decision, kind: 'related', to: open }));
+    expect((await brief({ ids: [decision] })).problems.map((p) => p.status)).toEqual(['open', 'solved', 'dropped']);
+  });
+
+  it('lists running ideas right after bets, and keeps them with no centre', async () => {
+    const open = await deposit('idea', 'Weekly digest');
+    const running = await deposit('idea', 'Provenance spike', { status: 'running' });
+    const bet = await deposit('idea', 'Provenance graph', { status: 'bet', attrs: { hypothesis: 'h', kill_criteria: 'k' } });
+    await deposit('idea', 'Parked idea', { status: 'parked' });
+
+    expect((await brief()).ideas.map((i) => [i.id, i.status])).toEqual([
+      [bet, 'bet'],
+      [running, 'running'],
+      [open, 'open'],
+    ]);
+  });
+
+  it('concludes a running idea with a decision, but never an open one', async () => {
+    const running = await deposit('idea', 'Provenance spike');
+    ok(await run('vault.supersede', { id: running, status: 'running' }));
+    await deposit('decision', 'The spike worked: build it', { links: [{ kind: 'concludes', to: running }] });
+    const idea = ok<OpOutput<'vault.get'>>(await run('vault.get', { id: running }));
+    expect(idea.version).toMatchObject({ status: 'concluded', attrs: {} });
+    // A concluded idea from running still takes a new rank, and stays concluded.
+    ok(await run('vault.supersede', { id: running, attrs: { rank: 2 } }));
+    expect(failed(await run('vault.supersede', { id: running, status: 'running' })).code).toBe('invalid_input');
+
+    const open = await deposit('idea', 'Still open');
+    const other = await deposit('decision', 'Not yet');
+    expect(failed(await run('vault.link', { from: other, kind: 'concludes', to: open })).code).toBe('conflict');
+    // concluded stays reserved.
+    expect(failed(await run('vault.supersede', { id: open, status: 'concluded' })).code).toBe('invalid_input');
+  });
+
+  it('lists running ideas in pulse with the bets, each with its status, bets first', async () => {
+    const running = await deposit('idea', 'Provenance spike', { status: 'running' });
+    const bet = await deposit('idea', 'Provenance graph', { status: 'bet', attrs: { hypothesis: 'h', kill_criteria: 'k' } });
+    await deposit('idea', 'Still open');
+    const result = await pulse({ date: '2026-10-25' });
+    expect(result.open_bets.map((b) => [b.id, b.status, b.hypothesis])).toEqual([
+      [bet, 'bet', 'h'],
+      [running, 'running', null],
+    ]);
+  });
+});
+
 describe('pulse.today', () => {
   it('answers an empty vault', async () => {
     at(2026, 10, 25, 9);
