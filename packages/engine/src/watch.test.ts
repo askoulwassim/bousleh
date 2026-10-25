@@ -187,6 +187,121 @@ describe('watch list entries: who added them', () => {
   });
 });
 
+describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => {
+  interface ApplyResult {
+    watch_list: WatchListView;
+    new_version: boolean;
+    results: { action: string; type: string; name: string; outcome: string; queue_id?: string }[];
+  }
+  interface QueueItems {
+    items: {
+      id: string;
+      reason: string;
+      draft: { kind: string; title: string; scopes: string[]; altitude: number; body: string };
+      candidates: { id: string }[];
+    }[];
+  }
+
+  async function seedList(): Promise<SetResult> {
+    return ok<SetResult>(
+      await run('watchlists.set', {
+        scope: 'bousleh',
+        entries: [
+          { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
+          { type: 'outlet', name: 'Some Blog', url: 'https://someblog.example', added_by: 'horizon', reason: 'covered agent memory twice' },
+          { type: 'topic', name: 'Agentic analytics' },
+        ],
+      }),
+    );
+  }
+
+  it('adds as horizon, removes only what horizon added, and queues removing one of Wassim’s entries once', async () => {
+    const list = await seedList();
+    const applied = ok<ApplyResult>(
+      await run('watchlists.apply', {
+        id: list.id,
+        source: 'horizon-scan-bousleh-2026-10-26.md',
+        changes: [
+          { action: 'add', type: 'competitor', name: 'Hebbia', url: 'https://hebbia.ai', reason: 'direct alternative in 3 articles' },
+          { action: 'add', type: 'competitor', name: 'Glean', url: 'https://glean.com/', reason: 'again' },
+          { action: 'remove', type: 'outlet', name: 'Some Blog', url: 'https://www.someblog.example/', reason: 'now covers crypto' },
+          { action: 'remove', type: 'topic', name: 'agentic analytics', reason: 'quiet for 4 weeks' },
+          { action: 'remove', type: 'podcast', name: 'Not There', reason: 'n/a' },
+        ],
+      }),
+    );
+    expect(applied.new_version).toBe(true);
+    expect(applied.results.map((r) => [r.name, r.outcome])).toEqual([
+      ['Hebbia', 'added'],
+      ['Glean', 'already_on_list'],
+      ['Some Blog', 'removed'],
+      ['agentic analytics', 'queued'],
+      ['Not There', 'not_on_list'],
+    ]);
+    expect(applied.watch_list.version.n).toBe(2);
+    expect(applied.watch_list.entries).toEqual([
+      { type: 'competitor', name: 'Glean', url: 'https://www.glean.com', added_by: 'wassim' },
+      { type: 'topic', name: 'Agentic analytics', added_by: 'wassim' },
+      { type: 'competitor', name: 'Hebbia', url: 'https://hebbia.ai', added_by: 'horizon', reason: 'direct alternative in 3 articles' },
+    ]);
+
+    // The suggestion waits in the queue for Wassim, tied to the watch list.
+    const queue = ok<QueueItems>(await run('queue.list', {})).items;
+    expect(queue).toHaveLength(1);
+    const item = queue[0];
+    expect(item?.id).toBe(applied.results[3]?.queue_id);
+    expect(item?.reason).toBe('Horizon suggests removing an entry Wassim added; Wassim decides');
+    expect(item?.candidates.map((c) => c.id)).toEqual([list.id]);
+    expect(item?.draft).toMatchObject({
+      kind: 'observation',
+      title: 'Remove "Agentic analytics" from the bousleh watch list?',
+      scopes: ['bousleh'],
+      altitude: 10000,
+    });
+    expect(item?.draft.body).toContain('quiet for 4 weeks');
+    expect(item?.draft.body).toContain('horizon-scan-bousleh-2026-10-26.md');
+
+    // Next week's scan says the same: nothing new is written or queued.
+    const again = ok<ApplyResult>(
+      await run('watchlists.apply', {
+        id: list.id,
+        changes: [
+          { action: 'add', type: 'competitor', name: 'hebbia', url: 'https://www.hebbia.ai', reason: 'still' },
+          { action: 'remove', type: 'topic', name: 'Agentic analytics', reason: 'still quiet' },
+          { action: 'remove', type: 'outlet', name: 'Some Blog', reason: 'gone' },
+        ],
+      }),
+    );
+    expect(again.new_version).toBe(false);
+    expect(again.results.map((r) => r.outcome)).toEqual(['already_on_list', 'already_queued', 'not_on_list']);
+    expect(again.results[1]?.queue_id).toBe(item?.id);
+    expect(ok<QueueItems>(await run('queue.list', {})).items).toHaveLength(1);
+
+    // Once Wassim has decided (the item is resolved), a later scan may ask again.
+    ok(await run('queue.resolve', { id: item?.id, action: 'discard', note: 'keeping it' }));
+    const later = ok<ApplyResult>(
+      await run('watchlists.apply', {
+        id: list.id,
+        changes: [{ action: 'remove', type: 'topic', name: 'Agentic analytics', reason: 'quiet for 8 weeks' }],
+      }),
+    );
+    expect(later.results[0]?.outcome).toBe('queued');
+  });
+
+  it('needs a watch list and at least one change, and writes nothing when refused', async () => {
+    const list = await seedList();
+    const problem = ok<{ id: string }>(
+      await run('deposits.write', { kind: 'problem', title: 'Not a list', altitude: 1000, scopes: ['bousleh'], body: '' }),
+    );
+    expect(
+      failed(await run('watchlists.apply', { id: problem.id, changes: [{ action: 'add', type: 'topic', name: 'x', reason: 'y' }] })).code,
+    ).toBe('invalid_input');
+    expect(failed(await run('watchlists.apply', { id: list.id, changes: [] })).code).toBe('invalid_input');
+    const unchanged = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { id: list.id })).watch_lists[0];
+    expect(unchanged?.version.n).toBe(1);
+  });
+});
+
 describe('watch.file', () => {
   it("files findings in the watch list's scopes, linked to it, and skips urls already filed", async () => {
     const list = ok<SetResult>(await run('watchlists.set', { scope: 'specdr', entries: competitors, altitude: 1000 }));

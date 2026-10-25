@@ -56,7 +56,7 @@ Use the Bousleh plugin's Capture skill (bousleh:capture) and follow its "Unatten
 3. Work the inbox, following Capture's "Flow: the inbox":
    - Run inbox_list, then take each file, oldest first.
    - File its atoms with the right kind, altitude, scope and links, or queue_add when unsure.
-   - Files marked `bousleh: horizon-scan` go through the Horizon skill's "Flow: filing a scan file": file the findings with watch_file, apply the file's "Watch list changes" with watchlists_set (adds marked added_by horizon; remove only entries added_by horizon; for an entry Wassim added, queue the suggestion instead), then refresh "Bousleh Watch Lists.md" in the Drive folder "Bousleh".
+   - Files marked `bousleh: horizon-scan` go through the Horizon skill's "Flow: filing a scan file": file the findings with watch_file, apply the file's "Watch list changes" with watchlists_apply (it marks adds as horizon's, removes only entries horizon added, and queues any removal of an entry Wassim added for him), then refresh "Bousleh Watch Lists.md" in the Drive folder "Bousleh".
    - Settle every file exactly once with inbox_settle.
    - After the last horizon-scan file, check that each one's watch list changes were applied (watchlists_get shows the adds and removes) and that the Drive watch lists file was replaced in this run. If either didn't happen, do it now; if it can't be done, say so in the summary.
 4. End with a short summary:

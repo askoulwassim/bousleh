@@ -71,6 +71,59 @@ export const watchlistsSet = defineOp({
   }),
 });
 
+/** One change a Weekly Horizon scan proposes for a watch list. */
+export const WatchListChangeSchema = z.object({
+  action: z.enum(['add', 'remove']),
+  type: WatchEntrySchema.shape.type,
+  name: WatchEntrySchema.shape.name,
+  url: WatchEntrySchema.shape.url,
+  /** The scan's one-line reason. */
+  reason: z.string().trim().min(1).max(500),
+});
+export type WatchListChange = z.output<typeof WatchListChangeSchema>;
+
+/** What watchlists.apply did with one change. */
+export const WatchListChangeOutcomeSchema = z.enum([
+  /** add: now on the list, marked added_by horizon. */
+  'added',
+  /** remove: a horizon-added entry, now off the list. */
+  'removed',
+  /** remove: an entry Wassim added, so it stays; a suggestion to remove it is in the queue. */
+  'queued',
+  /** add: a matching entry is already on the list. */
+  'already_on_list',
+  /** remove: nothing on the list matches. */
+  'not_on_list',
+  /** remove: an open queue item already suggests removing this entry. */
+  'already_queued',
+]);
+
+export const watchlistsApply = defineOp({
+  name: 'watchlists.apply',
+  description:
+    "Apply the watch list changes a Weekly Horizon scan proposed (its \"## Watch list changes\" lines), to the watch list with this id. Each change is add or remove, with the entry's type, name, url (if any) and the scan's reason. An entry matches when its url matches (ignoring www., https and a trailing slash) or, without urls, its type and name match (ignoring case). add puts the entry on the list marked added_by horizon with the reason, unless a match is already there. remove takes an entry off only when Horizon added it. An entry Wassim added is never removed here: instead the suggestion is queued for him (an observation draft linked to the watch list), once, however many scans repeat it; he decides, then edits the list with watchlists.set and resolves the queue item. All the applied changes go in one new version of the list, so its history shows them; nothing is written when nothing changes. source (such as the scan file's name) goes in the queued suggestion's body.",
+  input: z.object({
+    id: IdSchema,
+    changes: z.array(WatchListChangeSchema).min(1).max(50),
+    source: z.string().trim().min(1).max(200).optional(),
+  }),
+  output: z.object({
+    watch_list: WatchListViewSchema,
+    /** True when this call wrote a version of the watch list. */
+    new_version: z.boolean(),
+    results: z.array(
+      z.object({
+        action: z.enum(['add', 'remove']),
+        type: WatchEntrySchema.shape.type,
+        name: z.string(),
+        outcome: WatchListChangeOutcomeSchema,
+        /** The queue item suggesting the removal (queued and already_queued). */
+        queue_id: IdSchema.optional(),
+      }),
+    ),
+  }),
+});
+
 export const FindingInputSchema = z.object({
   title: z.string().trim().min(1).max(200),
   url: z.url(),
@@ -146,6 +199,7 @@ export const watchDigest = defineOp({
 export const watchOps = {
   'watchlists.get': watchlistsGet,
   'watchlists.set': watchlistsSet,
+  'watchlists.apply': watchlistsApply,
   'watch.file': watchFile,
   'watch.digest': watchDigest,
 } as const;

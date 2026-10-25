@@ -17,9 +17,9 @@ This skill runs in two settings. Check which one you're in first:
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `watchlists_get` (watchlists.get), `watch_digest` (watch.digest)
-- Writes: `watchlists_set` (watchlists.set), `watch_file` (watch.file), `vault_link` (vault.link) to link a filed finding `evidence_for` a problem or idea it bears on, `assets_add` (assets.add) to register every Doc or dashboard you write
+- Writes: `watchlists_set` (watchlists.set), `watchlists_apply` (watchlists.apply) for a scan's proposed changes, `watch_file` (watch.file), `vault_link` (vault.link) to link a filed finding `evidence_for` a problem or idea it bears on, `assets_add` (assets.add) to register every Doc or dashboard you write
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the competitive brief that already exists for a scope
-- Added, write: `vault_supersede` (vault.supersede), only to move a finding through the reading queue; `queue_add` (queue.add), only to suggest that Wassim remove an entry he added (and `queue_list` (queue.list) to avoid suggesting it twice)
+- Added, write: `vault_supersede` (vault.supersede), only to move a finding through the reading queue; `queue_list` (queue.list) and `queue_resolve` (queue.resolve), only for the removals `watchlists_apply` queued for Wassim
 - Google Drive connector: to write `Bousleh Watch Lists.md` in the Drive folder `Bousleh`, the copy of the watch lists the cloud scan reads
 
 ## Altitude
@@ -50,13 +50,13 @@ Every finding has a reading-queue status: `new` when filed (findings filed befor
 1. `watchlists_get` for the scope.
 2. Make the change: each entry has a `type` (`competitor`, `topic`, `outlet`, `person`, `podcast`), a `name`, and optionally a `url` and `notes`. An entry Wassim asks for is his (`added_by: wassim`, the default).
 3. Say the change back in one line, then `watchlists_set` with the **complete** list. It replaces the old entries, so send every entry to keep. Entries you send without `added_by` keep the one they have (matched by url, or by type and name), so the scan's entries stay marked as the scan's.
-4. Refresh the watch lists file in Drive (below). Do it after every `watchlists_set`, in every flow.
+4. Refresh the watch lists file in Drive (below). Do it after every `watchlists_set` or `watchlists_apply`, in every flow.
 
 "Stop watching X" removes the entry whoever added it: Wassim decides. If he wants to keep a scan-added entry for good, set its `added_by` to `wassim`, so later scans can only suggest removing it.
 
 ## Flow: the watch lists file in Drive
 
-The cloud scan can't reach the Mac, so it reads the watch lists from a file in Google Drive, and the Mac keeps that file current. You write it right after any `watchlists_set`; the Hourly inbox sweep writes it after it files a scan; applying `docs/scheduled-tasks.md` writes it too.
+The cloud scan can't reach the Mac, so it reads the watch lists from a file in Google Drive, and the Mac keeps that file current. You write it right after any `watchlists_set` or `watchlists_apply`; the Hourly inbox sweep writes it after it files a scan; applying `docs/scheduled-tasks.md` writes it too.
 
 1. `watchlists_get` with no arguments: every watch list.
 2. Build the file. Fields with nothing in them stay empty; a `|` inside a field becomes `/`. Lists in order of scope slug, entries in the order the list holds them:
@@ -97,14 +97,11 @@ Capture reads Weekly Horizon scan files from the inbox and hands them here. For 
 
 Each line under `## Watch list changes` is `add` or `remove`, then the watch list id, the entry type, its name, its url (`-` when none), and the scan's one-line reason. `none` means nothing to do. Ignore a line you can't read, and say so.
 
-1. `watchlists_get` with the line's watch list id (normally the file's own). An entry matches when its url matches (ignoring `www.`, `https` and a trailing slash) or, without urls, its type and name match (ignoring case).
-2. **add:** if a matching entry is already there, skip it. Otherwise add `{ type, name, url, added_by: "horizon", reason }` (no url when the line has `-`).
-3. **remove:**
-   - an entry with `added_by: horizon`: remove it;
-   - an entry Wassim added (`added_by: wassim`; every entry from before Oct 25 reads as his): **never remove it**. Instead `queue_list`, and unless an open item already suggests the same removal, `queue_add` a draft `observation` titled `Remove "<name>" from the <scope> watch list?`, at the watch list's altitude and in its scope, body the scan's reason and the scan file's date, linked `related` → the watch list, with the reason "Horizon suggests removing an entry Wassim added; Wassim decides" and the watch list id as the candidate. Don't pass `source_sha256`: that would settle the scan file as queued, and Capture settles it as filed. When he decides, remove it with "Flow: editing a watch list" (or keep it), then resolve the item with `discard` and a note of what he chose.
-   - no matching entry: skip it.
-4. One `watchlists_set` with the watch list id and the **complete** new list: every entry kept, with its `added_by` and `reason` as they are, plus the adds, minus the removes. Skip the call when nothing changed. The new version keeps the old one in the list's history, so every applied change can be traced.
-5. In the summary, one line per change: "added competitor Hebbia (horizon: direct alternative in 3 articles)", "removed outlet Y (horizon-added; off-topic for 4 weeks)", "suggested removing Z (Wassim's): queued".
+1. Group the lines by watch list id (normally all the file's own), and call `watchlists_apply` once per list: `id`, `source` the scan file's name, and one change per line, `{ action, type, name, url, reason }` (no `url` when the line has `-`).
+2. The engine enforces the rules, so don't pre-check or filter: an add is stored as `added_by: horizon` unless a match is already there; a remove takes off only an entry Horizon added; a remove of an entry Wassim added (every entry from before Oct 25 reads as his) is **never applied**, and instead becomes an open queue item for him, once, however many scans repeat it. All of one list's changes land in one new version, so the list's history shows them.
+3. In the summary, one line per result: "added competitor Hebbia (horizon: direct alternative in 3 articles)", "removed outlet Y (horizon-added; off-topic for 4 weeks)", "suggested removing Z (Wassim's): queued", and say when one was already on the list or already queued.
+
+When Wassim decides on a queued removal (`queue_list` shows them, titled `Remove "<name>" from the <scope> watch list?`), remove the entry with "Flow: editing a watch list" or keep it, then `queue_resolve` the item with `discard` and a note of what he chose. If he keeps it, a later scan may suggest it again; that's fine.
 
 ## Flow: setting up the Weekly Horizon scan
 

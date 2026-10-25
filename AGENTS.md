@@ -39,7 +39,7 @@ Op names are provisional; the "Package map" tab is the source of truth.
 | intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (drop, list, take, sweep, settle), `queue.*` (add, list, resolve), `signals.*` (patterns) | contracts, vault |
 | context | The brief at a given altitude, and Pulse's daily picture | `context.*` (brief), `pulse.*` (today) | contracts, vault, metrics, watch |
 | metrics | The registry, its lifecycle and readings | `metrics.*` (upsert, reading, list, history) | contracts, vault |
-| watch | Watch lists per scope, filing scan findings, the digest | `watchlists.*` (get, set), `watch.*` (file, digest) | contracts, vault |
+| watch | Watch lists per scope, applying a scan's proposed changes, filing scan findings, the digest | `watchlists.*` (get, set, apply), `watch.*` (file, digest) | contracts, vault |
 | engine | Opens `~/.bousleh`, registers every handler, `runOp` with schema checks | none of its own | every package above |
 | mcp-server | One MCP tool per op, generated; no logic of its own | none | engine |
 
@@ -57,9 +57,9 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 | Workshop | `context.brief`, `metrics.list`, `signals.patterns` | `deposits.write`, `vault.link`, `assets.add` | Whiteboard, Specdr POC lane |
 | Communicate | `context.brief` | `assets.add` | Docs, Slides |
 | Coach | `people.list`, `people.get`, `context.brief` | `deposits.write`, `assets.add` | Docs |
-| Horizon | `watchlists.get`, `watch.digest` | `watchlists.set`, `watch.file`, `vault.link`, `assets.add`; `Bousleh Watch Lists.md` in the Drive folder "Bousleh", through the Google Drive connector | Home, Docs |
+| Horizon | `watchlists.get`, `watch.digest`, `queue.list` | `watchlists.set`, `watchlists.apply`, `watch.file`, `queue.resolve` (removals it queued), `vault.link`, `assets.add`; `Bousleh Watch Lists.md` in the Drive folder "Bousleh", through the Google Drive connector | Home, Docs |
 
-Every Doc, deck, whiteboard, design, dashboard or page a mode creates or updates is registered with `assets.add` right away, linked with `documents` to the objects it is about, so `context.brief` can list it. Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Weekly Horizon scan runs in the cloud and can't reach the Mac: it reads the watch lists from `Bousleh Watch Lists.md` in the Drive folder "Bousleh" (which Horizon rewrites after every watch list change, and the Hourly inbox sweep after it files a scan) and only writes files to the Drive inbox. Each scan file proposes watch list changes; filing it on the Mac applies the scan's adds, removes only entries the scan added, and queues any removal of Wassim's own entries for him.
+Every Doc, deck, whiteboard, design, dashboard or page a mode creates or updates is registered with `assets.add` right away, linked with `documents` to the objects it is about, so `context.brief` can list it. Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Weekly Horizon scan runs in the cloud and can't reach the Mac: it reads the watch lists from `Bousleh Watch Lists.md` in the Drive folder "Bousleh" (which Horizon rewrites after every watch list change, and the Hourly inbox sweep after it files a scan) and only writes files to the Drive inbox. Each scan file proposes watch list changes; filing it on the Mac runs `watchlists.apply`, which applies the scan's adds, removes only entries the scan added, and queues any removal of Wassim's own entries for him (the rule is in the op, not only the skill).
 
 ### Adding an op
 
