@@ -37,7 +37,7 @@ Op names are provisional; the "Package map" tab is the source of truth.
 | contracts | Object kinds, layers, altitude, scope; every op's name and schemas | none (definitions only) | nothing |
 | vault | Storage, migrations, history, typed objects, scopes, assets, people | `vault.*` (health, get, search, supersede, link, unlink), `deposits.*` (write), `scopes.*` (list, add), `commitments.*` (list, close), `people.*` (get, list), `assets.*` (add, list) | contracts |
 | intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (drop, list, take, sweep, settle), `queue.*` (add, list, resolve), `signals.*` (patterns) | contracts, vault |
-| context | The brief at a given altitude, and Pulse's daily picture | `context.*` (brief), `pulse.*` (today) | contracts, vault, metrics, watch |
+| context | The brief at a given altitude, Home's strata (every scope at every altitude in one call), and Pulse's daily picture | `context.*` (brief, strata), `pulse.*` (today) | contracts, vault, metrics, watch |
 | metrics | The registry, its lifecycle and readings | `metrics.*` (upsert, reading, list, history) | contracts, vault |
 | watch | Watch lists per scope, applying a scan's proposed changes, filing scan findings, the digest | `watchlists.*` (get, set, apply), `watch.*` (file, digest) | contracts, vault |
 | engine | Opens `~/.bousleh`, registers every handler, `runOp` with schema checks | none of its own | every package above |
