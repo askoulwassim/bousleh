@@ -150,8 +150,24 @@ export class Store {
     return this.vault.home;
   }
 
-  private get db(): Database.Database {
+  /**
+   * The SQLite connection, for a package's own tables (intake: inbox_log and the deposit queue;
+   * metrics: metric_readings). Objects, versions, scopes and links go through this class's methods
+   * or through ops (`h.runOp('deposits.write', …)`), never through raw SQL from other packages.
+   * Inside a write op this runs in the op's transaction.
+   */
+  get db(): Database.Database {
     return this.vault.db;
+  }
+
+  /** The op's staged files (write ops only): stage file writes so they land only after COMMIT. */
+  get stagedFiles(): FileStager {
+    return this.files();
+  }
+
+  /** True when this op may write. */
+  get writable(): boolean {
+    return this.stager !== undefined && this.canWrite;
   }
 
   private now(): string {
