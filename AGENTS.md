@@ -128,6 +128,10 @@ bousleh.nosync/              this repo (private GitHub: askoulwassim/bousleh)
 | Home | A Claude page. No Home code before a Claude Design session exists. Live engine data in the Claude desktop app, a daily snapshot elsewhere |
 | Later | Graphiti, the signal bridge between accounts, live phone access, open-sourcing |
 
+## Set up a Mac
+
+`scripts/setup-mac.sh` does the whole setup (build, MCP server in Claude Desktop and Claude Code, plugin, account plugin file, health check); SETUP.md has the ten-minute walkthrough. Rerun it after `git pull`.
+
 ## Run and test
 
 ```sh
