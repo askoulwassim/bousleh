@@ -82,6 +82,7 @@ describe('runOp', () => {
         home,
         data: { exists: true, db: false },
         ops: Object.keys(OPS).length,
+        backups: { dir: `${home}-backups`, latest: null, count: 0 },
         now: NOW.toISOString(),
       },
     });

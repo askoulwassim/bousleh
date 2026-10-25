@@ -16,7 +16,8 @@ function flag(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const home = flag('--home');
-  const engine = openEngine(home ? { home } : {});
+  // Daily backup snapshot next to your data (~/.bousleh-backups), keeping 14.
+  const engine = openEngine(home ? { home, autoBackup: {} } : { autoBackup: {} });
   process.stderr.write(`bousleh-mcp: vault ${engine.home}\n`);
 
   let closed = false;

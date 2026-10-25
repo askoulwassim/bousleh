@@ -1,10 +1,13 @@
 /* @bousleh/vault: storage, migrations, history and typed objects in ~/.bousleh. Owns vault.*, deposits.*, scopes.*, commitments.*, people.* */
+
+import { vaultBackupHandler } from './backup.js';
 import type { OpHandler } from './handler.js';
 import { vaultHealthHandler } from './health.js';
 import { vaultLinkHandler, vaultSearchHandler, vaultUnlinkHandler } from './links.js';
 import { depositsWriteHandler, scopesAddHandler, scopesListHandler, vaultGetHandler, vaultSupersedeHandler } from './objects.js';
 import { commitmentsCloseHandler, commitmentsListHandler, peopleGetHandler } from './people.js';
 
+export { backupDir, latestSnapshotTime, listSnapshots, snapshotName, takeSnapshot, vaultBackupHandler } from './backup.js';
 export * from './handler.js';
 export { vaultHealthHandler } from './health.js';
 export * from './home.js';
@@ -29,6 +32,7 @@ export { newId, ulid } from './store/ulid.js';
 /** Handlers for `vault.*`, `deposits.*`, `scopes.*`, `commitments.*` and `people.*` ops. */
 export const handlers: readonly OpHandler[] = [
   vaultHealthHandler,
+  vaultBackupHandler,
   vaultGetHandler,
   vaultSearchHandler,
   vaultSupersedeHandler,
