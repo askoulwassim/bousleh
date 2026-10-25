@@ -1,9 +1,11 @@
 import type { z } from 'zod';
 import { commitmentOps } from './commitments.js';
 import { depositOps } from './deposits.js';
+import { metricOps } from './metrics.js';
 import { peopleOps } from './people.js';
 import { scopeOps } from './scopes.js';
 import { vaultOps } from './vault.js';
+import { watchOps } from './watch.js';
 
 /*
  * The ops registry. Every action in Bousleh is one of these.
@@ -20,6 +22,8 @@ export const OPS = {
   ...scopeOps,
   ...commitmentOps,
   ...peopleOps,
+  ...metricOps,
+  ...watchOps,
 } as const;
 
 export type Ops = typeof OPS;
