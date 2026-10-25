@@ -134,3 +134,30 @@ describe('people.list', () => {
     expect((await touch())?.via).toBe('about');
   });
 });
+
+describe('person emails (Oct 25)', () => {
+  it('stores them lower-cased and each once, shows them in people.get and people.list, and reads none on older people', async () => {
+    const peter = await deposit('person', 'Peter', { attrs: { role: 'stakeholder', emails: [' Peter@Alethea.COM '] } });
+    const lisa = await deposit('person', 'Lisa', { attrs: { role: 'pm' } });
+
+    const profile = ok<OpOutput<'people.get'>>(await run('people.get', { id: peter }));
+    expect(profile.person).toMatchObject({ role: 'stakeholder', emails: ['peter@alethea.com'] });
+    expect((await list()).people.map((p) => [p.name, p.emails])).toEqual([
+      ['Lisa', []],
+      ['Peter', ['peter@alethea.com']],
+    ]);
+
+    // A new version replaces the whole list; null removes it.
+    ok(await run('vault.supersede', { id: lisa, attrs: { emails: ['lisa@alethea.com', 'lisa.k@gmail.com'] } }));
+    expect((await list()).people[0]?.emails).toEqual(['lisa@alethea.com', 'lisa.k@gmail.com']);
+    ok(await run('vault.supersede', { id: lisa, attrs: { emails: null } }));
+    expect((await list()).people[0]?.emails).toEqual([]);
+
+    expect(failed(await run('vault.supersede', { id: lisa, attrs: { emails: ['a@b.co', 'A@B.co'] } })).code).toBe('invalid_input');
+    expect(failed(await run('vault.supersede', { id: lisa, attrs: { emails: ['not an email'] } })).code).toBe('invalid_input');
+    const many = Array.from({ length: 6 }, (_, i) => `p${i}@x.io`);
+    expect(failed(await run('deposits.write', { kind: 'person', title: 'Many', altitude: 1000, attrs: { emails: many } })).code).toBe(
+      'invalid_input',
+    );
+  });
+});

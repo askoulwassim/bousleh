@@ -1,4 +1,4 @@
-import { type CommitmentView, effectiveStatus, type OpOutput, pulseToday, TOUCHPOINT_DUE_DAYS } from '@bousleh/contracts';
+import { type CommitmentView, effectiveStatus, NO_DUE_LIMIT, type OpOutput, pulseToday, TOUCHPOINT_DUE_DAYS } from '@bousleh/contracts';
 import { defineHandler, instantOf, OpError } from '@bousleh/vault';
 import { addDays, call, coverScopes, dayOf, daysBetween, inCover, localDay, Objects, shorten, startOfDay } from './shared.js';
 
@@ -66,15 +66,27 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
   const overdue = group();
   const dueToday = group();
   const counts = { by_me: 0, to_me: 0, other: 0 };
+  const undated: Record<'by_me' | 'to_me', Output['commitments']['no_due']['by_me']> = { by_me: [], to_me: [] };
   for (const commitment of open) {
     const side = direction(commitment, me);
     counts[side] += 1;
-    if (commitment.due === null) continue;
+    if (commitment.due === null) {
+      const filedAt = objects.get(commitment.id)?.created_at;
+      if (side !== 'other' && filedAt) undated[side].push({ ...commitment, filed_at: filedAt });
+      continue;
+    }
     const late = daysBetween(commitment.due, day);
     if (late > 0) overdue[side].push({ ...commitment, days_late: late });
     else if (late === 0) dueToday[side].push({ ...commitment, days_late: 0 });
   }
   for (const side of ['by_me', 'to_me', 'other'] as const) overdue[side].sort((a, b) => b.days_late - a.days_late);
+  // No due date: oldest filed first, capped per side.
+  const noDue: Output['commitments']['no_due'] = { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 } };
+  for (const side of ['by_me', 'to_me'] as const) {
+    const sorted = undated[side].sort((a, b) => a.filed_at.localeCompare(b.filed_at) || a.id.localeCompare(b.id));
+    noDue[side] = sorted.slice(0, NO_DUE_LIMIT);
+    noDue.more[side] = Math.max(0, sorted.length - NO_DUE_LIMIT);
+  }
 
   // ------------------------------------------------------------ meetings that day, planned or held
   const meetings: Output['meetings'] = [];
@@ -216,7 +228,7 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
     date: day,
     scopes: cover.slugs ? [...cover.slugs].sort() : [],
     me,
-    commitments: { overdue, due_today: dueToday, open: counts },
+    commitments: { overdue, due_today: dueToday, no_due: noDue, open: counts },
     meetings,
     inbox: { waiting: inbox.files.length, oldest_arrived_at: inbox.files[0]?.arrived_at ?? null, queued: queue.items.length },
     stale_metrics: staleMetrics,

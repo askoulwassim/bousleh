@@ -378,6 +378,7 @@ describe('pulse.today', () => {
       commitments: {
         overdue: { by_me: [], to_me: [], other: [] },
         due_today: { by_me: [], to_me: [], other: [] },
+        no_due: { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 } },
         open: { by_me: 0, to_me: 0, other: 0 },
       },
       meetings: [],
@@ -511,6 +512,46 @@ describe('pulse.today', () => {
     expect(ids(before.commitments.due_today.by_me)).toEqual([yesterday]);
     expect(ids(before.commitments.overdue.by_me)).toEqual([]);
     expect(failed(await run('pulse.today', { me: yesterday })).code).toBe('invalid_input');
+  });
+
+  it('lists open commitments with no due date, by me and to me, oldest first, capped', async () => {
+    const wassim = await deposit('person', 'Wassim', { attrs: { is_user: true } });
+    const peter = await deposit('person', 'Peter');
+    const jen = await deposit('person', 'Jen');
+    const commit = (title: string, by: string, to: string, more: Deposit = {}) =>
+      deposit('commitment', title, {
+        altitude: 1000,
+        links: [
+          { kind: 'owed_by', to: by },
+          { kind: 'owed_to', to: to },
+        ],
+        ...more,
+      });
+    const oldest = await commit('Write up the Specdr roles', wassim, peter);
+    const owedToMe = await commit('Peter sends the org chart', peter, wassim);
+    await commit('Jen owes Peter a reply', jen, peter);
+    await commit('Dated', wassim, peter, { attrs: { due: '2026-11-30' } });
+    await commit('Closed', wassim, peter, { status: 'done' });
+    await commit('Elsewhere', wassim, peter, { scopes: ['bousleh'] });
+    const more: string[] = [];
+    for (let i = 1; i <= 10; i += 1) more.push(await commit(`Later ${i}`, wassim, jen));
+
+    const result = await pulse({ date: '2026-10-25', scopes: ['alethea'] });
+    expect(ids(result.commitments.no_due.by_me)).toEqual([oldest, ...more.slice(0, 9)]);
+    expect(result.commitments.no_due.more).toEqual({ by_me: 1, to_me: 0 });
+    expect(ids(result.commitments.no_due.to_me)).toEqual([owedToMe]);
+    expect(result.commitments.no_due.by_me[0]).toMatchObject({
+      title: 'Write up the Specdr roles',
+      due: null,
+      owed_by: [{ id: wassim, name: 'Wassim' }],
+      owed_to: [{ id: peter, name: 'Peter' }],
+      filed_at: expect.any(String),
+    });
+    // Between other people: counted, not listed.
+    expect(result.commitments.open).toEqual({ by_me: 12, to_me: 1, other: 1 });
+    // Nothing is due today or overdue, so these were invisible before.
+    expect(result.commitments.overdue.by_me).toEqual([]);
+    expect(result.commitments.due_today.by_me).toEqual([]);
   });
 
   it("lists the day's meetings by held_at, on this machine's clock", async () => {

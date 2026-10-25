@@ -7,7 +7,7 @@ Bousleh (بوصلة, "compass") is Wassim's personal operating system for produc
 ## What it is
 
 - **One engine (code), two sets of data, two doors (Claude accounts).** The personal instance runs on Wassim's personal Mac. The work instance (Alethea, from Nov 9, 2026) runs the same build on the work Mac with its own separate data. Work data never touches the personal side.
-- **MCP first.** Claude reaches everything through one local MCP server over stdio. There is no custom UI: Claude's own artifact types (Docs, Slides, Dashboard, Whiteboard, Tasks, Design, Claude pages) are the surfaces.
+- **MCP first.** Claude reaches everything through one local MCP server over stdio. There is no custom UI: Claude's own artifact types (Docs, Slides, Dashboard, Design, Claude pages, and Whiteboard or Tasks where the account has them) are the surfaces. Oct 25: the personal account has no Whiteboard or Tasks type, so what would go on a whiteboard goes in a tab of the scope's Claude Doc.
 
 ## Two core rules (both from Perfect Placement)
 
@@ -51,15 +51,15 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 | --- | --- | --- | --- |
 | Capture | `inbox.list`, `inbox.take`, `vault.search`, `signals.patterns` (to reuse signal tags); the Google Drive connector for "Bousleh Inbox" | `inbox.drop`, `inbox.settle`, `deposits.write`, `queue.add`, `queue.resolve`, `vault.link`, `assets.add` | nothing |
 | Drop (phone) | nothing | a new `.md` file in "Bousleh Inbox", through the Google Drive connector | Capture |
-| Pulse | `pulse.today`, `commitments.list`, `metrics.list`, `metrics.history` | `commitments.close`; `vault.supersede` or `deposits.write` once, to mark the user | Home |
-| Counsel | `context.brief`, `people.get` | `deposits.write` | nothing |
+| Pulse | `pulse.today`, `commitments.list`, `metrics.list`, `metrics.history`; the Google Calendar connector for today's events | `commitments.close`; `vault.supersede` or `deposits.write` once, to mark the user; `vault.supersede` to add an email to a person, on Wassim's yes | Home |
+| Counsel | `context.brief`, `people.get`; the Google Calendar connector for the meeting's event | `deposits.write` | nothing |
 | Shape | `context.brief`, `metrics.list`, `signals.patterns` | `deposits.write`, `vault.supersede`, `metrics.upsert`, `vault.link`, `assets.add` | Docs |
-| Workshop | `context.brief`, `metrics.list`, `signals.patterns` | `deposits.write`, `vault.link`, `assets.add` | Whiteboard, Specdr POC lane |
+| Workshop | `context.brief`, `metrics.list`, `signals.patterns` | `deposits.write`, `vault.link`, `assets.add` | Whiteboard where the account has it, else a tab in the scope's Claude Doc; Specdr POC lane |
 | Communicate | `context.brief` | `assets.add` | Docs, Slides |
 | Coach | `people.list`, `people.get`, `context.brief` | `deposits.write`, `assets.add` | Docs |
 | Horizon | `watchlists.get`, `watch.digest`, `queue.list` | `watchlists.set`, `watchlists.apply`, `watch.file`, `queue.resolve` (removals it queued), `vault.link`, `assets.add`; `Bousleh Watch Lists.md` in the Drive folder "Bousleh", through the Google Drive connector | Home, Docs |
 
-Every Doc, deck, whiteboard, design, dashboard or page a mode creates or updates is registered with `assets.add` right away, linked with `documents` to the objects it is about, so `context.brief` can list it. Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Weekly Horizon scan runs in the cloud and can't reach the Mac: it reads the watch lists from `Bousleh Watch Lists.md` in the Drive folder "Bousleh" (which Horizon rewrites after every watch list change, and the Hourly inbox sweep after it files a scan) and only writes files to the Drive inbox. Each scan file proposes watch list changes; filing it on the Mac runs `watchlists.apply`, which applies the scan's adds, removes only entries the scan added, and queues any removal of Wassim's own entries for him (the rule is in the op, not only the skill).
+The calendar is the source for Wassim's schedule: Pulse and Counsel read it through the Google Calendar connector, match attendees to people by their `emails` attr (else by name), and Bousleh keeps only meetings with prep or notes (a planned meeting is Counsel's prep, a held one the debrief). Every Doc, deck, whiteboard, design, dashboard or page a mode creates or updates is registered with `assets.add` right away, linked with `documents` to the objects it is about, so `context.brief` can list it. Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Weekly Horizon scan runs in the cloud and can't reach the Mac: it reads the watch lists from `Bousleh Watch Lists.md` in the Drive folder "Bousleh" (which Horizon rewrites after every watch list change, and the Hourly inbox sweep after it files a scan) and only writes files to the Drive inbox. Each scan file proposes watch list changes; filing it on the Mac runs `watchlists.apply`, which applies the scan's adds, removes only entries the scan added, and queues any removal of Wassim's own entries for him (the rule is in the op, not only the skill).
 
 ### Adding an op
 

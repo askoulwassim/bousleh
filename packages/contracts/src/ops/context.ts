@@ -166,6 +166,15 @@ export const PulseCommitmentGroupSchema = z.object({
   other: z.array(PulseCommitmentSchema),
 });
 
+/** An open commitment with no due date: as commitments.list shows it, plus when it was filed. */
+export const PulseUndatedCommitmentSchema = CommitmentViewSchema.extend({
+  /** When the commitment was filed (its first version). */
+  filed_at: isoDateTime,
+});
+
+/** Pulse lists at most this many open commitments with no due date on each side (by me, to me). */
+export const NO_DUE_LIMIT = 10;
+
 /** Pulse lists a stakeholder, PM or engineer under touchpoints_due when the last touchpoint is more than this many days old. */
 export const TOUCHPOINT_DUE_DAYS = 14;
 
@@ -173,8 +182,8 @@ export const pulseToday = defineOp({
   name: 'pulse.today',
   description: [
     "The daily picture for Pulse and Home, for one day (date, default today on this machine's clock).",
-    'commitments: open ones overdue and due that day, each split into owed by me, owed to me and other, plus counts of every open commitment by direction. me is the person marked is_user (the person this Bousleh belongs to); pass me to override. With neither, the person on the most open commitments is taken as me, and me.inferred says so.',
-    'meetings: meetings on that day (by their held_at), planned or held, with attendees. inbox: files waiting for Capture and open items in the ambiguity queue. stale_metrics: metrics in use (instrumented, measured or reviewed) with no reading within their cadence (daily 1 day, weekly 7, monthly 31, quarterly 92; 30 days when they have no cadence). new_findings: Horizon findings filed since the start of the day before. open_bets: ideas that are bets, with hypothesis and kill criteria.',
+    `commitments: open ones overdue and due that day, each split into owed by me, owed to me and other; open ones with no due date (no_due), owed by me and owed to me, oldest filed first, at most ${NO_DUE_LIMIT} a side with more counting the rest; plus counts of every open commitment by direction. me is the person marked is_user (the person this Bousleh belongs to); pass me to override. With neither, the person on the most open commitments is taken as me, and me.inferred says so.`,
+    'meetings: meetings filed in Bousleh on that day (by their held_at), planned or held, with attendees. Bousleh keeps only meetings with prep or notes, not the schedule: read the calendar for the rest of the day and merge. inbox: files waiting for Capture and open items in the ambiguity queue. stale_metrics: metrics in use (instrumented, measured or reviewed) with no reading within their cadence (daily 1 day, weekly 7, monthly 31, quarterly 92; 30 days when they have no cadence). new_findings: Horizon findings filed since the start of the day before. open_bets: ideas that are bets, with hypothesis and kill criteria.',
     'metric_movement: metrics with at least two readings whose last change is not zero, with the latest and previous readings and the delta, most recently read first.',
     `touchpoints_due: the stakeholders, PMs and engineers (not me) whose last touchpoint (the newest held meeting they attended, or the newest object linked about them) is more than ${TOUCHPOINT_DUE_DAYS} days before the date, or who have none; never touched first, then the longest ago.`,
     'scopes (slugs, child scopes included) narrows everything except the inbox and the queue, which have no scope. Read-only.',
@@ -195,6 +204,13 @@ export const pulseToday = defineOp({
       overdue: PulseCommitmentGroupSchema,
       /** Open and due on the date. */
       due_today: PulseCommitmentGroupSchema,
+      /** Open with no due date, owed by me or to me (not between other people), oldest filed first. */
+      no_due: z.object({
+        by_me: z.array(PulseUndatedCommitmentSchema),
+        to_me: z.array(PulseUndatedCommitmentSchema),
+        /** How many more each side had beyond the ones listed. */
+        more: z.object({ by_me: z.number().int().min(0), to_me: z.number().int().min(0) }),
+      }),
       /** Every open commitment in scope, counted by direction. */
       open: z.object({ by_me: z.number().int().min(0), to_me: z.number().int().min(0), other: z.number().int().min(0) }),
     }),
