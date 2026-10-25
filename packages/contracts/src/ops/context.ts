@@ -4,7 +4,8 @@ import { KindSchema, METRIC_STATUSES, PERSON_ROLES } from '../model/kinds.js';
 import { AltitudeSchema } from '../model/layers.js';
 import { CommitmentViewSchema, PersonRefSchema } from './commitments.js';
 import { defineOp } from './define.js';
-import { MetricCadenceSchema, ObjectRefSchema } from './metrics.js';
+import { MetricCadenceSchema } from './metrics.js';
+import { ObjectRefSchema } from './shapes.js';
 
 /*
  * context.* and pulse.*: owned by @bousleh/context. Both only read: they assemble what other ops
