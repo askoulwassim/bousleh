@@ -41,6 +41,13 @@ export const MetricSummarySchema = z.object({
   serves: ObjectRefSchema.nullable(),
   /** The newest reading by observed_at, after corrections. Null when the metric has none. */
   latest_reading: MetricReadingSchema.nullable(),
+  /** The last move: the reading before the latest one, and latest minus previous. Null with fewer than two readings. */
+  change: z
+    .object({
+      previous: MetricReadingSchema,
+      delta: z.number(),
+    })
+    .nullable(),
   /** When the current version was written. */
   updated_at: isoDateTime,
 });
@@ -88,7 +95,7 @@ export const metricsReading = defineOp({
 export const metricsList = defineOp({
   name: 'metrics.list',
   description:
-    'List metrics in the registry, optionally only those with the given lifecycle statuses and only those in one scope (by slug). Each comes with its cadence, unit, owner, the strategy it serves, and its latest reading with any corrections applied. Use vault.get on an id for the full body.',
+    'List metrics in the registry, optionally only those with the given lifecycle statuses and only those in one scope (by slug). Each comes with its cadence, unit, owner, the strategy it serves, its latest reading with any corrections applied, and change: the reading before it and the delta (latest minus previous; null with fewer than two readings). Use metrics.history for every reading, and vault.get on an id for the full body.',
   input: z.object({
     status: z.array(MetricStatusSchema).min(1).optional(),
     scope: ScopeSlugSchema.optional(),
@@ -97,8 +104,24 @@ export const metricsList = defineOp({
   readOnly: true,
 });
 
+export const metricsHistory = defineOp({
+  name: 'metrics.history',
+  description:
+    "Every effective reading of one metric, oldest first: corrections applied (a corrected reading is replaced by its correction, never shown twice). since (a date, a whole day on this machine's clock, or a date-time) keeps only readings observed from then on. Use it to see how a metric has moved; metrics.list already gives the latest reading and the last change.",
+  input: z.object({
+    id: IdSchema.describe('The metric (met_…).'),
+    since: dateOrDateTime.optional(),
+  }),
+  output: z.object({
+    metric: ObjectRefSchema.extend({ unit: z.string().nullable(), cadence: MetricCadenceSchema.nullable() }),
+    readings: z.array(MetricReadingSchema),
+  }),
+  readOnly: true,
+});
+
 export const metricOps = {
   'metrics.upsert': metricsUpsert,
   'metrics.reading': metricsReading,
   'metrics.list': metricsList,
+  'metrics.history': metricsHistory,
 } as const;

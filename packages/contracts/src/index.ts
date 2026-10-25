@@ -13,6 +13,7 @@ export * from './ops/registry.js';
 export * from './ops/schema.js';
 export * from './ops/scopes.js';
 export * from './ops/shapes.js';
+export * from './ops/signals.js';
 export * from './ops/vault.js';
 export * from './ops/watch.js';
 

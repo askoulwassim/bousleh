@@ -204,6 +204,61 @@ describe('metrics.reading', () => {
   });
 });
 
+describe('metrics.history and the last change', () => {
+  let metric: string;
+  beforeEach(async () => {
+    metric = await idOf('metrics.upsert', { title: 'Hours saved', altitude: 10000, scopes: ['bousleh'], unit: 'hours', cadence: 'weekly' });
+  });
+  const reading = async (input: Record<string, unknown>) =>
+    ok<MetricReading>(await run('metrics.reading', { metric_id: metric, ...input }));
+  const history = async (input: Record<string, unknown> = {}) =>
+    ok<{ metric: { id: string; title: string; unit: string | null; cadence: string | null }; readings: MetricReading[] }>(
+      await run('metrics.history', { id: metric, ...input }),
+    );
+
+  it('returns every effective reading oldest first, corrections applied', async () => {
+    expect(OPS['metrics.history'].readOnly).toBe(true);
+    expect(await history()).toEqual({ metric: { id: metric, title: 'Hours saved', unit: 'hours', cadence: 'weekly' }, readings: [] });
+
+    const oct18 = await reading({ value: 5, observed_at: '2026-10-18T17:00:00+02:00' });
+    const oct4 = await reading({ value: 4, observed_at: '2026-10-04' });
+    const wrong = await reading({ value: 50, observed_at: '2026-10-11' });
+    const fixed = await reading({ value: 3, corrects: wrong.id });
+
+    const all = await history();
+    expect(all.readings.map((r) => [r.id, r.value])).toEqual([
+      [oct4.id, 4],
+      [fixed.id, 3],
+      [oct18.id, 5],
+    ]);
+    expect(all.readings.map((r) => r.id)).not.toContain(wrong.id);
+
+    expect((await history({ since: '2026-10-11' })).readings.map((r) => r.value)).toEqual([3, 5]);
+    expect((await history({ since: '2026-10-18T16:00:00Z' })).readings.map((r) => r.value)).toEqual([]);
+    expect((await history({ since: '2026-10-18T14:00:00Z' })).readings.map((r) => r.value)).toEqual([5]);
+  });
+
+  it('refuses ids that are not metrics', async () => {
+    expect(failed(await run('metrics.history', { id: strategy })).code).toBe('invalid_input');
+    expect(failed(await run('metrics.history', { id: 'met_01JBX0000000000000000000AB' })).code).toBe('not_found');
+  });
+
+  it('gives metrics.list the previous reading and the delta', async () => {
+    expect((await list())[0]?.change).toBeNull();
+    await reading({ value: 4, observed_at: '2026-10-04' });
+    expect((await list())[0]?.change).toBeNull();
+    const second = await reading({ value: 7.5, observed_at: '2026-10-11' });
+    const third = await reading({ value: 6, observed_at: '2026-10-18' });
+    const summary = (await list())[0];
+    expect(summary?.latest_reading?.id).toBe(third.id);
+    expect(summary?.change).toEqual({ previous: expect.objectContaining({ id: second.id, value: 7.5 }), delta: -1.5 });
+
+    // A correction of the latest reading changes the delta, not the previous reading.
+    await reading({ value: 9.5, corrects: third.id });
+    expect((await list())[0]?.change).toMatchObject({ previous: { id: second.id }, delta: 2 });
+  });
+});
+
 describe('metrics.list', () => {
   it('filters by status and scope, and is read-only', async () => {
     expect(OPS['metrics.list'].readOnly).toBe(true);

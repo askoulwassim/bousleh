@@ -384,8 +384,78 @@ describe('pulse.today', () => {
       inbox: { waiting: 0, oldest_arrived_at: null, queued: 0 },
       stale_metrics: [],
       new_findings: { total: 0, findings: [] },
+      metric_movement: [],
+      touchpoints_due: [],
       open_bets: [],
     });
+  });
+
+  it('lists metrics whose last reading moved, most recently read first', async () => {
+    const metric = (title: string, scopes = ['narratives']) =>
+      idOf('metrics.upsert', { title, altitude: 10000, scopes, status: 'measured', unit: 'pts', cadence: 'weekly' });
+    const reading = (metric_id: string, value: number, observed_at: string) =>
+      run('metrics.reading', { metric_id, value, observed_at }).then(ok);
+    const up = await metric('Trust score');
+    const down = await metric('Time to first chart');
+    const flat = await metric('Flat');
+    const single = await metric('Only one reading');
+    const elsewhere = await metric('Elsewhere', ['bousleh']);
+    await reading(up, 40, '2026-10-11');
+    await reading(up, 42, '2026-10-18');
+    await reading(down, 9, '2026-10-12');
+    await reading(down, 8, '2026-10-19');
+    await reading(flat, 5, '2026-10-11');
+    await reading(flat, 5, '2026-10-18');
+    await reading(single, 1, '2026-10-18');
+    await reading(elsewhere, 1, '2026-10-11');
+    await reading(elsewhere, 2, '2026-10-18');
+
+    at(2026, 10, 25, 9);
+    const result = await pulse({ scopes: ['alethea'] });
+    expect(result.metric_movement.map((m) => [m.id, m.delta])).toEqual([
+      [down, -1],
+      [up, 2],
+    ]);
+    expect(result.metric_movement[1]).toMatchObject({
+      title: 'Trust score',
+      unit: 'pts',
+      latest_reading: { value: 42, unit: 'pts', observed_at: '2026-10-18' },
+      previous_reading: { value: 40, observed_at: '2026-10-11' },
+    });
+    // Read on the same day: by title.
+    expect(ids((await pulse()).metric_movement)).toEqual([down, elsewhere, up]);
+  });
+
+  it('lists the stakeholders, PMs and engineers not touched for more than 14 days, never touched first', async () => {
+    const wassim = await deposit('person', 'Wassim', { attrs: { role: 'pm', is_user: true } });
+    const sam = await deposit('person', 'Sam', { attrs: { role: 'engineer' }, scopes: ['narratives'] });
+    const lisa = await deposit('person', 'Lisa', { attrs: { role: 'pm' }, scopes: ['narratives'] });
+    const jo = await deposit('person', 'Jo', { attrs: { role: 'pm' }, scopes: ['narratives'] });
+    const peter = await deposit('person', 'Peter', { attrs: { role: 'stakeholder' }, scopes: ['narratives'] });
+    await deposit('person', 'Ana', { attrs: { role: 'analyst' }, scopes: ['narratives'] });
+    await deposit('person', 'Outside', { attrs: { role: 'pm' }, scopes: ['bousleh'] });
+    const meeting = (title: string, held_at: string, who: string) =>
+      deposit('meeting', title, { altitude: 1000, attrs: { held_at }, links: [{ kind: 'attended_by', to: who }] });
+    const lisaMeeting = await meeting('Lisa 1:1', '2026-10-05', lisa);
+    // Exactly 14 days before: not due yet. A late-evening meeting counts on its local day.
+    await meeting('Jo 1:1', new Date(2026, 9, 11, 23, 30).toISOString(), jo);
+    await deposit('observation', 'Peter wants weekly numbers', { links: [{ kind: 'about', to: peter }] });
+    await meeting('Wassim alone', '2026-09-01', wassim);
+
+    at(2026, 10, 25, 9);
+    const result = await pulse({ scopes: ['alethea'] });
+    expect(result.touchpoints_due.map((p) => [p.name, p.days_since])).toEqual([
+      ['Sam', null],
+      ['Lisa', 20],
+    ]);
+    expect(result.touchpoints_due[0]).toMatchObject({ id: sam, role: 'engineer', last_touchpoint: null });
+    expect(result.touchpoints_due[1]?.last_touchpoint).toEqual({
+      at: '2026-10-05',
+      via: 'attended',
+      object: { id: lisaMeeting, kind: 'meeting', title: 'Lisa 1:1' },
+    });
+    expect((await pulse()).touchpoints_due.map((p) => p.name)).toEqual(['Outside', 'Sam', 'Lisa']);
+    expect((await pulse({ date: '2026-10-26', scopes: ['alethea'] })).touchpoints_due.map((p) => p.name)).toEqual(['Sam', 'Lisa', 'Jo']);
   });
 
   it('buckets commitments by due day and direction', async () => {

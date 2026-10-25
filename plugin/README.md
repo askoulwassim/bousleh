@@ -57,12 +57,12 @@ Ops or data a mode needs that don't exist yet. Not invented here.
 
 1. ~~Linking existing objects outside Capture.~~ Resolved Oct 25: Shape, Workshop and Horizon have `vault.link`.
 2. **Capture can't change existing objects.** No `vault.supersede` (except to move a planned meeting to held) or `commitments.close` in its row, so "park that idea" or "that's done" said in a dump is read back as "for Shape" or "for Pulse" (or deposited as a linked observation in unattended runs).
-3. **Coach has no list of people by role.** "How are my PMs doing?" needs something like a `people.list` filtered by role; `vault.search` needs a word to search for.
-4. **Pulse has no metric history.** `metrics.list` returns only the latest reading, so "metric movement" needs the previous readings (a readings-history op).
+3. ~~Coach has no list of people by role.~~ Resolved Oct 25: `people.list` filters by role, scope and org, with each person's manager, open commitments and last touchpoint.
+4. ~~Pulse has no metric history.~~ Resolved Oct 25: `metrics.history` returns every effective reading; `metrics.list` gives each metric's last change, and `pulse.today` has `metric_movement` (and `touchpoints_due`).
 5. **Horizon scan files cross two skills.** Reading and settling inbox files are Capture's ops; filing findings (`watch.file`) is Horizon's. The skills hand off: Capture takes the file, Horizon files it, Capture settles.
 6. **The cloud scan can't read watch lists.** v0 copies them into the "Daily Horizon scan" task prompt (defined in `docs/scheduled-tasks.md`), refreshed by applying that file again after every `watchlists.set`.
 7. ~~Idea ranking has no field.~~ Resolved Oct 25: ideas have a `rank` attr (1 the top), which Workshop sets and the brief sorts by. (Ideas link to their problem with `addresses`, also Oct 25.)
 8. ~~Horizon's reading and listening queue has no op or kind.~~ Resolved Oct 25: a finding's status is the queue (new, to_read, read, dismissed), and `watch.digest` filters by it.
-9. **Feedback patterns** (`signals.patterns`) and **load across both worlds** (the signal bridge) aren't built, so Pulse leaves them out.
+9. ~~Feedback patterns.~~ Resolved Oct 25: `signals.patterns` counts signals by tag ("heard N times from M people"). **Load across both worlds** (the signal bridge) still isn't built, so Pulse leaves it out.
 10. ~~A planned meeting.~~ Resolved Oct 25: meetings are `planned` or `held`. Counsel deposits prep as a planned meeting, superseded to held once it happens.
 11. ~~Initiatives in the brief.~~ Resolved Oct 25: initiatives have a status, `started_at` and `target_date`, and `context.brief` has an `initiatives` section with each one's owner. People in the brief carry `reports_to`.

@@ -1,9 +1,9 @@
-import { commitmentsClose, commitmentsList, peopleGet } from '@bousleh/contracts';
+import { commitmentsClose, commitmentsList, peopleGet, peopleList } from '@bousleh/contracts';
 import { defineHandler, OpError } from './handler.js';
 import { listCommitments } from './store/commitments.js';
-import { personProfile } from './store/people.js';
+import { listPeople, personProfile } from './store/people.js';
 
-/* Handlers for commitments.list, commitments.close and people.get. */
+/* Handlers for commitments.list, commitments.close, people.get and people.list. */
 
 export const commitmentsListHandler = defineHandler(commitmentsList, (input, h) => ({ commitments: listCommitments(h.store, input) }));
 
@@ -27,3 +27,13 @@ export const commitmentsCloseHandler = defineHandler(commitmentsClose, (input, h
 });
 
 export const peopleGetHandler = defineHandler(peopleGet, (input, h) => personProfile(h.store, input.id, input.recent));
+
+export const peopleListHandler = defineHandler(peopleList, (input, h) =>
+  listPeople(h.store, {
+    roles: input.role === undefined ? undefined : Array.isArray(input.role) ? input.role : [input.role],
+    scopes: input.scopes,
+    org: input.org,
+    limit: input.limit,
+    now: h.ctx.now(),
+  }),
+);
