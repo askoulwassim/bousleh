@@ -22,7 +22,7 @@ Two more rules follow from these. **Nothing is overwritten:** history uses "supe
 
 - Packages are lowercase nouns: `intake`, `watch`.
 - Skills are one capitalised word: Capture, Horizon.
-- Scheduled tasks are named in plain words with their rhythm: "Daily inbox sweep", "Daily Horizon scan".
+- Scheduled tasks are named in plain words with their rhythm: "Hourly inbox sweep", "Daily Horizon scan".
 - The data is "your data" or `~/.bousleh`, never just "vault". The `vault` package, `vault.db` and `vault.*` ops keep their names, since they're code.
 - Op names are dotted (`inbox.sweep`). MCP tool names are the same with underscores (`inbox_sweep`), because MCP clients mishandle dots.
 
@@ -59,7 +59,7 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 | Coach | `people.get`, `context.brief` | `deposits.write` | Docs |
 | Horizon | `watchlists.get`, `watch.digest` | `watchlists.set`, `watch.file`, `vault.link` | Home, Docs |
 
-Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Daily inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Daily Horizon scan runs in the cloud, can't reach the Mac, and only writes files to the Drive inbox.
+Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Daily Horizon scan runs in the cloud, can't reach the Mac, and only writes files to the Drive inbox.
 
 ### Adding an op
 
@@ -120,10 +120,10 @@ bousleh.nosync/              this repo (private GitHub: askoulwassim/bousleh)
 | Search v0 | SQLite full-text search plus links; no embeddings. Graphiti is the next step later, not vectors |
 | Modes | Eight skills in one Claude plugin: Capture, Pulse, Counsel, Shape, Workshop, Communicate, Coach, Horizon |
 | Phone capture | The Drop skill in the Claude app saves each dictation as a new `.md` file in the Google Drive folder "Bousleh Inbox" (one file per capture, never appended), through the Claude account's Google Drive connector. On the Mac, Capture reads the folder through the same connector, hands each file to `inbox.drop`, then trashes it in Drive (moved, not copied). No Google Drive desktop app and no Full Disk Access (Oct 25: macOS blocks other apps from the synced Drive folder). The engine never calls Google itself |
-| Inbox processing | The Daily inbox sweep (a scheduled task that runs Capture) plus on demand from any session; silent, in the background. Each file is logged by content hash in SQLite, skipped if already seen, then moved to `inbox/processed` |
+| Inbox processing | The Hourly inbox sweep (a scheduled task that runs Capture) plus on demand from any session; silent, in the background. Each file is logged by content hash in SQLite, skipped if already seen, then moved to `inbox/processed` |
 | Backups | Daily snapshot to `~/.bousleh-backups` on the same disk, newest 14 kept, taken by the MCP server; `vault.backup` on demand. Restore: quit Claude, move `~/.bousleh` aside, copy a snapshot folder into its place |
 | Setup | `scripts/setup-mac.sh` sets up a Mac end to end (see SETUP.md); the work Mac runs the same script |
-| Scheduled tasks | Defined only in `docs/scheduled-tasks.md` (each task's place, schedule, needs and exact prompt). In Claude Desktop's Code tab on the repo, "Set up the scheduled tasks in docs/scheduled-tasks.md" creates or updates them; nobody sets one up by hand. Claude Desktop keeps a task's schedule outside any file a script could write, and headless `claude -p` can't reach claude.ai connectors, so a script can't do this step. The Daily inbox sweep runs on the Mac at 07:40; the Daily Horizon scan runs in the cloud at 06:40 |
+| Scheduled tasks | Defined only in `docs/scheduled-tasks.md` (each task's place, schedule, needs and exact prompt). In Claude Desktop's Code tab on the repo, "Set up the scheduled tasks in docs/scheduled-tasks.md" creates or updates them; nobody sets one up by hand. Claude Desktop keeps a task's schedule outside any file a script could write, and headless `claude -p` can't reach claude.ai connectors, so a script can't do this step. The Hourly inbox sweep needs the Mac and runs hourly from 07:00 to 22:00 (a run that can't reach the Mac ends at once; captures wait in Drive); the Daily Horizon scan runs in the cloud at 06:40 |
 | Horizon scan | The Daily Horizon scan, a Claude scheduled task in the cloud: web search, findings written to the Drive inbox. Podcasts: show notes, plus a transcript only when the show publishes one; no transcription |
 | Voice | Dictation in Claude, plus meeting transcripts handed to Capture. No Voicebox, no messaging gateway |
 | Home | A Claude page. No Home code before a Claude Design session exists. Live engine data in the Claude desktop app, a daily snapshot elsewhere |
