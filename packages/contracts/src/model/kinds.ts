@@ -37,6 +37,8 @@ export const COMMITMENT_STATUSES = ['open', 'done', 'dropped'] as const;
 
 export const WATCH_ENTRY_TYPES = ['competitor', 'topic', 'outlet', 'person', 'podcast'] as const;
 export const PERSON_ROLES = ['stakeholder', 'pm', 'engineer', 'analyst', 'other'] as const;
+/** What an asset is: a Claude Doc, a Slides deck, a sheet, a dashboard, a whiteboard, a design, a published page, a repo, a file. */
+export const ASSET_TYPES = ['doc', 'slides', 'sheet', 'dashboard', 'whiteboard', 'design', 'page', 'repo', 'file', 'other'] as const;
 
 export const KINDS = {
   // ------------------------------------------------------------ anchors
@@ -150,6 +152,17 @@ export const KINDS = {
     attrs: z.strictObject({
       decided_at: date.optional(),
       reversible: z.boolean().optional(),
+    }),
+    scopeRequired: true,
+  },
+  asset: {
+    layer: 'work',
+    prefix: 'ast',
+    description:
+      'An outside asset (a Claude Doc, deck, dashboard, whiteboard, design or page, a repo, a file) that documents work kept in Bousleh. Register it with assets.add; it links with `documents` to the objects it documents.',
+    attrs: z.strictObject({
+      url: z.url(),
+      type: z.enum(ASSET_TYPES),
     }),
     scopeRequired: true,
   },

@@ -12,10 +12,10 @@ Generate options for a problem and rank them against what Wassim's strategy and 
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief), `metrics_list` (metrics.list)
-- Writes: `deposits_write` (deposits.write), `vault_link` (vault.link) to tie an existing idea to the problem
-- Added, read-only: `vault_search` (vault.search) to find the problem; `scopes_list` (scopes.list) for scope slugs
+- Writes: `deposits_write` (deposits.write), `vault_link` (vault.link) to tie an existing idea to the problem, `assets_add` (assets.add) to register every whiteboard or design you make
+- Added, read-only: `vault_search` (vault.search) to find the problem; `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find a whiteboard that already exists for it
 
-`context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments and evidence around a focus at an altitude.
+`context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
 
 ## Altitude
 
@@ -40,6 +40,12 @@ Generate at `1000`, his own surfaces. Go up to `10000` when the ideas need other
 - **Whiteboard:** when he wants to rearrange things, alone or with his PMs, lay out the problem, the ranked ideas, and the metric each moves on a Claude Whiteboard. The data stays the truth; changes he makes there come back by saying them here.
 - **Design:** when he needs to see it before building, mock it up in Claude Design first.
 - **Specdr POC lane:** for "make a POC of this", run `/specdr-poc:go` with a short brief: the problem and its evidence in two lines, the idea, the hypothesis and kill criteria, and the metric it should move. Let the POC lane ask its own decisions. Use it only in the instance where the Specdr Hub is connected.
+
+## Registering assets
+
+Right after you create or update a Claude Whiteboard, a Design or any other page, call `assets_add` with its url, a short title, its `type` (`whiteboard`, `design`, `page`), the scope slugs, and `documents` → the ids of the problem and the ideas on it. Do it every time, including for an update: calling it again for the same url is safe, adds any new `documents` links and records a changed title. If the asset already exists, `assets_list` with `documents` set to the object's id finds it, so update it rather than making a second one.
+
+A POC the Specdr lane puts live is registered the same way, as a `page` documenting the idea.
 
 ## Output
 

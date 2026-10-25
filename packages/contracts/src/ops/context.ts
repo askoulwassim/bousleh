@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { IdSchema, ScopeSlugSchema } from '../model/ids.js';
 import { KindSchema, METRIC_STATUSES, PERSON_ROLES } from '../model/kinds.js';
 import { AltitudeSchema } from '../model/layers.js';
+import { AssetTypeSchema } from './assets.js';
 import { CommitmentViewSchema, PersonRefSchema } from './commitments.js';
 import { defineOp } from './define.js';
 import { MetricCadenceSchema } from './metrics.js';
@@ -69,7 +70,23 @@ export const BriefEvidenceSchema = BriefRefSchema.extend({
   filed_at: isoDateTime,
 });
 
-export const BRIEF_SECTIONS = ['anchors', 'problems', 'ideas', 'decisions', 'metrics', 'people', 'commitments', 'evidence'] as const;
+/** An asset (a Doc, deck, dashboard, whiteboard, design, page, repo or file) with its link. */
+export const BriefAssetSchema = BriefRefSchema.extend({
+  url: z.string(),
+  type: AssetTypeSchema,
+});
+
+export const BRIEF_SECTIONS = [
+  'anchors',
+  'problems',
+  'ideas',
+  'decisions',
+  'metrics',
+  'people',
+  'commitments',
+  'evidence',
+  'assets',
+] as const;
 export type BriefSection = (typeof BRIEF_SECTIONS)[number];
 
 const sectionCounts = z.object(
@@ -82,7 +99,7 @@ export const contextBrief = defineOp({
     'What to know before advising at a given altitude, in one call. Call it before giving advice, shaping a problem or idea, running a workshop, drafting a message or coaching someone, then use vault.get or people.get on any id for the full object.',
     'Centre it with focus (the question or topic in plain words; its best search matches become the centre) and/or ids (objects to centre on, such as a problem, an idea or a person). Everything linked one hop out from the centre is included, with why. With neither, or when focus matches nothing, the brief covers the scopes as a whole: open problems, open ideas and bets, recent decisions, metrics and open commitments.',
     'scopes (slugs) narrows it, and includes their child scopes. altitude is the level you are advising at (50000 company, 10000 cross-team, the default, 1000 own surfaces, 100 one engineer or requirement): items one level above and below are shown too, and anchors (strategies and principles) from every level above, including those of parent scopes.',
-    'Sections: anchors; problems; ideas (bets first, with hypothesis and kill criteria); decisions (newest first); metrics with their latest reading; people involved (owners, attendees, who owes and is owed what); open commitments; recent evidence and findings linked to the rest. Objects replaced by another (supersedes) are left out. limit caps each section; more says how many were cut.',
+    'Sections: anchors; problems; ideas (bets first, with hypothesis and kill criteria); decisions (newest first); metrics with their latest reading; people involved (owners, attendees, who owes and is owed what); open commitments; recent evidence and findings linked to the rest; assets (Docs, decks, dashboards, whiteboards, designs, pages, repos) with their url and type: those that document anything in the brief, or with no centre every asset in the scopes, at any altitude. Objects replaced by another (supersedes) are left out. limit caps each section; more says how many were cut.',
   ].join(' '),
   input: z.object({
     focus: z.string().trim().min(1).max(500).optional().describe('The question or topic, in plain words. Searched like vault.search.'),
@@ -109,6 +126,7 @@ export const contextBrief = defineOp({
     people: z.array(BriefPersonSchema),
     commitments: z.array(BriefCommitmentSchema),
     evidence: z.array(BriefEvidenceSchema),
+    assets: z.array(BriefAssetSchema),
     /** How many more items each section had beyond limit. */
     more: sectionCounts,
   }),

@@ -1,5 +1,6 @@
 /* @bousleh/contracts: the object model and the ops registry. Imports nothing from the other packages. */
 export * from './model/index.js';
+export * from './ops/assets.js';
 export * from './ops/commitments.js';
 export * from './ops/context.js';
 export * from './ops/define.js';

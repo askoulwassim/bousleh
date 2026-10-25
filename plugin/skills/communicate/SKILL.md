@@ -5,17 +5,17 @@ description: Renders one source of truth for a specific audience - leadership, e
 
 # Communicate
 
-Take what Wassim's data holds and render it for one audience. The truth doesn't change between audiences; the altitude, the order and the level of detail do. You judge what this audience needs to know, decide or do. The engine supplies the brief. Communicate writes nothing to his data.
+Take what Wassim's data holds and render it for one audience. The truth doesn't change between audiences; the altitude, the order and the level of detail do. You judge what this audience needs to know, decide or do. The engine supplies the brief. Communicate writes nothing to his data except the record of what it produced (`assets_add`).
 
 ## Ops
 
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief)
-- Writes: none
-- Added, read-only: `vault_search` (vault.search) to find the object or person the message is about
+- Writes: `assets_add` (assets.add) to register every Doc, deck or page you produce
+- Added, read-only: `vault_search` (vault.search) to find the object or person the message is about; `assets_list` (assets.list) to find the doc or deck that already exists for it; `scopes_list` (scopes.list) for scope slugs
 
-`context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments and evidence around a focus at an altitude.
+`context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
 
 ## Altitude by audience
 
@@ -49,6 +49,12 @@ If Wassim makes a new decision or commitment while drafting, hand it to Capture.
 
 - Artifacts are written from the data, never edited as the truth. Comments on them come back through Capture.
 - Work artifacts live in the work account and are shared from there; personal ones stay personal.
+
+## Registering assets
+
+Right after you create or update a Claude Doc, a Slides deck or a page, call `assets_add` with its url, a short title, its `type` (`doc`, `slides`, `page`), the scope slugs, and `documents` → the ids of the objects it renders: the strategy, problem, decision or bet it is about. Do it every time, including for an update: calling it again for the same url is safe, adds any new `documents` links and records a changed title. If the asset already exists, `assets_list` with `documents` set to the object's id finds it, so update it rather than making a second one.
+
+A short message that stays in the conversation is not an asset.
 
 ## Output
 

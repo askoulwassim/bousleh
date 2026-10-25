@@ -83,6 +83,7 @@ describe('context.brief', () => {
         people: [],
         commitments: [],
         evidence: [],
+        assets: [],
       });
       expect(Object.values(result.more).every((n) => n === 0)).toBe(true);
     }

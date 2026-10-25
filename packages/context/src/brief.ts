@@ -22,7 +22,10 @@ import { ancestorsOf, call, coverScopes, inCover, isReplaced, Objects, shorten }
  * 4. Anchors of the scopes (and their parent scopes) at or above one level below the altitude, and
  *    the metrics that serve them.
  * 5. Evidence linked to what is shown, then the people involved in it.
+ * 6. Assets (Docs, decks, dashboards…) that document anything in the brief; with no centre, every
+ *    asset in the scopes.
  * Everything else keeps to the altitude band: the altitude asked for, one level above and one below.
+ * People and assets ignore it.
  */
 
 type Output = OpOutput<'context.brief'>;
@@ -39,6 +42,7 @@ const SECTION_OF: Partial<Record<Kind, BriefSection>> = {
   signal: 'evidence',
   observation: 'evidence',
   finding: 'evidence',
+  asset: 'assets',
 };
 const ANCHOR_KINDS: readonly Kind[] = ['strategy', 'principle'];
 const EVIDENCE_KINDS: readonly Kind[] = ['signal', 'observation', 'finding'];
@@ -92,6 +96,7 @@ const quoted = (object: ObjectView) => `"${object.version.title}"`;
 /** Why an object linked to another is included. `fromLinked`: the link runs from it to the other object. */
 function linkedTo(kind: string, other: ObjectView, fromLinked: boolean): string {
   if (kind === 'evidence_for' && fromLinked) return `evidence for ${quoted(other)}`;
+  if (kind === 'documents' && fromLinked) return `documents ${quoted(other)}`;
   return `linked to ${quoted(other)} (${kind})`;
 }
 
@@ -119,9 +124,9 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
   const band = altitudeBand(input.altitude);
   const floor = Math.min(...band);
 
-  /** Within the altitude band (anchors: at or above its floor). People have no meaningful altitude. */
+  /** Within the altitude band (anchors: at or above its floor). People and assets have no meaningful altitude. */
   const fits = (object: ObjectView) => {
-    if (object.kind === 'person') return true;
+    if (object.kind === 'person' || object.kind === 'asset') return true;
     if (ANCHOR_KINDS.includes(object.kind)) return object.version.altitude >= floor;
     return band.includes(object.version.altitude);
   };
@@ -181,7 +186,7 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
 
   // ------------------------------------------------------------ 3. no centre: the scopes as a whole
   if (centre.length === 0) {
-    for (const object of objects.ofKinds(['problem', 'idea', 'decision', 'metric', 'commitment'])) {
+    for (const object of objects.ofKinds(['problem', 'idea', 'decision', 'metric', 'commitment', 'asset'])) {
       if (!eligible(object)) continue;
       if (object.kind === 'idea' && !['open', 'bet'].includes(object.version.status ?? '')) continue;
       if (object.kind === 'commitment' && object.version.status !== 'open') continue;
@@ -293,6 +298,18 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
     (a, b) => b.why.length - a.why.length || a.object.version.title.localeCompare(b.object.version.title),
   );
 
+  // ------------------------------------------------------------ 6. assets that document anything in the brief
+  // The centre, everything shown, and what the centre links to that has no section of its own, as for people.
+  const inBrief = [...involved, ...people];
+  for (const { object } of inBrief) {
+    for (const link of object.links.in) {
+      if (link.kind !== 'documents' || link.from_kind !== 'asset') continue;
+      const asset = objects.get(link.from);
+      if (asset && eligible(asset)) picked.add(asset, 2, `documents ${quoted(object)}`);
+    }
+  }
+  const assets = take('assets', picked.inSection('assets'), newestFirst);
+
   // ------------------------------------------------------------ refs
   const ref = (entry: Entry, section: BriefSection): BriefRef => {
     const { object } = entry;
@@ -352,6 +369,11 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
       url: attr<string>(entry.object, 'url'),
       published_at: attr<string>(entry.object, 'published_at'),
       filed_at: entry.object.created_at,
+    })),
+    assets: assets.map((entry) => ({
+      ...ref(entry, 'assets'),
+      url: attr<string>(entry.object, 'url') ?? '',
+      type: entry.object.version.attrs.type as Output['assets'][number]['type'],
     })),
     more,
   };

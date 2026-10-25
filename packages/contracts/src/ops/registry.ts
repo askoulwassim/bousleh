@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { assetOps } from './assets.js';
 import { commitmentOps } from './commitments.js';
 import { contextOps } from './context.js';
 import { depositOps } from './deposits.js';
@@ -25,6 +26,7 @@ export const OPS = {
   ...scopeOps,
   ...commitmentOps,
   ...peopleOps,
+  ...assetOps,
   ...metricOps,
   ...watchOps,
   ...inboxOps,

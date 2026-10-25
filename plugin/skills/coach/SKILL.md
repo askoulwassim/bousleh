@@ -12,10 +12,10 @@ Help Wassim coach each PM he leads. Show their surface at a glance, their goals,
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `people_get` (people.get), `context_brief` (context.brief)
-- Writes: `deposits_write` (deposits.write)
-- Added, read-only: `vault_search` (vault.search) to find a person's id by name, as `people_get` itself directs; `scopes_list` (scopes.list) for scope slugs
+- Writes: `deposits_write` (deposits.write), `assets_add` (assets.add) to register every coaching Doc you write
+- Added, read-only: `vault_search` (vault.search) to find a person's id by name, as `people_get` itself directs; `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the PM's coaching Doc if one exists
 
-`context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments and evidence around a focus at an altitude.
+`context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
 
 ## Altitude
 
@@ -41,6 +41,10 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Notes describe behaviour and outcomes, not personality. Factual and work-appropriate. Nothing on health or private life.
 - In the work instance, people notes are company property. Write them as if the PM could read them.
 - Never share growth notes with anyone else unless Wassim says so.
+
+## Registering assets
+
+Right after you create or update a coaching Doc, call `assets_add` with its url, a short title, its `type` (`doc`), the scope slugs, and `documents` → the ids of the person it is about (and their growth notes if it covers specific ones). Do it every time, including for an update: calling it again for the same url is safe, adds any new `documents` links and records a changed title. If the asset already exists, `assets_list` with `documents` set to the object's id finds it, so update it rather than making a second one.
 
 ## Output
 

@@ -35,7 +35,7 @@ Op names are provisional; the "Package map" tab is the source of truth.
 | Package | Owns | Op namespaces | Depends on |
 | --- | --- | --- | --- |
 | contracts | Object kinds, layers, altitude, scope; every op's name and schemas | none (definitions only) | nothing |
-| vault | Storage, migrations, history, typed objects, scopes | `vault.*` (health, get, search, supersede, link, unlink), `deposits.*` (write), `scopes.*` (list, add), `commitments.*` (list, close), `people.*` (get) | contracts |
+| vault | Storage, migrations, history, typed objects, scopes, assets | `vault.*` (health, get, search, supersede, link, unlink), `deposits.*` (write), `scopes.*` (list, add), `commitments.*` (list, close), `people.*` (get), `assets.*` (add, list) | contracts |
 | intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (drop, list, take, sweep, settle), `queue.*` (add, list, resolve), `signals.*` (patterns, not built yet) | contracts, vault |
 | context | The brief at a given altitude, and Pulse's daily picture | `context.*` (brief), `pulse.*` (today) | contracts, vault, metrics, watch |
 | metrics | The registry, its lifecycle and readings | `metrics.*` (upsert, reading, list) | contracts, vault |
@@ -49,17 +49,17 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 
 | Skill | Reads | Writes | Hands off to |
 | --- | --- | --- | --- |
-| Capture | `inbox.list`, `inbox.take`, `vault.search`; the Google Drive connector for "Bousleh Inbox" | `inbox.drop`, `inbox.settle`, `deposits.write`, `queue.add`, `queue.resolve`, `vault.link` | nothing |
+| Capture | `inbox.list`, `inbox.take`, `vault.search`; the Google Drive connector for "Bousleh Inbox" | `inbox.drop`, `inbox.settle`, `deposits.write`, `queue.add`, `queue.resolve`, `vault.link`, `assets.add` | nothing |
 | Drop (phone) | nothing | a new `.md` file in "Bousleh Inbox", through the Google Drive connector | Capture |
 | Pulse | `pulse.today`, `commitments.list`, `metrics.list` | `commitments.close`; `vault.supersede` or `deposits.write` once, to mark the user | Home |
 | Counsel | `context.brief`, `people.get` | `deposits.write` | nothing |
-| Shape | `context.brief`, `metrics.list` | `deposits.write`, `vault.supersede`, `metrics.upsert`, `vault.link` | Docs |
-| Workshop | `context.brief`, `metrics.list` | `deposits.write`, `vault.link` | Whiteboard, Specdr POC lane |
-| Communicate | `context.brief` | nothing | Docs, Slides |
-| Coach | `people.get`, `context.brief` | `deposits.write` | Docs |
-| Horizon | `watchlists.get`, `watch.digest` | `watchlists.set`, `watch.file`, `vault.link` | Home, Docs |
+| Shape | `context.brief`, `metrics.list` | `deposits.write`, `vault.supersede`, `metrics.upsert`, `vault.link`, `assets.add` | Docs |
+| Workshop | `context.brief`, `metrics.list` | `deposits.write`, `vault.link`, `assets.add` | Whiteboard, Specdr POC lane |
+| Communicate | `context.brief` | `assets.add` | Docs, Slides |
+| Coach | `people.get`, `context.brief` | `deposits.write`, `assets.add` | Docs |
+| Horizon | `watchlists.get`, `watch.digest` | `watchlists.set`, `watch.file`, `vault.link`, `assets.add` | Home, Docs |
 
-Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Daily Horizon scan runs in the cloud, can't reach the Mac, and only writes files to the Drive inbox.
+Every Doc, deck, whiteboard, design, dashboard or page a mode creates or updates is registered with `assets.add` right away, linked with `documents` to the objects it is about, so `context.brief` can list it. Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Daily Horizon scan runs in the cloud, can't reach the Mac, and only writes files to the Drive inbox.
 
 ### Adding an op
 
