@@ -2,6 +2,7 @@
 # Set up Bousleh on this Mac, end to end. Safe to rerun, e.g. after `git pull`.
 #
 #   scripts/setup-mac.sh [--home <dir>]
+#   scripts/setup-mac.sh --check      only report what is already set up; change nothing
 #
 # Builds the engine, registers the Bousleh MCP server in Claude Desktop and Claude Code, installs the
 # plugin in Claude Code, builds the plugin file for your Claude account, and checks the server.
@@ -10,9 +11,11 @@ set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 DATA="${BOUSLEH_HOME:-$HOME/.bousleh}"
+CHECK=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --home) DATA="$2"; shift 2 ;;
+    --check) CHECK=1; shift ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -22,6 +25,41 @@ LEFT=()
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok() { printf '  ✓ %s\n' "$*"; }
 note() { printf '  ! %s\n' "$*"; }
+
+# Folders where an earlier Claude Code session may have registered the server at local scope.
+CODE_DIRS=()
+for dir in "$REPO" "$(dirname "$REPO")" "$PWD"; do
+  [[ " ${CODE_DIRS[*]-} " == *" $dir "* ]] || CODE_DIRS+=("$dir")
+done
+
+if (( CHECK )); then
+  step "What is set up already (nothing is changed)"
+  if [[ -f "$DESKTOP_CONFIG" ]]; then
+    node -e '
+      const fs = require("node:fs");
+      const servers = JSON.parse(fs.readFileSync(process.argv[1], "utf8") || "{}").mcpServers ?? {};
+      const ours = Object.entries(servers).filter(([name, s]) => name === "bousleh" || JSON.stringify(s.args ?? []).includes("mcp-server/dist/bin.js"));
+      if (ours.length === 0) console.log("  Claude Desktop: no Bousleh server registered");
+      for (const [name, s] of ours) console.log(`  Claude Desktop: "${name}" runs ${[s.command, ...(s.args ?? [])].join(" ")}${s.env ? `, env ${Object.keys(s.env).join(", ")}` : ""}`);
+      if (ours.length > 1) console.log("  ! more than one entry: setup keeps only \"bousleh\"");
+    ' "$DESKTOP_CONFIG"
+  else
+    echo "  Claude Desktop: no config file yet"
+  fi
+  if command -v claude >/dev/null 2>&1; then
+    for dir in "${CODE_DIRS[@]}"; do
+      echo "  Claude Code, seen from $dir:"
+      (cd "$dir" && claude mcp get bousleh 2>&1 | sed 's/^/    /') || true
+    done
+    echo "  Claude Code plugins:"
+    claude plugin list 2>/dev/null | grep -i bousleh | sed 's/^/    /' || echo "    none named bousleh"
+  else
+    echo "  Claude Code: the claude command isn't installed"
+  fi
+  if [[ -d "$DATA" ]]; then echo "  Data folder: $DATA ($(find "$DATA" -type f | wc -l | tr -d ' ') files, vault.db $([[ -f "$DATA/vault.db" ]] && echo present || echo absent))"; else echo "  Data folder: $DATA (not created yet)"; fi
+  if [[ -d "$DATA-backups" ]]; then echo "  Backups: $(ls "$DATA-backups" | wc -l | tr -d ' ') snapshots in $DATA-backups"; else echo "  Backups: none yet"; fi
+  exit 0
+fi
 
 step "1/6 Tools"
 NODE="$(command -v node || true)"
@@ -61,7 +99,15 @@ if [[ "$(uname)" == "Darwin" || -n "${BOUSLEH_DESKTOP_CONFIG:-}" ]]; then
     const [file, server] = process.argv.slice(1);
     const config = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8") || "{}") : {};
     const { type, ...entry } = JSON.parse(server);
-    config.mcpServers = { ...(config.mcpServers ?? {}), bousleh: entry };
+    const servers = { ...(config.mcpServers ?? {}) };
+    // One Bousleh entry only: drop any other name that runs this server.
+    for (const [name, s] of Object.entries(servers)) {
+      if (name !== "bousleh" && JSON.stringify(s?.args ?? []).includes("mcp-server/dist/bin.js")) {
+        delete servers[name];
+        console.log(`  ✓ removed a second Bousleh entry named "${name}"`);
+      }
+    }
+    config.mcpServers = { ...servers, bousleh: entry };
     fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
   ' "$DESKTOP_CONFIG" "$SERVER_JSON"
   ok "bousleh MCP server registered in Claude Desktop"
@@ -72,11 +118,15 @@ fi
 
 step "5/6 Claude Code"
 if command -v claude >/dev/null 2>&1; then
+  # One registration only: clear local-scope entries an earlier session may have made, then user scope.
+  for dir in "${CODE_DIRS[@]}"; do (cd "$dir" && claude mcp remove -s local bousleh >/dev/null 2>&1) || true; done
   claude mcp remove -s user bousleh >/dev/null 2>&1 || true
   claude mcp add-json -s user bousleh "$SERVER_JSON" >/dev/null
-  ok "bousleh MCP server registered (user scope)"
-  if claude plugin list 2>/dev/null | grep -q 'bousleh@'; then
-    ok "plugin already installed; it reads the skills from this repo"
+  ok "bousleh MCP server registered once, at user scope"
+  INSTALLED="$(claude plugin list 2>/dev/null | grep -o 'bousleh@[A-Za-z0-9_-]*' | sort -u || true)"
+  if [[ -n "$INSTALLED" ]]; then
+    ok "plugin already installed ($(echo "$INSTALLED" | tr '\n' ' ' | sed 's/ $//')); left as is"
+    if (( $(echo "$INSTALLED" | wc -l) > 1 )); then note "more than one Bousleh plugin is installed; keep one with: claude plugin uninstall <name>"; fi
   else
     claude plugin marketplace add "$REPO" >/dev/null
     claude plugin install bousleh@bousleh >/dev/null
@@ -86,12 +136,12 @@ else
   note "Claude Code (the claude command) not found: skipped. Rerun this script after installing it."
 fi
 
-step "6/6 Plugin file for your Claude account"
+step "6/6 Plugin for your Claude account"
 mkdir -p "$REPO/dist"
 rm -f "$REPO/dist/bousleh.plugin"
 (cd "$REPO/plugin" && zip -qr "$REPO/dist/bousleh.plugin" .claude-plugin skills README.md)
-ok "built dist/bousleh.plugin"
-LEFT+=("Upload dist/bousleh.plugin to your Claude account in Claude Desktop (where plugins are added in Settings). It brings the nine skills, Drop included, to Desktop, web and phone. Re-upload after skill changes.")
+ok "the repo is a plugin marketplace (.claude-plugin/marketplace.json); dist/bousleh.plugin is built as a fallback"
+LEFT+=("Once per Claude account, in Claude Desktop: Customize > Plugins > Add > Add marketplace > Add from a repository, enter askoulwassim/bousleh, then add the Bousleh plugin. It brings the nine skills, Drop included, to Desktop chat and the web, and updates from GitHub. Skip this if the account already has it. Fallback, if that option is missing or the repo can't be reached: upload dist/bousleh.plugin there instead.")
 LEFT+=("Check that Google Drive is connected to this Claude account (Settings, Connectors). Capture and Drop use it for the \"Bousleh Inbox\" folder; Drop creates the folder on first use.")
 LEFT+=("In a Claude Desktop chat, say: \"Bousleh: mark me as the user, I'm <your name>.\"")
 

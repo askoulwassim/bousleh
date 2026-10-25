@@ -130,7 +130,7 @@ bousleh.nosync/              this repo (private GitHub: askoulwassim/bousleh)
 
 ## Set up a Mac
 
-`scripts/setup-mac.sh` does the whole setup (build, MCP server in Claude Desktop and Claude Code, plugin, account plugin file, health check); SETUP.md has the ten-minute walkthrough. Rerun it after `git pull`.
+`scripts/setup-mac.sh` does the whole setup (build, MCP server in Claude Desktop and Claude Code, the plugin in Claude Code, a health check); `--check` reports what is already set up without changing anything. The Claude account gets the plugin from this repo as a marketplace (`.claude-plugin/marketplace.json`). SETUP.md has the ten-minute walkthrough. Rerun the script after `git pull`; it never registers anything twice.
 
 ## Run and test
 

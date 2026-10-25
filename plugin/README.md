@@ -23,7 +23,7 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 ## Install
 
 - **Claude Code:** the setup script registers the repo as a local marketplace (`.claude-plugin/marketplace.json` at the repo root) and installs `bousleh@bousleh`. Skills are read from the repo, so edits show up at the next session or after `/reload-plugins`. For a quick try without installing, run `claude --plugin-dir plugin`.
-- **Your Claude account (Desktop, web, phone):** upload `dist/bousleh.plugin`, which the setup script builds. Re-upload it after skills change.
+- **Your Claude account (Desktop chat, web, phone):** add this repo as a marketplace once per account (Customize > Plugins > Add > Add marketplace > Add from a repository: `askoulwassim/bousleh`), then add Bousleh. Updates come from GitHub. Fallback: upload `dist/bousleh.plugin`, which the setup script builds.
 
 `claude plugin validate plugin` passes.
 
