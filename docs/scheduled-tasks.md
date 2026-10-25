@@ -16,29 +16,37 @@ Say it again after `git pull` changes this file, or after a watch list changes. 
 2. **List what exists:** the scheduled tasks on this Mac and the cloud scheduled tasks (routines) on this account.
 3. **For each task below:**
    - If a task with that exact name already exists in the same place (this Mac or the cloud), update its prompt and schedule to match this file. Otherwise create it. Never create a second task with the same name.
-   - **On this Mac:** use this repo folder as the working folder. Set the permission mode so runs don't stall on approvals for the Bousleh tools and the Google Drive connector. If only a mode that asks is available, say so, and tell Wassim to click **Run now** once and choose "always allow" for each tool.
-   - **In the cloud:** attach the Google Drive connector. Give the run no access to the Mac.
+   - **Connectors:** attach only the connectors the task lists under **Needs**, and nothing else from the account.
+   - **Tasks that need the Mac:** create a scheduled task that requires this Mac, with this repo folder as its working folder. Set the permission mode so runs don't stall on approvals for the Bousleh tools and the Google Drive connector. If only a mode that asks is available, say so, and tell Wassim to click **Run now** once and choose "always allow" for each tool.
+   - **Cloud-only tasks:** give the run no access to the Mac.
    - Fill placeholders (`{{…}}`) as the task says.
 4. **Remove strays.** If a scheduled task looks like an older copy of one of these under another name, name it and ask before deleting it.
 5. **Report** in a few lines:
    - each task, whether it was created or updated, where it runs, and its next run time;
-   - that the task on this Mac runs only while the Mac is awake and Claude Desktop is open, and that a missed run catches up once on wake.
+   - that a task that needs the Mac only does its work while the Mac is awake with Claude Desktop open. A run that finds the Mac asleep ends at once, and the next hour's run picks up.
 
-## Task 1: Daily inbox sweep
+## Why the sweep needs the Mac
 
-- **Runs:** on this Mac, as a Claude Desktop scheduled task.
-- **Schedule:** every day at 07:40, local time.
-- **Needs:** the Bousleh MCP server and the Google Drive connector.
+Bousleh's data lives only on the Mac: local, never pushed. So filing into it needs the Mac awake. Capturing doesn't: Drop on the phone and the Daily Horizon scan write to the Drive folder "Bousleh Inbox" whether the Mac is on or not, and nothing is lost. The sweep runs every hour through the day, so captures are filed within about an hour of the Mac being on. A run with nothing to do, or no Mac to reach, ends in seconds.
+
+## Task 1: Hourly inbox sweep
+
+This task was called "Daily inbox sweep" until Oct 25. If a task by that name exists, update it in place: rename it, and change its schedule and prompt. Don't create a second one.
+
+- **Runs:** as a scheduled task that requires this Mac. It works through the Mac's `bousleh` MCP server.
+- **Schedule:** every hour from 07:00 to 22:00, local time.
+- **Needs:** the Bousleh MCP server on this Mac, and the Google Drive connector. No other connectors.
 - **Permissions:** runs without asking, for the Bousleh tools and the Google Drive connector.
 
 Prompt:
 
 ```text
-Bousleh: Daily inbox sweep. You are running unattended, so ask nothing.
+Bousleh: Hourly inbox sweep. You are running unattended, so ask nothing.
 
 Use the Bousleh plugin's Capture skill (bousleh:capture) and follow its "Unattended runs" rules: queue anything you would have asked about, never guess. The Bousleh tools are the `bousleh` MCP server on this Mac (vault_health, inbox_drop, inbox_list, inbox_take, inbox_settle, deposits_write, queue_add, vault_search, vault_link, scopes_list and so on).
 
-1. Call vault_health. If the Bousleh server doesn't answer, stop, say so in one line, and leave everything in Google Drive.
+1. Call vault_health. If the Mac or the Bousleh server doesn't answer, end at once with one line ("Mac not reachable; captures wait in Drive"). Leave everything in Google Drive.
+   If the "Bousleh Inbox" folder in Drive is empty and inbox_list shows nothing waiting, end at once with one line ("Nothing to file"). Don't write a summary.
 2. Bring Drive captures in, following Capture's "Flow: Google Drive":
    - With the Google Drive connector, find the folder titled exactly "Bousleh Inbox" at the top of My Drive. List its files, oldest first.
    - For each markdown or text file, download its exact content (download_file_content, then decode the base64). Never use read_file_content, which reformats markdown. For a Google Doc, download it exported as text/plain.
@@ -62,7 +70,7 @@ Never create, change or delete scheduled tasks. Never touch files outside Bousle
 
 - **Runs:** in the cloud, as a cloud scheduled task, so it works when the Mac is off.
 - **Schedule:** every day at 06:40, local time, before the inbox sweep.
-- **Needs:** web search and the Google Drive connector, with no access to the Mac.
+- **Needs:** web search and the Google Drive connector, with no access to the Mac. No other connectors.
 - **Permissions:** runs on its own.
 - **Placeholder:** fill `{{watch_lists}}` from `watchlists_get`, called with no arguments.
   - For each watch list, give its scope slug, its watch list id (`wls_…`), its altitude, and every entry as `type | name | url | notes`.

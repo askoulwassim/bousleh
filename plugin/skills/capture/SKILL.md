@@ -1,6 +1,6 @@
 ---
 name: capture
-description: Files what Wassim says or drops in into his Bousleh data. Splits voice dumps, brain dumps, meeting transcripts and inbox files into typed, linked deposits (feedback, problems, ideas, decisions, commitments, notes on people) and queues anything ambiguous instead of guessing. Use when he says "capture this", "file this", "note that", "remember that I owe Peter the deck by Friday", "I just got out of a meeting with...", "here's the transcript", "brain dump", "process my inbox", "what's in the inbox", "clear the queue", or when the Daily inbox sweep hands over.
+description: Files what Wassim says or drops in into his Bousleh data. Splits voice dumps, brain dumps, meeting transcripts and inbox files into typed, linked deposits (feedback, problems, ideas, decisions, commitments, notes on people) and queues anything ambiguous instead of guessing. Use when he says "capture this", "file this", "note that", "remember that I owe Peter the deck by Friday", "I just got out of a meeting with...", "here's the transcript", "brain dump", "process my inbox", "what's in the inbox", "clear the queue", or when the Hourly inbox sweep hands over.
 ---
 
 # Capture
@@ -92,7 +92,7 @@ If the Google Drive connector isn't available in this session, skip this and say
 
 ## Unattended runs
 
-When the Daily inbox sweep starts Capture, nobody is there to answer. Ask nothing: queue whatever you would have asked about, and end with a short summary of filed, queued, skipped and failed counts.
+When the Hourly inbox sweep starts Capture, nobody is there to answer. Ask nothing: queue whatever you would have asked about, and end with a short summary of filed, queued, skipped and failed counts.
 
 ## Output
 

@@ -39,7 +39,7 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 | Skill | Op | Why |
 | --- | --- | --- |
 | Capture | `inbox.settle` (write) | Closes out each inbox file after filing. On the intake branch. |
-| Capture | `inbox.sweep` (write) | Only when Wassim asks for a fresh sweep in a session; the Daily inbox sweep already runs it. |
+| Capture | `inbox.sweep` (write) | Only when Wassim asks for a fresh sweep in a session; the Hourly inbox sweep already runs it. |
 | Capture | `queue.list` (read) | Needed to clear the queue with `queue.resolve`. |
 | Capture | `vault.get` (read) | To check a candidate before linking or queueing. |
 | Capture, Counsel, Shape, Workshop, Coach, Horizon | `scopes.list` (read) | Every deposit needs scope slugs. |
