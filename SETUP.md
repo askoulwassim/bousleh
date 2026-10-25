@@ -14,6 +14,7 @@ About ten minutes, on the personal Mac or the work Mac alike. Each Mac gets its 
 ```sh
 git clone https://github.com/askoulwassim/bousleh.git bousleh.nosync   # inside a Documents folder, keep the .nosync name
 cd bousleh.nosync
+scripts/setup-mac.sh --check   # optional: shows what is already set up, changes nothing
 scripts/setup-mac.sh
 ```
 
@@ -24,14 +25,14 @@ The script:
 3. creates `~/.bousleh` (empty; daily backups will go to `~/.bousleh-backups`, the newest 14 kept);
 4. registers the `bousleh` MCP server in Claude Desktop, after backing up its config;
 5. registers it in Claude Code and installs the plugin there, straight from this repo;
-6. builds `dist/bousleh.plugin` for your Claude account, and checks that the engine answers.
+6. builds `dist/bousleh.plugin` as a fallback, and checks that the engine answers.
 
-It's safe to rerun. After `git pull`, run it again to rebuild.
+It's safe to rerun: it replaces its own Claude Desktop entry rather than adding one (and removes any second entry that runs the same server), clears earlier Claude Code registrations at local scope before registering once at user scope, and leaves an installed plugin alone. After `git pull`, run it again to rebuild.
 
 ## Then, by hand (about 3 minutes)
 
 1. Quit Claude Desktop (Cmd-Q) and open it again.
-2. Upload `dist/bousleh.plugin` to your Claude account from Claude Desktop (where plugins are added in Settings). That brings the nine skills to Desktop, the web and your phone, including Drop for phone captures. Re-upload it after the skills change.
+2. Once per Claude account, add the plugin from GitHub: in Claude Desktop, **Customize > Plugins > Add > Add marketplace > Add from a repository**, enter `askoulwassim/bousleh`, then add **Bousleh**. That brings the nine skills, Drop included, to Desktop chat and the web, and they update from GitHub. If that option is missing or the private repo can't be reached from this account, upload `dist/bousleh.plugin` there instead. Check on the phone that Drop is listed; if it isn't, add Drop on its own as a skill.
 3. In a Claude Desktop chat: "Bousleh: mark me as the user, I'm <your name>."
 4. Phone test: in the Claude app, say "Drop this: test from my phone." Then, in Claude Desktop on the Mac: "Process my Bousleh inbox." The note should be filed (or skipped), and gone from Drive's "Bousleh Inbox".
 
