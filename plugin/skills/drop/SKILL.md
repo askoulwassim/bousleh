@@ -17,13 +17,13 @@ If the Bousleh MCP tools are available in this session (`inbox_drop`, `deposits_
 2. **Keep his words.** Save what he said, not a summary. Fix only obvious dictation errors (a misheard name you're sure of, a missing full stop). Don't add headings, bullets or interpretation.
 3. **Find the folder.** With the Google Drive connector, search for the folder titled exactly `Bousleh Inbox` (`title = 'Bousleh Inbox' and mimeType = 'application/vnd.google-apps.folder'`). If there's more than one, use the one at the top of My Drive. If there's none, create it at the top of My Drive (folders are made by setting the content type to `application/vnd.google-apps.folder`), then carry on.
 4. **Create one new file** in that folder. Never append to an existing file.
-   - Title: `capture-YYYY-MM-DD-HHMM-<two or three word slug>.md`, in his local time. Use the current-time tool when you have one.
+   - Title: `capture-YYYY-MM-DD-HHMM-<two or three word slug>.md`, in his local time. Use the current-time tool when you have one; without it, leave out `HHMM` (`capture-YYYY-MM-DD-<slug>.md`).
    - Content type `text/markdown`, with **conversion to a Google Doc turned off** (`disableConversionToGoogleType: true`), so the file stays plain text.
    - Content:
 
      ```
      ---
-     captured_at: <ISO date-time with offset>
+     captured_at: <ISO date-time with offset, or just the date if you don't know the time>
      via: phone
      ---
 

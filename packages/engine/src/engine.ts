@@ -53,8 +53,9 @@ export function openEngine(options: OpenEngineOptions = {}): Engine {
   const maybeBackup = async (ctx: Parameters<RunOp>[2]) => {
     const now = ctx.now().getTime();
     if (now - lastCheck < 60 * 60 * 1000) return;
-    lastCheck = now;
+    // Before your data exists there is nothing to back up; check again on the next op, not an hour later.
     if (!existsSync(join(home, vault.VAULT_DB))) return;
+    lastCheck = now;
     const latest = vault.latestSnapshotTime(vault.backupDir(home));
     if (latest && now - latest.getTime() < everyMs) return;
     const outcome = await inner('vault.backup', { keep: auto.keep ?? 14 }, { ...ctx, actor: 'schedule' });
