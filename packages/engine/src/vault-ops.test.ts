@@ -109,6 +109,16 @@ describe('vault.search', () => {
     expect(await ids({ limit: 2 })).toHaveLength(2);
   });
 
+  it('counts scopes below a scope filter', async () => {
+    ok(await run('scopes.add', { slug: 'bousleh-capture', name: 'Capture', kind: 'project', parent: 'bousleh' }));
+    const child = await write({ kind: 'problem', title: 'Dictation lands as gdoc', scopes: ['bousleh-capture'] });
+    const parent = await write({ kind: 'problem', title: 'Dictation is slow', scopes: ['bousleh'] });
+    const ids = async (scopes: string[]) =>
+      (ok(await run('vault.search', { query: 'dictation', scopes })).hits as { id: string }[]).map((hit) => hit.id).sort();
+    expect(await ids(['bousleh'])).toEqual([child, parent].sort());
+    expect(await ids(['bousleh-capture'])).toEqual([child]);
+  });
+
   it('refuses an unknown scope and an empty query, and writes nothing to the audit trail', async () => {
     expect(failed(await run('vault.search', { query: 'x', scopes: ['nowhere'] })).code).toBe('invalid_input');
     expect(failed(await run('vault.search', { query: '   ' })).code).toBe('invalid_input');

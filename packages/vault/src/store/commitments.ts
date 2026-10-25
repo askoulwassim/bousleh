@@ -36,9 +36,7 @@ export function requirePerson(store: Store, id: string, field: string): void {
 export function listCommitments(store: Store, filter: CommitmentFilter): CommitmentView[] {
   if (filter.owed_by !== undefined) requirePerson(store, filter.owed_by, 'owed_by');
   if (filter.owed_to !== undefined) requirePerson(store, filter.owed_to, 'owed_to');
-  if (filter.scope !== undefined && !store.listScopes().some((scope) => scope.slug === filter.scope)) {
-    throw new OpError('invalid_input', `no scope named ${filter.scope}; scopes.list shows them all`);
-  }
+  const inScope = filter.scope === undefined ? undefined : store.expandScopes([filter.scope]);
 
   const where = ["o.kind = 'commitment'"];
   const params: unknown[] = [];
@@ -71,7 +69,7 @@ export function listCommitments(store: Store, filter: CommitmentFilter): Commitm
     if (filter.limit !== undefined && views.length >= filter.limit) break;
     // Scope membership has its own history (adds and retractions); the store resolves it.
     const scopes = store.scopeSlugsOf(row.id);
-    if (filter.scope !== undefined && !scopes.includes(filter.scope)) continue;
+    if (inScope !== undefined && !scopes.some((slug) => inScope.has(slug))) continue;
     views.push({ ...row, scopes, ...peopleOf(store, row.id) });
   }
   return views;

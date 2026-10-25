@@ -29,7 +29,7 @@ export type CommitmentView = z.output<typeof CommitmentViewSchema>;
 export const commitmentsList = defineOp({
   name: 'commitments.list',
   description:
-    'List commitments: things someone owes someone. Defaults to open ones; pass status done, dropped or any for the others. Filter by who owes it (owed_by, a person id), who it is owed to (owed_to, a person id), a scope slug, and due_before (a date, YYYY-MM-DD: keeps commitments due on or before that date and leaves out those with no due date). Soonest due first; commitments with no due date come last. Each one names who owes it and to whom.',
+    'List commitments: things someone owes someone. Defaults to open ones; pass status done, dropped or any for the others. Filter by who owes it (owed_by, a person id), who it is owed to (owed_to, a person id), a scope slug (scopes below it count too), and due_before (a date, YYYY-MM-DD: keeps commitments due on or before that date and leaves out those with no due date). Soonest due first; commitments with no due date come last. Each one names who owes it and to whom.',
   input: z.object({
     status: z.enum([...COMMITMENT_STATUSES, 'any']).default('open'),
     owed_by: IdSchema.optional(),

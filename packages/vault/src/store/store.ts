@@ -234,6 +234,29 @@ export class Store {
     }));
   }
 
+  /**
+   * The slugs a scope filter covers: each named scope plus every scope below it (a filter on
+   * `alethea` also covers its products and teams). Refuses an unknown slug.
+   */
+  expandScopes(slugs: readonly string[]): Set<string> {
+    const scopes = this.listScopes();
+    const known = new Set(scopes.map((scope) => scope.slug));
+    const unknown = slugs.filter((slug) => !known.has(slug));
+    if (unknown.length > 0) throw new OpError('invalid_input', `no scope named ${unknown.join(', ')}; scopes.list shows them all`);
+    const covered = new Set(slugs);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const scope of scopes) {
+        if (scope.parent !== null && covered.has(scope.parent) && !covered.has(scope.slug)) {
+          covered.add(scope.slug);
+          grew = true;
+        }
+      }
+    }
+    return covered;
+  }
+
   private scopeBySlug(slug: string): ScopeRow | undefined {
     return this.db
       .prepare(

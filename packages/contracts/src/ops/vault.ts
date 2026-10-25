@@ -75,7 +75,7 @@ export const vaultSearch = defineOp({
     query: z.string().trim().min(1).max(500),
     kinds: z.array(KindSchema).optional(),
     layers: z.array(LayerSchema).optional(),
-    scopes: z.array(ScopeSlugSchema).optional().describe('Only objects in at least one of these scopes.'),
+    scopes: z.array(ScopeSlugSchema).optional().describe('Only objects in at least one of these scopes or a scope below one of them.'),
     limit: z.number().int().min(1).max(100).default(20),
   }),
   output: z.object({

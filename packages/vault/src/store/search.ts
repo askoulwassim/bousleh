@@ -1,5 +1,4 @@
 import type { Altitude, Kind, Layer, SearchHit } from '@bousleh/contracts';
-import { OpError } from '../handler.js';
 import type { Store } from './store.js';
 
 /*
@@ -46,15 +45,10 @@ interface HitRow {
 
 /** Best match first: every word if anything has them all, else any word. */
 export function searchObjects(store: Store, filter: SearchFilter): { hits: SearchHit[]; match: 'all' | 'any' } {
-  if (filter.scopes?.length) {
-    const known = new Set(store.listScopes().map((scope) => scope.slug));
-    const unknown = filter.scopes.filter((slug) => !known.has(slug));
-    if (unknown.length > 0) throw new OpError('invalid_input', `no scope named ${unknown.join(', ')}; scopes.list shows them all`);
-  }
-
-  const all = run(store, filter, 'all');
+  const scoped = filter.scopes?.length ? { ...filter, scopes: [...store.expandScopes(filter.scopes)] } : filter;
+  const all = run(store, scoped, 'all');
   if (all.length > 0) return { hits: all, match: 'all' };
-  return { hits: run(store, filter, 'any'), match: 'any' };
+  return { hits: run(store, scoped, 'any'), match: 'any' };
 }
 
 function run(store: Store, filter: SearchFilter, mode: 'all' | 'any'): SearchHit[] {
