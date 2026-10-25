@@ -32,6 +32,7 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 - Claude supplies the judgment, the engine does the mechanics. Skills say what to judge (kind, altitude, scope, links, what matters). They never write files or SQL.
 - Ops follow the "Which skill calls which ops" table in `AGENTS.md`. Additions are listed below.
 - At most one question to Wassim at a time. Answers are short enough to listen to.
+- Assets: every Doc, Slides deck, whiteboard, design, dashboard or page a skill creates or updates is registered with `assets_add` (assets.add) right after, with its url and `documents` links to the objects it is about. Capture registers artifact and repo urls it finds in dumps and inbox files. `context_brief` lists them in its `assets` section.
 - Altitude: `50000` company, `10000` cross-team, `1000` own surfaces, `100` one engineer or requirement. Each skill names the altitude it works at and when to change it.
 
 ## Ops beyond the AGENTS.md table
@@ -42,9 +43,10 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 | Capture | `inbox.sweep` (write) | Only when Wassim asks for a fresh sweep in a session; the Hourly inbox sweep already runs it. |
 | Capture | `queue.list` (read) | Needed to clear the queue with `queue.resolve`. |
 | Capture | `vault.get` (read) | To check a candidate before linking or queueing. |
-| Capture, Counsel, Shape, Workshop, Coach, Horizon | `scopes.list` (read) | Every deposit needs scope slugs. |
+| Capture, Counsel, Shape, Workshop, Communicate, Coach, Horizon | `scopes.list` (read) | Every deposit and asset needs scope slugs. |
 | Counsel, Shape, Workshop, Communicate, Coach | `vault.search` (read) | To find an id by name; `people.get` itself says to. |
 | Shape | `vault.get` (read) | To read the object being shaped and its history. |
+| Shape, Workshop, Communicate, Coach, Horizon, Pulse | `assets.list` (read) | To find the Doc, deck or whiteboard already registered for an object before making a new one, and to answer "where's the doc on X?". |
 
 ## Gaps
 

@@ -12,7 +12,7 @@ Turn raw input into typed, linked deposits. You decide what the input means. The
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `inbox_list` (inbox.list), `inbox_take` (inbox.take), `vault_search` (vault.search)
-- Writes: `deposits_write` (deposits.write), `queue_add` (queue.add), `queue_resolve` (queue.resolve), `vault_link` (vault.link), `inbox_settle` (inbox.settle)
+- Writes: `deposits_write` (deposits.write), `queue_add` (queue.add), `queue_resolve` (queue.resolve), `vault_link` (vault.link), `inbox_settle` (inbox.settle), `assets_add` (assets.add) for links to artifacts
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs, `queue_list` (queue.list) to clear the queue, `vault_get` (vault.get) to check a candidate
 - Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox.
 - Google Drive connector (your Claude account's Drive): search the folder, read each file, and trash it after `inbox_drop` succeeds.
@@ -40,6 +40,8 @@ Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a 
 **Scope.** Use slugs from `scopes_list`. The work instance has Alethea's scopes; the personal one has Perfect Placement, Specdr, Pandora, AI Anvil, Bousleh and so on. Never guess between two scopes.
 
 **Links.** Every atom links `from_moment` to the dump or meeting it came from. Also: `evidence_for` (signal, observation or finding to a problem or idea), `about` (to a person), `attended_by` (meeting to person), `owed_by` / `owed_to`, `part_of` (to an initiative or strategy), `addresses` (an idea to the problem it answers; optional, since an idea can be a pure opportunity), `related` when nothing else fits. Put links on the `deposits_write` call. Use `vault_link` only to link two objects that already exist.
+
+**Assets.** When a dump, transcript or inbox file mentions the url of a Claude artifact (a Doc, deck, dashboard, whiteboard, design or page), a Google Doc or sheet, or a GitHub repo, register it with `assets_add`: the url, a short title, its `type` (`doc`, `slides`, `sheet`, `dashboard`, `whiteboard`, `design`, `page`, `repo`, `file`, `other`), the scope, and `documents` → the atoms it relates to (write them first, then add the asset). It is never its own atom: no `signal` or `observation` just to hold a link. The same url twice is safe; `assets_add` returns the one already registered and adds the new links. If you can't tell what it documents, register it with no `documents` and say so in the read-back.
 
 **Duplicates.** Before writing a problem, idea, person or decision, `vault_search` for it. If it exists, link the new evidence to it instead of writing a second one. If you aren't sure it's the same thing, queue it with the existing ids as candidates.
 

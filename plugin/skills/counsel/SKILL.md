@@ -15,7 +15,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Writes: `deposits_write` (deposits.write)
 - Added, read-only: `vault_search` (vault.search) to find a person's id by name, as `people_get` itself directs; `scopes_list` (scopes.list) for scope slugs when depositing
 
-`context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments and evidence around a focus at an altitude.
+`context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
 
 ## Altitude
 
@@ -33,7 +33,7 @@ The opener is pitched at their altitude. If the substance sits at a different al
 1. Who and about what. If either is missing, ask one question ("Who's it with?").
 2. `vault_search` with `kinds: [person]` for each person, then `people_get`. If someone isn't in the data, say so and work from what Wassim tells you.
 3. `context_brief` with the topic as `focus`, the person ids as `ids`, and the altitude above.
-4. Judge, and keep it tight:
+4. Judge, and keep it tight. The brief's `assets` are the Docs, decks and other artifacts already written on the topic or for the person; name the one worth rereading before the conversation, with its link. Counsel registers none.
    - **Each party:** what they want underneath their position, what they do if there's no agreement, what they asked for before, and open commitments either way (from `people_get`).
    - **Already answered:** strategy lines, principles, metrics or past decisions that settle part of the question. Cite them by title.
    - **Balance point:** the outcome neither side can improve on alone. Say what it costs Wassim.

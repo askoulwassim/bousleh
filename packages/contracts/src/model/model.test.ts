@@ -24,6 +24,17 @@ describe('kinds', () => {
   });
 });
 
+describe('assets', () => {
+  it('need a url and one of the asset types', () => {
+    expect(KINDS.asset).toMatchObject({ layer: 'work', prefix: 'ast', scopeRequired: true });
+    expect(checkKindFields('asset', { attrs: { url: 'https://claude.ai/artifact/abc', type: 'doc' } }).ok).toBe(true);
+    expect(checkKindFields('asset', { attrs: { type: 'doc' } }).ok).toBe(false);
+    expect(checkKindFields('asset', { attrs: { url: 'not a url', type: 'doc' } }).ok).toBe(false);
+    expect(checkKindFields('asset', { attrs: { url: 'https://github.com/a/b', type: 'video' } }).ok).toBe(false);
+    expect(checkKindFields('asset', { status: 'open', attrs: { url: 'https://github.com/a/b', type: 'repo' } }).ok).toBe(false);
+  });
+});
+
 describe('idea statuses (Oct 25)', () => {
   it('are open, bet, parked, dropped and concluded, with no won or lost', () => {
     expect(KINDS.idea.statuses).toEqual(['open', 'bet', 'parked', 'dropped', 'concluded']);
@@ -68,6 +79,12 @@ describe('links', () => {
     expect(checkLink('concludes', 'problem', 'idea')).not.toBeNull();
   });
 
+  it('lets documents run only from an asset, to any kind', () => {
+    expect(checkLink('documents', 'asset', 'strategy')).toBeNull();
+    expect(checkLink('documents', 'asset', 'person')).toBeNull();
+    expect(checkLink('documents', 'problem', 'idea')).not.toBeNull();
+  });
+
   it('checks layers, kinds and same-kind rules', () => {
     expect(checkLink('evidence_for', 'signal', 'problem')).toBeNull();
     expect(checkLink('evidence_for', 'problem', 'problem')).not.toBeNull();
@@ -81,6 +98,7 @@ describe('ids', () => {
   it('map a prefix back to its kind', () => {
     expect(kindOfId('prb_01JBX0000000000000000000000')).toBe('problem');
     expect(kindOfId('ver_01JBX0000000000000000000000')).toBeUndefined();
+    expect(kindOfId('ast_01JBX0000000000000000000000')).toBe('asset');
     expect(ID_PATTERN.test('prb_01JBX0000000000000000000AB')).toBe(true);
     expect(ID_PATTERN.test('prb_01jbx0000000000000000000ab')).toBe(false);
   });

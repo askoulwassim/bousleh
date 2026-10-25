@@ -47,7 +47,7 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 | --- | --- | --- |
 | anchors | `strategy`, `principle`, `metric`, `watch_list` | strategy: `status` forming / contested / aligned / communicated. metric: lifecycle idea / defined / instrumented / measured / reviewed, `cadence`, `unit`; its owner and the strategy line it serves are links. watch_list: `entries`, each with a `type` (competitor, topic, outlet, person, podcast), `name`, optional `url` and `notes`; tied to its scope through `object_scopes` |
 | evidence | `signal` (feedback), `observation`, `finding` (Horizon) | signal: `source`, `sentiment`. finding: `url`, `published_at`; linked to its watch list with `from_watch_list`. Readings live in `metric_readings`, not as objects |
-| work | `problem`, `idea`, `initiative`, `decision` | idea: `status` open / bet / parked / dropped / concluded, plus `hypothesis` and `kill_criteria`, required once it becomes a bet. An idea reaches `concluded` only when a `decision` is linked to it with `concludes` (see below), never by setting the status directly. decision: `decided_at`, `reversible` |
+| work | `problem`, `idea`, `initiative`, `decision`, `asset` | idea: `status` open / bet / parked / dropped / concluded, plus `hypothesis` and `kill_criteria`, required once it becomes a bet. An idea reaches `concluded` only when a `decision` is linked to it with `concludes` (see below), never by setting the status directly. decision: `decided_at`, `reversible`. asset: `url` (required), `type` doc / slides / sheet / dashboard / whiteboard / design / page / repo / file / other; no status; what it documents are `documents` links |
 | people | `person`, `growth_note` | person: `role` (stakeholder, pm, engineer, analyst, other), `org`, `is_user` (true on the one person this instance belongs to: "me" in Pulse; at most one current person has it, enforced by the store). A growth note is one coaching entry about a person |
 | moments | `dump`, `meeting`, `commitment`, `daily_note` | meeting: `held_at`; attendees are `attended_by` links. commitment: `status` open / done / dropped, `due`; who owes it and to whom are `owed_by` and `owed_to` links |
 
@@ -63,10 +63,13 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 - `concludes`: a decision to the idea it concludes; the idea must be a `bet`. A bet's outcome (scale it, pivot, kill criteria met) is that decision; linking it writes a new version of the idea with status `concluded`, in the same transaction
 - `attended_by`: a meeting to a person who attended it
 - `owed_by`, `owed_to`: a commitment to the person who owes it and the person it's owed to
+- `documents`: an asset to the object it documents (any kind)
 - `supersedes`: an object to the object it replaces (same kind)
 - `related`
 
 New link kinds are added in contracts, not freehand.
+
+**Assets (Oct 25).** The work itself lives outside Bousleh, in Claude artifacts (Docs, Slides decks, dashboards, whiteboards, designs, published pages), Google files and GitHub repos. An `asset` records one by its url and links with `documents` to the strategy, problem, idea, initiative, decision or person it documents. `assets.add` registers one and dedupes by url (ignoring the `#fragment`, `utm_*` parameters and a trailing slash, which are also dropped from the stored url); `assets.list` lists them; `context.brief` has an `assets` section, which, like people, ignores the altitude band. Every mode that creates or updates an artifact registers it, and Capture registers artifact and repo urls found in dumps.
 
 ## 4. Markdown conventions
 

@@ -17,8 +17,8 @@ This skill runs in two settings. Check which one you're in first:
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `watchlists_get` (watchlists.get), `watch_digest` (watch.digest)
-- Writes: `watchlists_set` (watchlists.set), `watch_file` (watch.file), `vault_link` (vault.link) to link a filed finding `evidence_for` a problem or idea it bears on
-- Added, read-only: `scopes_list` (scopes.list) for scope slugs
+- Writes: `watchlists_set` (watchlists.set), `watch_file` (watch.file), `vault_link` (vault.link) to link a filed finding `evidence_for` a problem or idea it bears on, `assets_add` (assets.add) to register every Doc or dashboard you write
+- Added, read-only: `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the competitive brief that already exists for a scope
 
 ## Altitude
 
@@ -86,6 +86,10 @@ You're in the cloud. You can't reach the Mac or the Bousleh MCP server: don't tr
    ```
 
 5. Write nothing for a list with nothing new. End with a one-line count per list.
+
+## Registering assets
+
+Interactive only (the Daily Horizon scan can't reach the engine). Right after you create or update a Claude Doc or dashboard, such as the weekly competitive brief, call `assets_add` with its url, a short title, its `type` (`doc`, `dashboard`), the scope slugs, and `documents` → the ids of what it covers: the watch list, and the findings it cites. Calling it again for the same url is safe, adds any new `documents` links and records a changed title.
 
 ## Output
 
