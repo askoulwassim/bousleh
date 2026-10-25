@@ -56,6 +56,7 @@ if (( CHECK )); then
   else
     echo "  Claude Code: the claude command isn't installed"
   fi
+  if [[ -f "$REPO/packages/home/dist/home.html" ]]; then echo "  Home page: built (packages/home/dist/home.html); publish it with docs/home.md"; else echo "  Home page: not built yet (packages/home/dist/home.html is missing; run this script)"; fi
   if [[ -d "$DATA" ]]; then echo "  Data folder: $DATA ($(find "$DATA" -type f | wc -l | tr -d ' ') files, vault.db $([[ -f "$DATA/vault.db" ]] && echo present || echo absent))"; else echo "  Data folder: $DATA (not created yet)"; fi
   if [[ -d "$DATA-backups" ]]; then echo "  Backups: $(ls "$DATA-backups" | wc -l | tr -d ' ') snapshots in $DATA-backups"; else echo "  Backups: none yet"; fi
   exit 0
@@ -74,7 +75,9 @@ step "2/6 Build"
 (cd "$REPO" && pnpm install --frozen-lockfile --reporter=silent && pnpm -s build)
 BIN="$REPO/packages/mcp-server/dist/bin.js"
 [[ -f "$BIN" ]] || { echo "  build did not produce $BIN" >&2; exit 1; }
-ok "engine and MCP server built"
+HOME_PAGE="$REPO/packages/home/dist/home.html"
+[[ -f "$HOME_PAGE" ]] || { echo "  build did not produce $HOME_PAGE" >&2; exit 1; }
+ok "engine, MCP server and Home page built"
 
 step "3/6 Your data"
 mkdir -p "$DATA"
@@ -144,6 +147,7 @@ ok "the repo is a plugin marketplace (.claude-plugin/marketplace.json); dist/bou
 LEFT+=("Once per Claude account, in Claude Desktop: Customize > Plugins > Add > Add marketplace > Add from a repository, enter askoulwassim/bousleh, then add the Bousleh plugin. It brings the nine skills, Drop included, to Desktop chat and the web, and updates from GitHub. Skip this if the account already has it. Fallback, if that option is missing or the repo can't be reached: upload dist/bousleh.plugin there instead.")
 LEFT+=("Check that Google Drive is connected to this Claude account (Settings, Connectors). Capture and Drop use it for the \"Bousleh Inbox\" folder; Drop creates the folder on first use.")
 LEFT+=("In a Claude Desktop chat, say: \"Bousleh: mark me as the user, I'm <your name>.\" (Once per Mac; skip if done.)")
+LEFT+=("In Claude Desktop's Code tab, on this repo folder, say: \"Publish Home from docs/home.md.\" It publishes the Home page to the same link every time; open it once in Claude Desktop so the phone has a snapshot. Repeat after git pull.")
 LEFT+=("In Claude Desktop's Code tab, on this repo folder, say: \"Set up the scheduled tasks in docs/scheduled-tasks.md.\" That file is the only definition of the Hourly inbox sweep (needs this Mac, hourly) and the Weekly Horizon scan (cloud, Mondays); saying it again updates them, never duplicates. Repeat after git pull.")
 
 step "Check"

@@ -37,13 +37,14 @@ Op names are provisional; the "Package map" tab is the source of truth.
 | contracts | Object kinds, layers, altitude, scope; every op's name and schemas | none (definitions only) | nothing |
 | vault | Storage, migrations, history, typed objects, scopes, assets, people | `vault.*` (health, get, search, supersede, link, unlink), `deposits.*` (write), `scopes.*` (list, add), `commitments.*` (list, close), `people.*` (get, list), `assets.*` (add, list) | contracts |
 | intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (drop, list, take, sweep, settle), `queue.*` (add, list, resolve), `signals.*` (patterns) | contracts, vault |
-| context | The brief at a given altitude, and Pulse's daily picture | `context.*` (brief), `pulse.*` (today) | contracts, vault, metrics, watch |
+| context | The brief at a given altitude, Home's strata (every scope at every altitude in one call), and Pulse's daily picture | `context.*` (brief, strata), `pulse.*` (today) | contracts, vault, metrics, watch |
 | metrics | The registry, its lifecycle and readings | `metrics.*` (upsert, reading, list, history) | contracts, vault |
 | watch | Watch lists per scope, applying a scan's proposed changes, filing scan findings, the digest | `watchlists.*` (get, set, apply), `watch.*` (file, digest) | contracts, vault |
 | engine | Opens `~/.bousleh`, registers every handler, `runOp` with schema checks | none of its own | every package above |
 | mcp-server | One MCP tool per op, generated; no logic of its own | none | engine |
+| home | The Home page: one self-contained HTML file (`dist/home.html`) published as a Claude page; reads ops through the MCP server, no engine logic of its own | none (calls ops through MCP) | contracts (types only) |
 
-Only `vault` and `intake` touch your data on disk directly. Every package imports `contracts`, and `contracts` imports nothing.
+Only `vault` and `intake` touch your data on disk directly. Every package imports `contracts`, and `contracts` imports nothing. `home` never imports the engine: it runs in Claude and reaches the engine only through the MCP server, like any other door.
 
 ### Which skill calls which ops
 
@@ -59,7 +60,7 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 | Coach | `people.list`, `people.get`, `context.brief` | `deposits.write`, `assets.add` | Docs |
 | Horizon | `watchlists.get`, `watch.digest`, `queue.list` | `watchlists.set`, `watchlists.apply`, `watch.file`, `queue.resolve` (removals it queued), `vault.link`, `assets.add`; `Bousleh Watch Lists.md` in the Drive folder "Bousleh", through the Google Drive connector | Home, Docs |
 
-The calendar is the source for Wassim's schedule: Pulse and Counsel read it through the Google Calendar connector, match attendees to people by their `emails` attr (else by name), and Bousleh keeps only meetings with prep or notes (a planned meeting is Counsel's prep, a held one the debrief). Every Doc, deck, whiteboard, design, dashboard or page a mode creates or updates is registered with `assets.add` right away, linked with `documents` to the objects it is about, so `context.brief` can list it. Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Weekly Horizon scan runs in the cloud and can't reach the Mac: it reads the watch lists from `Bousleh Watch Lists.md` in the Drive folder "Bousleh" (which Horizon rewrites after every watch list change, and the Hourly inbox sweep after it files a scan) and only writes files to the Drive inbox. Each scan file proposes watch list changes; filing it on the Mac runs `watchlists.apply`, which applies the scan's adds, removes only entries the scan added, and queues any removal of Wassim's own entries for him (the rule is in the op, not only the skill).
+The calendar is the source for Wassim's schedule: Pulse and Counsel read it through the Google Calendar connector, match attendees to people by their `emails` attr (else by name), and Bousleh keeps only meetings with prep or notes (a planned meeting is Counsel's prep, a held one the debrief). Every Doc, deck, whiteboard, design, dashboard or page a mode creates or updates is registered with `assets.add` right away, linked with `documents` to the objects it is about, so `context.brief` can list it. Home (`packages/home`, published per `docs/home.md`) reads `context.strata`, `pulse.today`, `watch.digest`, `watchlists.get`, `queue.list`, `commitments.list` and `assets.list` through the MCP server, plus today's events from the Google Calendar connector; its only write is `vault.supersede` on a finding (Save: `to_read`, Skip: `dismissed`). Every other button copies a ready prompt for a mode. The Hourly inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Weekly Horizon scan runs in the cloud and can't reach the Mac: it reads the watch lists from `Bousleh Watch Lists.md` in the Drive folder "Bousleh" (which Horizon rewrites after every watch list change, and the Hourly inbox sweep after it files a scan) and only writes files to the Drive inbox. Each scan file proposes watch list changes; filing it on the Mac runs `watchlists.apply`, which applies the scan's adds, removes only entries the scan added, and queues any removal of Wassim's own entries for him (the rule is in the op, not only the skill).
 
 ### Adding an op
 
@@ -89,10 +90,10 @@ bousleh.nosync/              this repo (private GitHub: askoulwassim/bousleh)
     watch/                   watch lists, filing scan results
     engine/                  opens your data, registers handlers, runs ops
     mcp-server/              tools generated from the ops registry
+    home/                    the Home page (dist/home.html, a Claude page; docs/home.md)
   plugin/
     skills/                  capture, pulse, counsel, shape, workshop, communicate, coach, horizon
-  home/                      Home page source, after the design session (no Home code before it)
-  docs/design/               design notes
+  docs/design/               design notes; docs/design/home/ holds the Claude Design boards for Home
 ```
 
 ```
@@ -109,14 +110,14 @@ bousleh.nosync/              this repo (private GitHub: askoulwassim/bousleh)
 | --- | --- |
 | Code | Private TypeScript monorepo `bousleh` in Wassim's personal GitHub (askoulwassim), one package per module, AGENTS.md (no CLAUDE.md) |
 | Repo location | `~/Documents/Claude/Projects/Bousleh/bousleh.nosync/` (Documents syncs to iCloud; the `.nosync` folder name keeps node_modules and build output out of iCloud) |
-| Toolchain | Mirrors Perfect Placement: pnpm workspaces, TypeScript, Biome, Vitest, zod 4, better-sqlite3, `@modelcontextprotocol/sdk`, Node 22 |
+| Toolchain | Mirrors Perfect Placement: pnpm workspaces, TypeScript, Biome, Vitest, zod 4, better-sqlite3, `@modelcontextprotocol/sdk`, Node 22; esbuild bundles Home into one page |
 | Storage | SQLite for structure, markdown for long-form, linked by id |
 | History | "Supersedes" links; nothing is overwritten |
 | Data home | `~/.bousleh`, outside the code repo, never committed, local only, never pushed anywhere, no git |
 | Host | Personal Mac; the work Mac runs the same build later |
 | MCP transport | stdio, local only, no tunnel |
 | Actions | One ops registry (core rule 2). Op names are dotted (`inbox.sweep`); MCP tool names are the same with underscores (`inbox_sweep`) |
-| Packages | `contracts`, `vault`, `intake`, `context`, `metrics`, `watch`, `engine`, `mcp-server` (see the package table) |
+| Packages | `contracts`, `vault`, `intake`, `context`, `metrics`, `watch`, `engine`, `mcp-server`, `home` (see the package table) |
 | Search v0 | SQLite full-text search plus links; no embeddings. Graphiti is the next step later, not vectors |
 | Modes | Eight skills in one Claude plugin: Capture, Pulse, Counsel, Shape, Workshop, Communicate, Coach, Horizon |
 | Phone capture | The Drop skill in the Claude app saves each dictation as a new `.md` file in the Google Drive folder "Bousleh Inbox" (one file per capture, never appended), through the Claude account's Google Drive connector. On the Mac, Capture reads the folder through the same connector, hands each file to `inbox.drop`, then trashes it in Drive (moved, not copied). No Google Drive desktop app and no Full Disk Access (Oct 25: macOS blocks other apps from the synced Drive folder). The engine never calls Google itself |
@@ -126,7 +127,7 @@ bousleh.nosync/              this repo (private GitHub: askoulwassim/bousleh)
 | Scheduled tasks | Defined only in `docs/scheduled-tasks.md` (each task's place, schedule, needs and exact prompt). In Claude Desktop's Code tab on the repo, "Set up the scheduled tasks in docs/scheduled-tasks.md" creates or updates them; nobody sets one up by hand. Claude Desktop keeps a task's schedule outside any file a script could write, and headless `claude -p` can't reach claude.ai connectors, so a script can't do this step. The Hourly inbox sweep needs the Mac and runs hourly from 07:00 to 22:00 (a run that can't reach the Mac ends at once; captures wait in Drive); the Weekly Horizon scan runs in the cloud on Mondays at 06:40 |
 | Horizon scan | The Weekly Horizon scan (daily until Oct 25: too noisy), a Claude scheduled task in the cloud: web search over the last seven days, findings and proposed watch list changes written to the Drive inbox. Watch lists reach it through `Bousleh Watch Lists.md` in the Drive folder "Bousleh", not its prompt. Podcasts: show notes, plus a transcript only when the show publishes one; no transcription |
 | Voice | Dictation in Claude, plus meeting transcripts handed to Capture. No Voicebox, no messaging gateway |
-| Home | A Claude page. No Home code before a Claude Design session exists. Live engine data in the Claude desktop app, a daily snapshot elsewhere |
+| Home | A Claude page built from `packages/home` to the design in `docs/design/home.md` (the Strata grid plus the Horizon front page). Live engine data in the Claude desktop app through the local server (`host:bousleh`); elsewhere (phone, web) the last snapshot, which each live load saves when it changed. Published only by saying "Publish Home from docs/home.md" in Claude Desktop's Code tab; the work instance publishes its own |
 | Later | Graphiti, the signal bridge between accounts, live phone access, open-sourcing |
 
 ## Set up a Mac
@@ -137,7 +138,7 @@ bousleh.nosync/              this repo (private GitHub: askoulwassim/bousleh)
 
 ```sh
 pnpm install
-pnpm build        # tsc for every package (packages resolve each other through dist)
+pnpm build        # tsc for every package (packages resolve each other through dist); esbuild for Home
 pnpm typecheck    # includes test files; run after build
 pnpm test         # vitest in every package; run after build
 pnpm lint         # biome check (pnpm format to fix formatting)

@@ -1,0 +1,30 @@
+{
+  "title": "Bousleh Home",
+  "icon": "compass",
+  "description": "Every scope at every altitude, what needs you, and what Horizon found: live from the bousleh server in the Claude desktop app, the last snapshot elsewhere.",
+  "file": "packages/home/dist/home.html",
+  "capabilities": {
+    "mcp": {
+      "servers": [
+        {
+          "server": "host:bousleh",
+          "tools": [
+            "context_strata",
+            "pulse_today",
+            "watch_digest",
+            "watchlists_get",
+            "queue_list",
+            "commitments_list",
+            "assets_list",
+            "vault_supersede"
+          ]
+        },
+        { "server": "Google Calendar", "tools": ["list_events"] }
+      ]
+    },
+    "db": {
+      "rules": [{ "path": "", "read": "owner", "write": "owner" }]
+    },
+    "user": {}
+  }
+}

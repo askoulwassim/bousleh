@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IdSchema, ScopeSlugSchema } from '../model/ids.js';
+import { IdSchema, SCOPE_KINDS, ScopeSlugSchema } from '../model/ids.js';
 import {
   CONCLUDABLE_IDEA_STATUSES,
   INITIATIVE_STATUSES,
@@ -8,8 +8,9 @@ import {
   METRIC_STATUSES,
   PERSON_ROLES,
   PROBLEM_STATUSES,
+  STRATEGY_STATUSES,
 } from '../model/kinds.js';
-import { AltitudeSchema } from '../model/layers.js';
+import { AltitudeSchema, LAYERS, type Layer, LayerSchema } from '../model/layers.js';
 import { AssetTypeSchema } from './assets.js';
 import { CommitmentViewSchema, PersonRefSchema } from './commitments.js';
 import { defineOp } from './define.js';
@@ -323,7 +324,121 @@ export const pulseToday = defineOp({
   readOnly: true,
 });
 
+// ---------------------------------------------------------------- context.strata
+
+/** context.strata puts at most this many objects in a cell unless per_cell says otherwise. */
+export const STRATA_PER_CELL = 6;
+
+/** Held meetings older than this many days (before the date) are left out of the strata. */
+export const STRATA_HELD_MEETING_DAYS = 14;
+
+/** One object in a strata cell: enough to draw it. vault.get on its id gives the rest. */
+export const StrataObjectSchema = z.object({
+  id: IdSchema,
+  kind: KindSchema,
+  layer: LayerSchema,
+  title: z.string(),
+  /** The status it reads as: objects written before their kind had statuses get the kind's default. Null for kinds with no status. */
+  status: z.string().nullable(),
+  altitude: AltitudeSchema,
+  scopes: z.array(ScopeSlugSchema),
+  /** True when it needs Wassim now: an open commitment he owes that is overdue, due on the date or has no due date. */
+  needs_you: z.boolean(),
+  /** When it is updated: its current version's time. */
+  updated_at: isoDateTime,
+  /** An idea's rank among ideas, 1 the top. */
+  rank: z.number().int().min(1).optional(),
+  /** A commitment's due date; null when it has none. */
+  due: z.iso.date().nullable().optional(),
+  /** A commitment's direction relative to me: owed by me, owed to me, or other. */
+  owed: z.enum(['by_me', 'to_me', 'other']).optional(),
+  /** A meeting's held_at, as stored (a date or a date-time). */
+  held_at: z.string().optional(),
+  /** A bet or running idea: when it entered its current status (the first version of the run of versions with that status). */
+  since: isoDateTime.optional(),
+  /** A bet's hypothesis and kill criteria, when it has them. */
+  hypothesis: z.string().optional(),
+  kill_criteria: z.string().optional(),
+  /** A person's role. */
+  role: z.enum(PERSON_ROLES).optional(),
+  /** A person's last touchpoint (as people.list reports it). */
+  last_touchpoint: z.string().optional(),
+  /** A watch list's entry count, and how many of its findings are still new. */
+  entries: z.number().int().min(0).optional(),
+  new_findings: z.number().int().min(0).optional(),
+  /** A finding's url. */
+  url: z.string().optional(),
+});
+export type StrataObject = z.output<typeof StrataObjectSchema>;
+
+/** Objects per layer. */
+const layerCounts = z.object(Object.fromEntries(LAYERS.map((layer) => [layer, z.number().int().min(0)])) as Record<Layer, z.ZodNumber>);
+
+export const contextStrata = defineOp({
+  name: 'context.strata',
+  description: [
+    'The whole cross-section in one call, for Home: altitude as rows (50000, 10000, 1000, 100) and scopes as columns. Each cell holds the live objects of that scope (child scopes included) at that altitude, needs-you first (open commitments owed by me that are overdue, due on the date or undated), then bets, then what is moving (running ideas, active initiatives, planned meetings), then the newest.',
+    'Left out, and counted as closed in each cell: done and dropped initiatives, solved and dropped problems, concluded and dropped ideas, done and dropped commitments, dismissed findings. Also left out: objects another object replaces, glossary terms, assets (counted per column instead), dumps, daily notes, growth notes, and meetings held more than 14 days before the date. An object in several scopes appears in each column. A person with no scope of their own is placed in the columns of the objects linked to them, as people.list does.',
+    'scopes (slugs) picks the columns in that order; default: every top-level scope, oldest first. per_cell caps each cell (count and more say how many there are). date (default today) decides what is overdue. Read-only.',
+  ].join(' '),
+  input: z.object({
+    scopes: z
+      .array(ScopeSlugSchema)
+      .min(1)
+      .max(12)
+      .optional()
+      .describe('The columns, in order. Default: every top-level scope, oldest first.'),
+    per_cell: z.number().int().min(1).max(50).default(STRATA_PER_CELL).describe('Most objects listed in one cell.'),
+    date: z.iso.date().optional().describe("The day, YYYY-MM-DD. Default: today on this machine's clock."),
+  }),
+  output: z.object({
+    date: z.iso.date(),
+    /** The person marked is_user; null when nobody is, and then needs_you counts any open commitment overdue, due or undated. */
+    me: PersonRefSchema.nullable(),
+    columns: z.array(
+      z.object({
+        slug: ScopeSlugSchema,
+        name: z.string(),
+        kind: z.enum(SCOPE_KINDS),
+        /** The column's strategy (the highest, newest live one in the scope or its child scopes); null when it has none. */
+        strategy: z.object({ id: IdSchema, title: z.string(), status: z.enum(STRATEGY_STATUSES) }).nullable(),
+        /** Registered assets (Docs, decks, pages…) in the scope or its child scopes. */
+        assets: z.number().int().min(0),
+      }),
+    ),
+    rows: z.array(z.object({ altitude: AltitudeSchema, label: z.string() })),
+    /** One per column and row, column by column, rows from 50000 down. */
+    cells: z.array(
+      z.object({
+        scope: ScopeSlugSchema,
+        altitude: AltitudeSchema,
+        objects: z.array(StrataObjectSchema),
+        /** Live objects in the cell. */
+        count: z.number().int().min(0),
+        /** Live objects beyond per_cell. */
+        more: z.number().int().min(0),
+        /** Objects left out as closed (done, dropped, solved, concluded, dismissed). */
+        closed: z.number().int().min(0),
+        /** Live objects in the cell by kind, the ones beyond per_cell included. */
+        kinds: z.record(z.string(), z.number().int().min(1)),
+      }),
+    ),
+    totals: z.object({
+      /** Distinct live objects in the grid, per layer. */
+      layers: layerCounts,
+      /** Distinct objects that need you. */
+      needs_you: z.number().int().min(0),
+      /** Cells with no live object. */
+      empty_cells: z.number().int().min(0),
+      /** Distinct objects left out as closed. */
+      closed: z.number().int().min(0),
+    }),
+  }),
+  readOnly: true,
+});
+
 export const contextOps = {
   'context.brief': contextBrief,
+  'context.strata': contextStrata,
   'pulse.today': pulseToday,
 } as const;

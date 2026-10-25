@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bousleh Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0B0809}
+a{color:#E8668C}a:hover{color:#F28FAC}
+button{font:inherit;color:inherit;cursor:pointer}
+.eb{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8C7B83;font-weight:500}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.disp{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.card{background:#171215;border:1px solid #2C2227;border-radius:12px}
+.ic{width:44px;height:44px;border-radius:10px;border:0;background:transparent;color:#AE9EA5;display:flex;align-items:center;justify-content:center}
+.btn{height:44px;padding:0 18px;border-radius:10px;border:0;background:#A3264C;color:#FFF0F4;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.btn2{height:44px;padding:0 16px;border-radius:10px;border:1px solid #3D2F36;background:transparent;color:#F2EAED;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.sm{height:34px;padding:0 12px;font-size:13px}
+.chip{height:24px;padding:0 10px;border-radius:999px;border:1px solid #3D2F36;background:transparent;display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#AE9EA5;white-space:nowrap}
+.trunc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cell{background:#171215;border:1px solid #2C2227;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0;text-align:left}
+.void{border:1px dashed #2C2227;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#3D2F36;font-family:'JetBrains Mono',monospace;font-size:12px;background:transparent}
+.alt{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:0 14px 0 0;border:0;border-right:2px solid #3D2F36;position:relative;background:transparent;text-align:left}
+.lch{display:flex;flex-direction:column;gap:6px;justify-content:center}
+.lb{height:40px;border-radius:10px;border:1px solid #3D2F36;background:transparent;display:flex;align-items:center;gap:10px;padding:0 12px;text-align:left;font-weight:600;font-size:13px}
+.lb .m{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;color:#8C7B83;text-transform:uppercase;display:block;font-weight:500}
+.it{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
+.ro{display:flex;flex-direction:column;gap:2px}
+.skel{height:6px;border-radius:3px;background:#2C2227}
+.beat{display:grid;grid-template-columns:110px minmax(0,1fr) 22px;gap:10px;align-items:center}
+@media (hover:hover){.cell:hover{border-color:#5A1A30}.btn:hover{background:#B8305A}.btn2:hover,.lb:hover,.chip:hover{border-color:#C93A63}.ic:hover{background:#211A1E;color:#F2EAED}.alt:hover{border-right-color:#C93A63}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;background:#0B0809 radial-gradient(900px 620px at 100% 0%, rgba(110,20,48,.42), transparent 70%);color:#F2EAED;font-family:Figtree,system-ui,sans-serif;font-size:14px;font-weight:500">
+
+<nav aria-label="Rail" style="flex:0 0 76px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 0;border-right:1px solid #2C2227;box-sizing:border-box">
+<svg width="40" height="40" viewBox="0 0 100 100" role="img" aria-label="Bousleh"><circle cx="50" cy="50" r="49" fill="#171215" stroke="#3D2F36" stroke-width="1.5"></circle><circle cx="50" cy="50" r="38" fill="none" stroke="#2C2227" stroke-width="7"></circle><circle cx="50" cy="50" r="38" fill="none" stroke="#C93A63" stroke-width="7" stroke-linecap="round" stroke-dasharray="195.8 238.8" transform="rotate(-90 50 50)"></circle><path d="M31,42 L31,46 Q31,54 39,54 L61,54 Q69,54 69,46 L69,32" fill="none" stroke="#171215" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"></path><path d="M31,42 L31,46 Q31,54 39,54 L61,54 Q69,54 69,46 L69,32" fill="none" stroke="#F2EAED" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"></path><polygon points="50,61 55.5,68 50,75 44.5,68" fill="#E8668C" stroke="#171215" stroke-width="2"></polygon><circle cx="15.6" cy="33.8" r="6.5" fill="#F2EAED" stroke="#171215" stroke-width="3"></circle></svg>
+<div style="height:16px"></div>
+<button class="ic" aria-label="Home" style="background:#211A1E;color:#E8668C"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"></path></svg></button>
+<button class="ic" aria-label="Docs and decks, 34"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"></path><path d="M14 3v5h5"></path></svg></button>
+<button class="ic" aria-label="Specdr Hub"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg></button>
+<div style="flex:1"></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:4px" title="Hourly inbox sweep"><span style="width:8px;height:8px;border-radius:999px;background:#62C4BC"></span><span class="mono" style="font-size:10px;color:#8C7B83">20:43</span></div>
+<button class="ic" aria-label="Switch to work Home" style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;border:1px solid #2C2227">P·W</button>
+<button class="ic" aria-label="Ask" style="background:#A3264C;color:#FFF0F4;font-size:20px;font-weight:600">›</button>
+</nav>
+
+<main style="flex:999 1 560px;min-width:0;padding:32px 48px 64px;box-sizing:border-box;max-width:1364px;display:flex;flex-direction:column;gap:28px">
+
+<header style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:24px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span class="eb">Sun 25 Oct · Personal · Live</span>
+<h1 class="disp" style="margin:0;font-size:44px;line-height:1;letter-spacing:-.035em"><span style="color:#E3B65C">1</span> needs you at 100 ft</h1>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:20px;align-items:center">
+<div style="display:flex;gap:18px;flex-wrap:wrap">
+<div class="ro"><span class="eb">Owed me</span><span class="disp" style="font-size:24px;color:#74626A">0</span></div>
+<div class="ro"><span class="eb">Meetings</span><span class="disp" style="font-size:24px;color:#74626A">0</span></div>
+<div class="ro"><span class="eb">Inbox</span><span class="disp" style="font-size:24px;color:#C93A63">Clear</span></div>
+<div class="ro"><span class="eb">Touch due</span><span class="disp" style="font-size:24px">Nov 6</span></div>
+<div class="ro"><span class="eb">Alethea</span><span class="disp" style="font-size:24px">15d</span></div>
+</div>
+<button class="btn2">Prep Weekly</button>
+<button class="btn">Answer 3</button>
+</div>
+</header>
+
+<section class="card" aria-label="Strata" style="padding:20px;display:grid;grid-template-columns:132px repeat(5,minmax(0,1fr)) 200px;gap:10px;background:#120E10">
+
+<span></span>
+<div style="display:flex;flex-direction:column;gap:2px;padding:0 4px 6px"><span style="font-weight:600;font-size:15px">Specdr</span><span class="eb" style="font-size:10px">Product · 20 docs</span></div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:0 4px 6px"><span style="font-weight:600;font-size:15px">Placement</span><span class="eb" style="font-size:10px">Product · 5 docs</span></div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:0 4px 6px"><span style="font-weight:600;font-size:15px;color:#AE9EA5">Pandora</span><span class="eb" style="font-size:10px">Project · 0 docs</span></div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:0 4px 6px"><span style="font-weight:600;font-size:15px">Anvil</span><span class="eb" style="font-size:10px">Company · 6 docs</span></div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:0 4px 6px"><span style="font-weight:600;font-size:15px">Bousleh</span><span class="eb" style="font-size:10px">Project · 2 docs</span></div>
+<span class="eb" style="align-self:end;padding-bottom:6px">Launch here</span>
+
+<button class="alt" style="min-height:118px"><span class="disp" style="font-size:24px;line-height:1">50,000</span><span class="eb" style="font-size:10px">Company</span><span style="display:flex;gap:2px;margin-top:6px"><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span></span></button>
+<div class="cell"><div style="display:flex;gap:3px"><span style="flex:1;height:5px;border-radius:2px;background:#AE9EA5"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span></div><span style="font-size:13px;line-height:1.35;color:#F2EAED">Own the team and enterprise brownfield loop</span><span class="eb" style="font-size:10px">Forming</span></div>
+<div class="cell"><div style="display:flex;gap:3px"><span style="flex:1;height:5px;border-radius:2px;background:#AE9EA5"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span></div><span style="font-size:13px;line-height:1.35;color:#AE9EA5">A job search run by your own agents</span><span class="eb" style="font-size:10px">Forming</span></div>
+<div class="cell"><div style="display:flex;gap:3px"><span style="flex:1;height:5px;border-radius:2px;background:#AE9EA5"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span></div><span style="font-size:13px;line-height:1.35;color:#AE9EA5">A self-hosted second brain</span><span class="eb" style="font-size:10px">Forming</span></div>
+<div class="cell"><div style="display:flex;gap:3px"><span style="flex:1;height:5px;border-radius:2px;background:#AE9EA5"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span></div><span style="font-size:13px;line-height:1.35;color:#AE9EA5">Make the product you already have better, fast</span><span class="eb" style="font-size:10px">Forming</span></div>
+<div class="cell"><div style="display:flex;gap:3px"><span style="flex:1;height:5px;border-radius:2px;background:#AE9EA5"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span><span style="flex:1;height:5px;border-radius:2px;background:#2C2227"></span></div><span style="font-size:13px;line-height:1.35;color:#AE9EA5">A personal operating system for product leadership</span><span class="eb" style="font-size:10px">Forming</span></div>
+<div class="lch"><button class="lb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8668C" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 3v15h15M3 6h15v15"></path></svg><span><span class="m">Shape</span>Work the strategy</span></button></div>
+
+<button class="alt" style="min-height:118px"><span class="disp" style="font-size:24px;line-height:1">10,000</span><span class="eb" style="font-size:10px">Cross-team</span><span style="display:flex;gap:2px;margin-top:6px"><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span></span></button>
+<div class="cell">
+<div class="it"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#62C4BC"></polygon></svg><span class="trunc" style="flex:1">Agentic-first Hub</span><span class="mono" style="font-size:10px;color:#62C4BC">ACTIVE</span></div>
+<div class="it"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#AE9EA5" stroke-width="2"></circle></svg><span style="flex:1">Peter</span><span class="mono" style="font-size:10px;color:#8C7B83">23 OCT</span></div>
+<div class="it"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg><span style="flex:1;color:#AE9EA5">Watching 7</span><span class="mono" style="font-size:10px;color:#62C4BC">0 NEW</span></div>
+</div>
+<button class="void" aria-label="Placement at 10,000: nothing yet">·</button>
+<button class="void" aria-label="Pandora at 10,000: nothing yet">·</button>
+<div class="cell">
+<div class="it"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg><span style="flex:1;color:#AE9EA5">Watching 2</span><span class="mono" style="font-size:10px;color:#62C4BC">0 NEW</span></div>
+</div>
+<div class="cell"><div class="it"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><span class="trunc" style="flex:1;color:#AE9EA5">Integrate on top of Specdr</span></div><span class="eb" style="font-size:9px">Idea · links Specdr</span></div>
+<div class="lch"><button class="lb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#62C4BC" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 18h18M7 18a5 5 0 0 1 10 0M12 5v3M5.6 9.6l1.8 1.8M18.4 9.6l-1.8 1.8"></path></svg><span><span class="m">Horizon</span>Read the scan</span></button><button class="lb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8668C" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4h4l6 4V6L7 10H3z"></path><path d="M17 9a4 4 0 0 1 0 6"></path></svg><span><span class="m">Communicate</span>Brief Peter</span></button></div>
+
+<button class="alt" style="min-height:280px"><span class="disp" style="font-size:24px;line-height:1">1,000</span><span class="eb" style="font-size:10px">My surfaces</span><span style="display:flex;flex-wrap:wrap;gap:2px;margin-top:6px;width:64px"><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#C93A63"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#5A4650"></span></span></button>
+<div class="cell" style="gap:12px;border-color:rgba(201,58,99,.45)">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="display:flex;flex-direction:column;gap:4px;min-width:0"><span class="eb" style="font-size:9px;color:#E8668C">Bet</span><span style="font-weight:600;font-size:14px;line-height:1.25">The POC lane is the killer feature</span></div><svg width="44" height="44" viewBox="0 0 44 44" role="img" aria-label="30 day clock, not started" style="flex:none"><circle cx="22" cy="22" r="18" fill="none" stroke="#2C2227" stroke-width="4"></circle><line x1="22" y1="2" x2="22" y2="7" stroke="#E8668C" stroke-width="2"></line><text x="22" y="26" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-weight="800" font-size="11" fill="#F2EAED">30d</text></svg></div>
+<div style="display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:2px"><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span><span style="height:4px;background:#3D2F36"></span></div>
+<span class="mono" style="font-size:10px;color:#8C7B83">0/9 POCS · 0/1 PROMOTED · STARTS HUB DAY</span>
+<div style="border-top:1px solid #2C2227;padding-top:10px;display:flex;flex-direction:column;gap:6px">
+<div class="it"><span class="mono" style="font-size:10px;color:#8C7B83;width:84px">Experiments</span><span style="display:flex;gap:3px"><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg></span><span class="mono" style="font-size:10px;color:#8C7B83">7 RANKED</span></div>
+<div class="it"><span class="mono" style="font-size:10px;color:#8C7B83;width:84px">Problems</span><span style="display:flex;gap:3px"><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#C93A63"></polygon></svg></span><span class="mono" style="font-size:10px;color:#8C7B83">1 OPEN</span></div>
+<div class="it"><span class="mono" style="font-size:10px;color:#8C7B83;width:84px">Metrics</span><span style="display:flex;gap:3px"><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg></span><span class="mono" style="font-size:10px;color:#8C7B83">IDEA</span></div>
+<div class="it"><span class="mono" style="font-size:10px;color:#8C7B83;width:84px">Hub</span><span class="mono" style="font-size:11px">3 POCS · <span style="color:#62C4BC">1 PROMOTED 26D</span></span></div>
+</div>
+</div>
+<button class="void" aria-label="Placement at 1,000: nothing yet">·</button>
+<button class="void" aria-label="Pandora at 1,000: nothing yet">·</button>
+<button class="void" aria-label="Anvil at 1,000: nothing yet">·</button>
+<div class="cell"><div class="it"><span class="mono" style="font-size:10px;color:#8C7B83;flex:1">Metrics</span><span style="display:flex;gap:3px"><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg><svg width="9" height="9" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg></span></div><span style="font-size:13px;color:#AE9EA5;line-height:1.35">Captures filed alone · Mornings in Pulse</span><span class="eb" style="font-size:9px">Idea · weekly</span></div>
+<div class="lch"><button class="lb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8668C" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"></path></svg><span><span class="m">Workshop</span>Code is truth</span></button><button class="lb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8668C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-5 4 10 2-5h6"></path></svg><span><span class="m">Pulse</span>Where am I?</span></button><button class="lb" style="opacity:.55"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8C7B83" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="7" r="3"></circle><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M18 14V6M15 9l3-3 3 3"></path></svg><span><span class="m">Coach</span>PMs from Nov 9</span></button></div>
+
+<button class="alt" style="min-height:130px;border-right-color:#C93A63"><span class="disp" style="font-size:24px;line-height:1">100</span><span class="eb" style="font-size:10px">One thing</span><span style="display:flex;gap:2px;margin-top:6px"><span style="width:6px;height:6px;background:#E3B65C"></span><span style="width:6px;height:6px;background:#62C4BC"></span><span style="width:6px;height:6px;background:#5A4650"></span><span style="width:6px;height:6px;background:#C93A63"></span><span style="width:6px;height:6px;background:#C93A63"></span></span><span style="position:absolute;right:-9px;top:50%;margin-top:-8px;width:0;height:0;border-top:8px solid transparent;border-bottom:8px solid transparent;border-right:9px solid #C93A63"></span></button>
+<div class="cell">
+<div class="it"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11.5,11 0.5,11" fill="#62C4BC"></polygon></svg><span style="flex:1">Specdr Weekly</span><span class="mono" style="font-size:10px;color:#62C4BC">FRI 15:00</span></div>
+<div class="it"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#AE9EA5" stroke-width="2"></circle></svg><span style="flex:1">David</span><span class="mono" style="font-size:10px;color:#8C7B83">23 OCT</span></div>
+<div class="it"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#C93A63"></polygon></svg><span style="flex:1;color:#AE9EA5">2 decided today</span></div>
+</div>
+<button class="void" aria-label="Placement at 100: nothing yet">·</button>
+<button class="void" aria-label="Pandora at 100: nothing yet">·</button>
+<button class="void" aria-label="Anvil at 100: nothing yet">·</button>
+<div class="cell" style="border-color:rgba(227,182,92,.5);background:rgba(227,182,92,.08)">
+<div class="it"><svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11.5,11 0.5,11" fill="#E3B65C"></polygon></svg><span class="eb" style="font-size:9px;color:#E3B65C">You owe · no date</span></div>
+<span style="font-weight:600;font-size:14px;line-height:1.3">Answer the open seeding questions</span>
+<div style="display:flex;gap:3px"><span style="flex:1;height:5px;border-radius:2px;background:#3D2F36"></span><span style="flex:1;height:5px;border-radius:2px;background:#3D2F36"></span><span style="flex:1;height:5px;border-radius:2px;background:#3D2F36"></span></div>
+</div>
+<div class="lch"><button class="lb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8668C" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h11v8H8l-4 3z"></path><path d="M15 9h5v8l-3-2h-6v-2"></path></svg><span><span class="m">Counsel</span>Prep Weekly</span></button><button class="lb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8668C" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg><span><span class="m">Capture</span>Brain dump</span></button></div>
+</section>
+
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:center" class="eb">
+<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center">
+<span style="display:flex;gap:6px;align-items:center"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="#3D2F36" stroke="#AE9EA5"></rect></svg>Anchor</span>
+<span style="display:flex;gap:6px;align-items:center"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#3D2F36" stroke="#AE9EA5"></circle></svg>Evidence</span>
+<span style="display:flex;gap:6px;align-items:center"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,0.5 11.5,6 6,11.5 0.5,6" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg>Work</span>
+<span style="display:flex;gap:6px;align-items:center"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#AE9EA5" stroke-width="2"></circle></svg>People</span>
+<span style="display:flex;gap:6px;align-items:center"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><polygon points="6,1 11.5,11 0.5,11" fill="#3D2F36" stroke="#AE9EA5"></polygon></svg>Moment</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:18px;align-items:center">
+<span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;background:#E3B65C"></span>Needs you</span>
+<span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;background:#C93A63"></span>Yours</span>
+<span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;background:#62C4BC"></span>Moving</span>
+<span style="display:flex;gap:6px;align-items:center"><span style="width:8px;height:8px;background:#7E8696"></span>Closed</span>
+</div>
+</div>
+
+<section aria-label="Horizon" style="border-top:2px solid #F2EAED;padding-top:18px;display:flex;flex-direction:column;gap:20px">
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;border-bottom:1px solid #3D2F36;padding-bottom:14px">
+<div style="display:flex;align-items:baseline;gap:18px;flex-wrap:wrap"><span class="disp" style="font-size:56px;line-height:.9;letter-spacing:-.05em">Horizon</span><span class="eb">No. 1 · Mon 26 Oct · Specdr · Anvil</span></div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip" style="border-style:dashed">Sample until first scan</span><button class="chip" style="color:#F2EAED;border-color:#C93A63;height:28px">All</button><button class="chip" style="height:28px">Specdr</button><button class="chip" style="height:28px">Anvil</button><button class="btn2 sm">Reading list · 0</button></div>
+</div>
+<div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,1fr);gap:0">
+<article style="padding-right:28px;border-right:1px solid #2C2227;display:flex;flex-direction:column;gap:14px">
+<span class="eb" style="font-size:10px">Findings filed this week · Mon to Sun</span>
+<div style="height:150px;border-radius:10px;background:#110D0F;border:1px solid #2C2227;display:flex;align-items:flex-end;padding:16px;box-sizing:border-box;gap:6px">
+<span style="flex:1;height:30%;background:#2C2227;border-radius:3px"></span><span style="flex:1;height:55%;background:#2C2227;border-radius:3px"></span><span style="flex:1;height:40%;background:#2C2227;border-radius:3px"></span><span style="flex:1;height:80%;background:#5A1A30;border-radius:3px"></span><span style="flex:1;height:35%;background:#2C2227;border-radius:3px"></span><span style="flex:1;height:20%;background:#2C2227;border-radius:3px"></span><span style="flex:1;height:45%;background:#2C2227;border-radius:3px"></span>
+</div>
+<div style="display:flex;gap:8px;align-items:center"><span class="chip" style="height:22px;border-color:rgba(98,196,188,.45);color:#62C4BC">New</span><span class="eb">Specdr · 10K · [source] · 2d</span></div>
+<h2 class="disp" style="margin:0;font-size:34px;line-height:1.02;letter-spacing:-.03em;color:#AE9EA5">[Lead: the change on the Specdr watch list that bears on the POC lane bet]</h2>
+<div style="display:flex;flex-direction:column;gap:8px"><span class="skel"></span><span class="skel"></span><span class="skel" style="width:55%"></span></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn2 sm">Open</button><button class="btn2 sm">Save</button><button class="btn2 sm">Skip</button><button class="btn2 sm" style="color:#E8668C;border-color:rgba(201,58,99,.5)">For Shape</button></div>
+</article>
+<div style="padding:0 24px;border-right:1px solid #2C2227;display:flex;flex-direction:column;gap:18px">
+<article style="display:flex;flex-direction:column;gap:8px;padding-bottom:18px;border-bottom:1px solid #2C2227"><span class="eb">Specdr · [source] · 3d</span><h3 class="disp" style="margin:0;font-size:21px;line-height:1.1;letter-spacing:-.02em;color:#AE9EA5">[Headline from a watched competitor]</h3><span class="skel"></span><span class="skel" style="width:70%"></span></article>
+<article style="display:flex;flex-direction:column;gap:8px;padding-bottom:18px;border-bottom:1px solid #2C2227"><span class="eb">Specdr · [source] · 5d</span><h3 class="disp" style="margin:0;font-size:21px;line-height:1.1;letter-spacing:-.02em;color:#AE9EA5">[Headline on spec-driven development]</h3><span class="skel"></span><span class="skel" style="width:60%"></span></article>
+<article style="display:flex;flex-direction:column;gap:8px"><span class="eb">Anvil · [source] · 6d</span><h3 class="disp" style="margin:0;font-size:21px;line-height:1.1;letter-spacing:-.02em;color:#AE9EA5">[New post from a watched outlet]</h3><span class="skel"></span></article>
+</div>
+<div style="padding-left:24px;display:flex;flex-direction:column;gap:16px">
+<span class="eb">The beat · 9 watched</span>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div class="beat"><span style="font-size:13px">Lovable</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<div class="beat"><span style="font-size:13px">Replit</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<div class="beat"><span style="font-size:13px">Bolt</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<div class="beat"><span style="font-size:13px">Base44</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<div class="beat"><span style="font-size:13px">GitHub Spec Kit</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<div class="beat"><span style="font-size:13px">Kiro</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<div class="beat"><span style="font-size:13px">Tessl</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<div class="beat"><span style="font-size:13px;color:#AE9EA5">Anvil Substack</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+<div class="beat"><span style="font-size:13px;color:#AE9EA5">Anvil LinkedIn</span><span style="height:6px;border-radius:3px;background:#2C2227"></span><span class="mono" style="font-size:11px;color:#8C7B83">0</span></div>
+</div>
+<div style="border-top:1px solid #2C2227;padding-top:12px;display:flex;flex-direction:column;gap:8px"><span class="eb">List changes</span><span class="mono" style="font-size:12px;color:#62C4BC">+ [entry the scan proposes]</span><span class="mono" style="font-size:12px;color:#E3B65C">? [removal queued for you]</span></div>
+<div style="border-top:1px solid #2C2227;padding-top:12px;display:flex;flex-direction:column;gap:8px"><span class="eb">No watch list</span><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="chip" style="border-style:dashed">+ Placement</button><button class="chip" style="border-style:dashed">+ Pandora</button><button class="chip" style="border-style:dashed">+ Bousleh</button></div></div>
+</div>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

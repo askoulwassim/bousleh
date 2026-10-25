@@ -1,0 +1,20 @@
+{
+  "name": "@bousleh/home",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Home: one self-contained page (dist/home.html) published as a Claude page. Reads the engine live through the bousleh MCP server in the Claude desktop app, and a snapshot elsewhere.",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "preview": "node preview/shoot.mjs"
+  },
+  "devDependencies": {
+    "@bousleh/contracts": "workspace:*",
+    "esbuild": "^0.25.0"
+  }
+}
