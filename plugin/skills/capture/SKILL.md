@@ -14,7 +14,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Reads: `inbox_list` (inbox.list), `inbox_take` (inbox.take), `vault_search` (vault.search)
 - Writes: `deposits_write` (deposits.write), `queue_add` (queue.add), `queue_resolve` (queue.resolve), `vault_link` (vault.link), `inbox_settle` (inbox.settle), `assets_add` (assets.add) for links to artifacts
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs, `queue_list` (queue.list) to clear the queue, `vault_get` (vault.get) to check a candidate
-- Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox.
+- Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox; `vault_supersede` (vault.supersede) for one thing only: moving a planned meeting to `held` once it has happened (see "Meetings").
 - Google Drive connector (your Claude account's Drive): search the folder, read each file, and trash it after `inbox_drop` succeeds.
 
 ## What to judge
@@ -23,7 +23,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 | He says | Kind |
 | --- | --- |
-| Something someone said, asked for or complained about | `signal` (attrs `source`, `sentiment`) |
+| Something someone said, asked for or complained about | `signal` (attrs `source`, `sentiment`, `tags`) |
 | Something he noticed first-hand | `observation` |
 | A pain or gap, stated as a problem | `problem` |
 | "What if we...", a possible move | `idea` (status `open`) |
@@ -32,6 +32,9 @@ Tools on the Bousleh MCP server (op names in brackets):
 | Feedback he gave one of his PMs, or their growth | `growth_note`, link `about` the person |
 | A fact about a stakeholder (what they care about, how they decide) | `observation`, link `about` the person |
 | Someone new | `person` (attrs `role`, `org`); people may have no scope. The person this Bousleh belongs to is marked `is_user: true`, once |
+| "X reports to Y", "Y is X's manager" | a `reports_to` link from X to Y (both people; deposit either one first if new) |
+| A company word or acronym and what it means | `term` (attrs `aliases`, `definition`), usually at `50000` in the company's scope |
+| A meeting coming up ("I'm seeing Peter Thursday about...") | `meeting` with status `planned`, `held_at` the day or time it will happen, `attended_by` links |
 
 Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a dump states one, queue it with the reason "for Shape" or "for Horizon".
 
@@ -39,11 +42,17 @@ Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a 
 
 **Scope.** Use slugs from `scopes_list`. The work instance has Alethea's scopes; the personal one has Perfect Placement, Specdr, Pandora, AI Anvil, Bousleh and so on. Never guess between two scopes.
 
-**Links.** Every atom links `from_moment` to the dump or meeting it came from. Also: `evidence_for` (signal, observation or finding to a problem or idea), `about` (to a person), `attended_by` (meeting to person), `owed_by` / `owed_to`, `part_of` (to an initiative or strategy), `addresses` (an idea to the problem it answers; optional, since an idea can be a pure opportunity), `related` when nothing else fits. Put links on the `deposits_write` call. Use `vault_link` only to link two objects that already exist.
+**Links.** Every atom links `from_moment` to the dump or meeting it came from. Also: `evidence_for` (signal, observation or finding to a problem or idea), `about` (to a person), `attended_by` (meeting to person), `owed_by` / `owed_to`, `reports_to` (a person to their manager), `part_of` (to an initiative or strategy), `addresses` (an idea to the problem it answers; optional, since an idea can be a pure opportunity), `related` when nothing else fits. Put links on the `deposits_write` call. Use `vault_link` only to link two objects that already exist.
 
 **Assets.** When a dump, transcript or inbox file mentions the url of a Claude artifact (a Doc, deck, dashboard, whiteboard, design or page), a Google Doc or sheet, or a GitHub repo, register it with `assets_add`: the url, a short title, its `type` (`doc`, `slides`, `sheet`, `dashboard`, `whiteboard`, `design`, `page`, `repo`, `file`, `other`), the scope, and `documents` → the atoms it relates to (write them first, then add the asset). It is never its own atom: no `signal` or `observation` just to hold a link. The same url twice is safe; `assets_add` returns the one already registered and adds the new links. If you can't tell what it documents, register it with no `documents` and say so in the read-back.
 
-**Duplicates.** Before writing a problem, idea, person or decision, `vault_search` for it. If it exists, link the new evidence to it instead of writing a second one. If you aren't sure it's the same thing, queue it with the existing ids as candidates.
+**Signal tags.** Give every signal one to three `tags`: short lower-case slugs for what it is about (`export-speed`, `onboarding`, `pricing`), so the same feedback from different people can be counted as a pattern. Reuse a tag already on similar signals (`vault_search` with `kinds: [signal]` shows them) rather than inventing a near-synonym. Never put a person's name or a sentiment in a tag; those have their own fields.
+
+**Glossary terms.** When a dump defines a word or acronym the company uses, deposit a `term`: the term as the title, other spellings and expansions in `aliases`, one or two sentences in `definition`. `vault_search` with `kinds: [term]` first; if it exists with a different meaning, queue it ("conflicting definition") with the existing id as a candidate.
+
+**People map.** When a dump names someone's manager, link the person `reports_to` the manager. For two people who already exist, use `vault_link`. If the person already reports to someone else, queue it instead of adding a second manager.
+
+**Duplicates.** Before writing a problem, idea, person, term or decision, `vault_search` for it. If it exists, link the new evidence to it instead of writing a second one. If you aren't sure it's the same thing, queue it with the existing ids as candidates.
 
 ## When to queue
 
@@ -54,7 +63,13 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 - New ideas are `open`. Write one as `bet` only when Wassim states both a hypothesis and kill criteria (attrs `hypothesis`, `kill_criteria`). Otherwise write it `open` and say which is missing.
 - Statuses are `open`, `bet`, `parked`, `dropped`, `concluded`. There is no won or lost.
 - A bet ends only through a `decision`: deposit the decision with a `concludes` link to the idea (or `vault_link` decision → idea if the decision exists). The engine moves the idea to `concluded`. Never set `concluded` yourself. If the idea isn't a bet yet, queue the decision.
-- Capture doesn't change existing objects. A request to park, drop or reword an idea, or to close a commitment, goes in your read-back as "for Shape" or "for Pulse". In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
+- Capture doesn't change existing objects (the one exception: a planned meeting that has happened, under "Meetings"). A request to park, drop or reword an idea, or to close a commitment, goes in your read-back as "for Shape" or "for Pulse". In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
+
+## Meetings
+
+- A meeting that happened: `meeting` (status `held`, the default), `held_at`, `attended_by` links.
+- A meeting mentioned ahead of time: `meeting` with status `planned` and `held_at` set to when it will be. Counsel keeps its prep in the body of the same planned meeting.
+- When a transcript or debrief arrives for a meeting that already exists as `planned` (`vault_search` with `kinds: [meeting]`, then check its status and `held_at`), don't write a second meeting: `vault_supersede` it with status `held` (and the real `held_at` if it moved), keeping the prep body, then file the atoms with `from_moment` → that meeting. If you aren't sure it's the same meeting, write a new one and queue the pair.
 
 ## Flow: something said in this conversation
 
@@ -81,7 +96,7 @@ If the Google Drive connector isn't available in this session, skip this and say
 1. Run "Flow: Google Drive" first, then `inbox_list`.
 2. Take files oldest first with `inbox_take`. If `content` is null, `inbox_settle` it as `failed` (unreadable) or `skipped`, and mention it.
 3. A file whose frontmatter has `bousleh: horizon-scan` came from the Daily Horizon scan. Follow "File a scan" in the Horizon skill (`watch_file`), then settle it `filed` with the first filed finding's id, or `skipped` if every finding was already filed.
-4. A meeting transcript: deposit a `meeting` (attrs `held_at`, `attended_by` links to people, body a short summary). The raw transcript stays in `inbox/processed`. Then file its atoms with `from_moment` → the meeting.
+4. A meeting transcript: deposit a `meeting` (status `held`, attrs `held_at`, `attended_by` links to people, body a short summary), or move the planned one to `held` (see "Meetings"). The raw transcript stays in `inbox/processed`. Then file its atoms with `from_moment` → the meeting.
 5. Anything else (a phone dictation, a note): the dump flow above.
 6. Settle every file once with `inbox_settle`:
    - Objects written: `filed`, with the dump or meeting as `object_id`. If some atoms were ambiguous, settle `filed` first, then `queue_add` them.

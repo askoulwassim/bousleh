@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkKindFields, checkLink, ID_PATTERN, KIND_NAMES, KINDS, kindOfId, LINK_KIND_NAMES } from '../index.js';
+import { checkKindFields, checkLink, effectiveStatus, ID_PATTERN, KIND_NAMES, KINDS, kindOfId, LINK_KIND_NAMES } from '../index.js';
 
 describe('kinds', () => {
   it('gives every kind a unique three-letter prefix', () => {
@@ -65,7 +65,95 @@ describe('idea statuses (Oct 25)', () => {
   });
 });
 
+describe('glossary terms', () => {
+  it('are anchors with prefix trm, need a scope, and default to no aliases', () => {
+    expect(KINDS.term).toMatchObject({ layer: 'anchors', prefix: 'trm', scopeRequired: true });
+    expect(kindOfId('trm_01JBX0000000000000000000000')).toBe('term');
+    expect(checkKindFields('term', {})).toEqual({ ok: true, value: { status: null, attrs: { aliases: [] } } });
+    expect(checkKindFields('term', { attrs: { aliases: ['NI', 'narrative intel'], definition: 'Tracking how claims spread.' } })).toEqual({
+      ok: true,
+      value: { status: null, attrs: { aliases: ['NI', 'narrative intel'], definition: 'Tracking how claims spread.' } },
+    });
+    expect(checkKindFields('term', { attrs: { aliases: [''] } }).ok).toBe(false);
+    expect(checkKindFields('term', { attrs: { definition: '' } }).ok).toBe(false);
+    expect(checkKindFields('term', { status: 'open' }).ok).toBe(false);
+  });
+});
+
+describe('signal tags', () => {
+  it('default to none and must be short lower-case slugs, each once', () => {
+    expect(checkKindFields('signal', { attrs: { source: 'Peter' } })).toEqual({
+      ok: true,
+      value: { status: null, attrs: { source: 'Peter', tags: [] } },
+    });
+    expect(checkKindFields('signal', { attrs: { tags: ['export-speed', 'onboarding'], sentiment: 'negative' } }).ok).toBe(true);
+    for (const bad of [['Export Speed'], ['export_speed'], ['-export'], ['a'.repeat(41)], ['onboarding', 'onboarding']]) {
+      expect(checkKindFields('signal', { attrs: { tags: bad } }).ok, bad.join(',')).toBe(false);
+    }
+  });
+});
+
+describe('idea rank', () => {
+  it('is an optional positive integer, 1 the top', () => {
+    expect(checkKindFields('idea', { attrs: { rank: 1 } })).toEqual({ ok: true, value: { status: 'open', attrs: { rank: 1 } } });
+    for (const rank of [0, -1, 1.5, '1']) expect(checkKindFields('idea', { attrs: { rank } }).ok, String(rank)).toBe(false);
+  });
+});
+
+describe('initiatives', () => {
+  it('have statuses proposed, active, paused, done and dropped, active by default, and dates', () => {
+    expect(KINDS.initiative.statuses).toEqual(['proposed', 'active', 'paused', 'done', 'dropped']);
+    expect(checkKindFields('initiative', {})).toEqual({ ok: true, value: { status: 'active', attrs: {} } });
+    expect(
+      checkKindFields('initiative', { status: 'proposed', attrs: { started_at: '2026-11-09', target_date: '2027-03-31' } }),
+    ).toMatchObject({ ok: true, value: { status: 'proposed' } });
+    expect(checkKindFields('initiative', { status: 'open' }).ok).toBe(false);
+    expect(checkKindFields('initiative', { attrs: { target_date: 'next quarter' } }).ok).toBe(false);
+    expect(checkKindFields('initiative', { attrs: { owner: 'per_01JBX0000000000000000000000' } }).ok).toBe(false);
+  });
+
+  it('read as active when written before they had statuses, and take a status on their next version', () => {
+    expect(effectiveStatus('initiative', null)).toBe('active');
+    expect(effectiveStatus('initiative', 'paused')).toBe('paused');
+    expect(checkKindFields('initiative', {}, { status: null })).toMatchObject({ ok: true, value: { status: 'active' } });
+    expect(checkKindFields('initiative', { status: 'done' }, { status: null })).toMatchObject({ ok: true, value: { status: 'done' } });
+  });
+});
+
+describe('findings', () => {
+  it('carry a reading-queue status, new by default', () => {
+    expect(KINDS.finding.statuses).toEqual(['new', 'to_read', 'read', 'dismissed']);
+    expect(checkKindFields('finding', { attrs: { url: 'https://example.com/a' } })).toMatchObject({ ok: true, value: { status: 'new' } });
+    expect(checkKindFields('finding', { status: 'to_read', attrs: { url: 'https://example.com/a' } }).ok).toBe(true);
+    expect(checkKindFields('finding', { status: 'archived', attrs: { url: 'https://example.com/a' } }).ok).toBe(false);
+    expect(effectiveStatus('finding', null)).toBe('new');
+  });
+});
+
+describe('meetings', () => {
+  it('are planned or held, held by default and when written before they had statuses', () => {
+    expect(KINDS.meeting.statuses).toEqual(['planned', 'held']);
+    expect(checkKindFields('meeting', { attrs: { held_at: '2026-10-25' } })).toMatchObject({ ok: true, value: { status: 'held' } });
+    expect(checkKindFields('meeting', { status: 'planned', attrs: { held_at: '2026-10-28T14:00:00+01:00' } }).ok).toBe(true);
+    expect(checkKindFields('meeting', { status: 'cancelled' }).ok).toBe(false);
+    expect(effectiveStatus('meeting', null)).toBe('held');
+    expect(checkKindFields('meeting', {}, { status: 'planned' })).toMatchObject({ ok: true, value: { status: 'planned' } });
+    expect(checkKindFields('meeting', { status: 'held' }, { status: 'planned' })).toMatchObject({ ok: true, value: { status: 'held' } });
+  });
+
+  it('leave kinds without statuses reading as null', () => {
+    expect(effectiveStatus('problem', null)).toBeNull();
+    expect(effectiveStatus('person', null)).toBeNull();
+  });
+});
+
 describe('links', () => {
+  it('lets reports_to run only from a person to a person', () => {
+    expect(checkLink('reports_to', 'person', 'person')).toBeNull();
+    expect(checkLink('reports_to', 'person', 'initiative')).not.toBeNull();
+    expect(checkLink('reports_to', 'growth_note', 'person')).not.toBeNull();
+  });
+
   it('lets addresses run only from an idea to a problem', () => {
     expect(checkLink('addresses', 'idea', 'problem')).toBeNull();
     expect(checkLink('addresses', 'problem', 'idea')).not.toBeNull();

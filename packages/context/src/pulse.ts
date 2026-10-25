@@ -1,4 +1,4 @@
-import { type CommitmentView, type OpOutput, pulseToday } from '@bousleh/contracts';
+import { type CommitmentView, effectiveStatus, type OpOutput, pulseToday } from '@bousleh/contracts';
 import { defineHandler, OpError } from '@bousleh/vault';
 import { addDays, call, coverScopes, dayOf, daysBetween, inCover, localDay, Objects, shorten, startOfDay } from './shared.js';
 
@@ -74,7 +74,7 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
   }
   for (const side of ['by_me', 'to_me', 'other'] as const) overdue[side].sort((a, b) => b.days_late - a.days_late);
 
-  // ------------------------------------------------------------ meetings held that day
+  // ------------------------------------------------------------ meetings that day, planned or held
   const meetings: Output['meetings'] = [];
   for (const meeting of objects.ofKinds(['meeting'])) {
     const heldAt = meeting.version.attrs.held_at;
@@ -83,6 +83,7 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
       id: meeting.id,
       title: meeting.version.title,
       held_at: heldAt,
+      status: effectiveStatus('meeting', meeting.version.status) as Output['meetings'][number]['status'],
       altitude: meeting.version.altitude,
       scopes: meeting.scopes,
       attendees: meeting.links.out.filter((l) => l.kind === 'attended_by').map((l) => ({ id: l.to, name: l.to_title })),

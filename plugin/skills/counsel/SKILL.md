@@ -13,6 +13,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief), `people_get` (people.get)
 - Writes: `deposits_write` (deposits.write)
+- Added, write: `vault_supersede` (vault.supersede), only to update the prep on a planned meeting and to move it to `held` once it has happened
 - Added, read-only: `vault_search` (vault.search) to find a person's id by name, as `people_get` itself directs; `scopes_list` (scopes.list) for scope slugs when depositing
 
 `context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
@@ -41,10 +42,10 @@ The opener is pitched at their altitude. If the substance sits at a different al
    - **Opener:** one or two sentences at their altitude.
 5. Deliver it in a form he can read in two minutes or hear in one. Then ask one question at most, usually "What outcome would you accept?".
 6. With his OK, deposit:
-   - A `meeting` for the conversation (attrs `held_at`, `attended_by` links, body the prep). `vault_search` first in case it already exists.
+   - The prep as a **planned meeting**: `meeting` with status `planned`, `held_at` when it will happen (a date, or a date-time if he gave one), `attended_by` links, body the prep. `vault_search` with `kinds: [meeting]` first: if a planned meeting for this conversation already exists (Capture files one when he mentions it ahead of time), `vault_supersede` it with the prep as its body instead of writing a second one.
    - Any commitment he decides to make, with `owed_by` and `owed_to` links.
 
-The debrief afterwards goes to Capture.
+**After the conversation.** The planned meeting is superseded to `held` (status `held`, and the real `held_at` if it moved), keeping the prep in its history. If he debriefs here, do that with `vault_supersede`, then hand the debrief to Capture, which files its atoms with `from_moment` → the meeting. If the debrief or transcript goes straight to Capture, Capture does the same. Pulse shows planned meetings with their status, so a meeting still `planned` after its day is one nobody debriefed.
 
 ## Rules
 

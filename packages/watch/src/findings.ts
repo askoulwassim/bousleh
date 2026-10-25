@@ -1,4 +1,4 @@
-import { type ObjectView, type OpInput, watchDigest, watchFile } from '@bousleh/contracts';
+import { effectiveStatus, type ObjectView, type OpInput, type OpOutput, watchDigest, watchFile } from '@bousleh/contracts';
 import { defineHandler, type HandlerContext } from '@bousleh/vault';
 import { call } from './call.js';
 import { loadWatchList, resolveWatchList } from './lists.js';
@@ -91,6 +91,8 @@ function shorten(text: string, max: number): string {
   return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
+type FindingStatus = OpOutput<'watch.digest'>['groups'][number]['findings'][number]['status'];
+
 interface DigestItem {
   finding: ObjectView;
   watchList: { id: string; title: string } | null;
@@ -98,7 +100,11 @@ interface DigestItem {
 
 export const watchDigestHandler = defineHandler(watchDigest, async (input, h) => {
   const until = h.ctx.now();
-  const since = input.since !== undefined ? new Date(input.since) : new Date(until.getTime() - 7 * DAY_MS);
+  // With a status filter and no since, the whole reading queue: no time window.
+  const since =
+    input.since !== undefined ? new Date(input.since) : input.status !== undefined ? new Date(0) : new Date(until.getTime() - 7 * DAY_MS);
+  const statuses = input.status === undefined ? undefined : new Set<string>(input.status);
+  const statusOf = (finding: ObjectView) => effectiveStatus('finding', finding.version.status) as FindingStatus;
   const inScope = input.scope === undefined ? undefined : h.store.expandScopes([input.scope]);
   if (input.watch_list_id !== undefined) await loadWatchList(h, input.watch_list_id);
 
@@ -110,6 +116,7 @@ export const watchDigestHandler = defineHandler(watchDigest, async (input, h) =>
   for (const row of rows) {
     const finding = await call(h, 'vault.get', { id: row.id });
     if (inScope !== undefined && !finding.scopes.some((slug) => inScope.has(slug))) continue;
+    if (statuses !== undefined && !statuses.has(statusOf(finding))) continue;
     const link = finding.links.out.find((l) => l.kind === 'from_watch_list');
     if (input.watch_list_id !== undefined && link?.to !== input.watch_list_id) continue;
     matched.push({ finding, watchList: link ? { id: link.to, title: link.to_title } : null });
@@ -143,6 +150,7 @@ export const watchDigestHandler = defineHandler(watchDigest, async (input, h) =>
         .map((item) => ({
           id: item.finding.id,
           title: item.finding.version.title,
+          status: statusOf(item.finding),
           url: item.finding.version.attrs.url as string,
           published_at: published(item),
           filed_at: item.finding.created_at,

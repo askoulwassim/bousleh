@@ -48,6 +48,11 @@ export const LINK_KINDS = {
   attended_by: { description: 'A meeting to a person who attended it.', from: { kinds: ['meeting'] }, to: { kinds: ['person'] } },
   owed_by: { description: 'A commitment to the person who owes it.', from: { kinds: ['commitment'] }, to: { kinds: ['person'] } },
   owed_to: { description: 'A commitment to the person it is owed to.', from: { kinds: ['commitment'] }, to: { kinds: ['person'] } },
+  reports_to: {
+    description: 'A person to the person they report to (their manager), for the people map.',
+    from: { kinds: ['person'] },
+    to: { kinds: ['person'] },
+  },
   documents: { description: 'An asset to the object it documents.', from: { kinds: ['asset'] } },
   supersedes: { description: 'An object to the object it replaces (same kind).', sameKind: true },
   related: { description: 'Anything to anything, when no other kind fits.' },

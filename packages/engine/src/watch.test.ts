@@ -40,7 +40,7 @@ interface Digest {
   total: number;
   groups: {
     watch_list: { id: string; title: string } | null;
-    findings: { id: string; title: string; url: string; published_at: string | null; filed_at: string; summary: string }[];
+    findings: { id: string; title: string; status: string; url: string; published_at: string | null; filed_at: string; summary: string }[];
   }[];
 }
 
@@ -264,6 +264,40 @@ describe('watch.digest', () => {
 
     expect(failed(await run('watch.digest', { scope: 'nowhere' })).code).toBe('invalid_input');
     expect(OPS['watch.digest'].readOnly).toBe(true);
+  });
+
+  it('keeps a reading queue: findings start new, move with vault.supersede, and filter by status across all time', async () => {
+    at('2026-10-01T09:00:00.000Z');
+    ok(await run('watchlists.set', { scope: 'bousleh', entries: [] }));
+    const filed = ok<FileResult>(
+      await run('watch.file', {
+        scope: 'bousleh',
+        findings: [
+          { title: 'Long read', url: 'https://example.com/long' },
+          { title: 'Noise', url: 'https://example.com/noise' },
+        ],
+      }),
+    ).filed;
+    const [long, noise] = filed.map((f) => f.id) as [string, string];
+    ok(await run('vault.supersede', { id: long, status: 'to_read' }));
+    ok(await run('vault.supersede', { id: noise, status: 'dismissed' }));
+    expect(failed(await run('vault.supersede', { id: noise, status: 'archived' })).code).toBe('invalid_input');
+
+    at('2026-10-24T09:00:00.000Z');
+    ok(await run('watch.file', { scope: 'bousleh', findings: [{ title: 'Fresh', url: 'https://example.com/fresh' }] }));
+
+    at('2026-10-25T09:00:00.000Z');
+    const recent = ok<Digest>(await run('watch.digest', {}));
+    expect(recent.groups.flatMap((g) => g.findings.map((f) => [f.title, f.status]))).toEqual([['Fresh', 'new']]);
+
+    // The reading queue: status with no since covers every finding ever filed.
+    const queue = ok<Digest>(await run('watch.digest', { status: ['to_read'] }));
+    expect(queue.since).toBe('1970-01-01T00:00:00.000Z');
+    expect(queue.groups.flatMap((g) => g.findings.map((f) => [f.id, f.status]))).toEqual([[long, 'to_read']]);
+    const unread = ok<Digest>(await run('watch.digest', { status: ['new', 'to_read'] }));
+    expect(unread.total).toBe(2);
+    const windowed = ok<Digest>(await run('watch.digest', { status: ['to_read'], since: '2026-10-20' }));
+    expect(windowed.total).toBe(0);
   });
 
   it('puts findings filed without a watch list last, under null', async () => {

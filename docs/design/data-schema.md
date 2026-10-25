@@ -1,6 +1,6 @@
 # Data schema
 
-Status: **approved and implemented** (migration 1). Updated with Wassim's decisions of Oct 24 (the review of PR #2) and Oct 25 (the two remaining questions). Nothing is open.
+Status: **approved and implemented** (migration 1). Updated with Wassim's decisions of Oct 24 (the review of PR #2) and Oct 25 (the two remaining questions, then the model gaps: glossary terms, signal tags, idea rank, statuses on initiatives, findings and meetings, and `reports_to`). Kinds, statuses, attrs and link rules live in `contracts`, so the Oct 25 model additions needed no SQL migration. Nothing is open.
 
 The rules this follows: SQLite for structure, markdown for long-form, linked by id. Nothing is overwritten, and history runs through "supersedes" links. Only op handlers, called through `runOp`, write to your data, and only the `vault` and `intake` packages touch it on disk. The work instance on the work Mac uses the same schema in its own `~/.bousleh`.
 
@@ -45,11 +45,13 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 
 | Layer | Kinds | Kind-specific fields (in `attrs_json`) |
 | --- | --- | --- |
-| anchors | `strategy`, `principle`, `metric`, `watch_list` | strategy: `status` forming / contested / aligned / communicated. metric: lifecycle idea / defined / instrumented / measured / reviewed, `cadence`, `unit`; its owner and the strategy line it serves are links. watch_list: `entries`, each with a `type` (competitor, topic, outlet, person, podcast), `name`, optional `url` and `notes`; tied to its scope through `object_scopes` |
-| evidence | `signal` (feedback), `observation`, `finding` (Horizon) | signal: `source`, `sentiment`. finding: `url`, `published_at`; linked to its watch list with `from_watch_list`. Readings live in `metric_readings`, not as objects |
-| work | `problem`, `idea`, `initiative`, `decision`, `asset` | idea: `status` open / bet / parked / dropped / concluded, plus `hypothesis` and `kill_criteria`, required once it becomes a bet. An idea reaches `concluded` only when a `decision` is linked to it with `concludes` (see below), never by setting the status directly. decision: `decided_at`, `reversible`. asset: `url` (required), `type` doc / slides / sheet / dashboard / whiteboard / design / page / repo / file / other; no status; what it documents are `documents` links |
-| people | `person`, `growth_note` | person: `role` (stakeholder, pm, engineer, analyst, other), `org`, `is_user` (true on the one person this instance belongs to: "me" in Pulse; at most one current person has it, enforced by the store). A growth note is one coaching entry about a person |
-| moments | `dump`, `meeting`, `commitment`, `daily_note` | meeting: `held_at`; attendees are `attended_by` links. commitment: `status` open / done / dropped, `due`; who owes it and to whom are `owed_by` and `owed_to` links |
+| anchors | `strategy`, `principle`, `metric`, `watch_list`, `term` | strategy: `status` forming / contested / aligned / communicated. metric: lifecycle idea / defined / instrumented / measured / reviewed, `cadence`, `unit`; its owner and the strategy line it serves are links. watch_list: `entries`, each with a `type` (competitor, topic, outlet, person, podcast), `name`, optional `url` and `notes`; tied to its scope through `object_scopes`. term (a glossary term, prefix `trm`): `aliases` (default none), optional `definition`; the title is the term, the body can hold more |
+| evidence | `signal` (feedback), `observation`, `finding` (Horizon) | signal: `source`, `sentiment`, `tags` (short lower-case slugs such as `export-speed`, each once, default none) so feedback can be counted as patterns. finding: `url`, `published_at`; `status` is the reading queue new / to_read / read / dismissed (default new); linked to its watch list with `from_watch_list`. Readings live in `metric_readings`, not as objects |
+| work | `problem`, `idea`, `initiative`, `decision`, `asset` | idea: `status` open / bet / parked / dropped / concluded, plus `hypothesis` and `kill_criteria`, required once it becomes a bet, and an optional `rank` (a positive integer, 1 the top). An idea reaches `concluded` only when a `decision` is linked to it with `concludes` (see below), never by setting the status directly. initiative: `status` proposed / active / paused / done / dropped (default active), optional `started_at` and `target_date`; its owner is an `owned_by` link. decision: `decided_at`, `reversible`. asset: `url` (required), `type` doc / slides / sheet / dashboard / whiteboard / design / page / repo / file / other; no status; what it documents are `documents` links |
+| people | `person`, `growth_note` | person: `role` (stakeholder, pm, engineer, analyst, other), `org`, `is_user` (true on the one person this instance belongs to: "me" in Pulse; at most one current person has it, enforced by the store); their manager is a `reports_to` link. A growth note is one coaching entry about a person |
+| moments | `dump`, `meeting`, `commitment`, `daily_note` | meeting: `status` planned / held (default held), `held_at` (when it was or will be held); attendees are `attended_by` links. A planned meeting holds Counsel's prep in its body and is superseded to held once it happens. commitment: `status` open / done / dropped, `due`; who owes it and to whom are `owed_by` and `owed_to` links |
+
+**Objects written before a kind had statuses (Oct 25).** Initiatives, findings and meetings filed before Oct 25 have no status stored. They read as their kind's default (`effectiveStatus` in contracts): an initiative as `active`, a finding as `new`, a meeting as `held`. Their next version takes that default, or the status it is given. New attrs with a default (`tags`, `aliases`) are filled in on an object's next version; until then they read as empty.
 
 **Link kinds (v0):**
 - `evidence_for`: evidence to a problem or idea
@@ -63,6 +65,7 @@ Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in
 - `concludes`: a decision to the idea it concludes; the idea must be a `bet`. A bet's outcome (scale it, pivot, kill criteria met) is that decision; linking it writes a new version of the idea with status `concluded`, in the same transaction
 - `attended_by`: a meeting to a person who attended it
 - `owed_by`, `owed_to`: a commitment to the person who owes it and the person it's owed to
+- `reports_to`: a person to the person they report to (their manager), for the people map. `context.brief` shows it on every person
 - `documents`: an asset to the object it documents (any kind)
 - `supersedes`: an object to the object it replaces (same kind)
 - `related`
@@ -113,3 +116,13 @@ New link kinds are added in contracts, not freehand.
 8. **Drive files after the sweep** are moved into `~/.bousleh/inbox/processed`, not copied. Drive keeps them in its trash for 30 days (section 5).
 9. **Backups:** `~/.bousleh` is the only copy of all data and must be covered by Time Machine (Alethea's backup on the work Mac). Section 6.
 10. **Idea statuses:** `open`, `bet`, `parked`, `dropped`, `concluded`. No won/lost statuses: a bet's outcome is a `decision` linked to the idea with the new `concludes` link kind, which moves the idea to `concluded`. That link is the only way to get there.
+
+## Decisions (Oct 25, the model gaps)
+
+11. **Glossary terms** are their own kind, `term`, under anchors: the work instance needs the company glossary in its first weeks. Not in `context.brief`; `vault.search` with kinds `[term]` finds them.
+12. **Signal tags** are short lower-case slugs, so feedback can be counted as patterns. Existing tags are reused before new ones are made.
+13. **Idea rank** is an attr, not body text: 1 is the top. The brief orders ideas of the same status by it.
+14. **Initiatives** have a status (proposed, active, paused, done, dropped; default active) and optional `started_at` and `target_date`. The owner stays an `owned_by` link. `context.brief` has an `initiatives` section.
+15. **Findings** carry Horizon's reading queue as their status: new, to_read, read, dismissed. `watch.digest` filters by it.
+16. **Meetings** are planned or held (default held). Counsel's prep lives on a planned meeting, superseded to held once it happens.
+17. **`reports_to`** links a person to their manager.

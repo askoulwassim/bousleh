@@ -38,6 +38,12 @@ Tools on the Bousleh MCP server (op names in brackets):
 ## Recording changes
 
 - **New strategy, principle or problem:** `deposits_write`. A strategy starts `forming`. Link a problem `part_of` its initiative or strategy.
+- **Initiative:** `deposits_write` with kind `initiative`, status `proposed` (still being argued for) or `active` (the default: people are on it), attrs `started_at` and `target_date` when known, and an `owned_by` link to its owner. Move it with `vault_supersede`:
+  - `active` once it is staffed and started (set `started_at`);
+  - `paused` when work stops but it isn't over: say why in the body;
+  - `done` when it shipped what it set out to; `dropped` when it was stopped. Record the decision behind a stop as a `decision` linked `part_of` the initiative.
+  - A new owner: `vault_link` `owned_by` to the new person, then `vault_unlink` the old link.
+  `context_brief` lists initiatives with their status, target date and owner; push back when an active one has passed its `target_date` or has no owner.
 - **Changed text or status:** `vault_supersede` with only the fields that change. Strategy statuses:
   - `contested` when evidence or a stakeholder pulls against it;
   - `aligned` when the people who must agree have agreed;
