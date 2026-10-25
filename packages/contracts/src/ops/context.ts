@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { IdSchema, ScopeSlugSchema } from '../model/ids.js';
-import { INITIATIVE_STATUSES, KindSchema, MEETING_STATUSES, METRIC_STATUSES, PERSON_ROLES } from '../model/kinds.js';
+import {
+  CONCLUDABLE_IDEA_STATUSES,
+  INITIATIVE_STATUSES,
+  KindSchema,
+  MEETING_STATUSES,
+  METRIC_STATUSES,
+  PERSON_ROLES,
+  PROBLEM_STATUSES,
+} from '../model/kinds.js';
 import { AltitudeSchema } from '../model/layers.js';
 import { AssetTypeSchema } from './assets.js';
 import { CommitmentViewSchema, PersonRefSchema } from './commitments.js';
@@ -49,6 +57,10 @@ export const BriefInitiativeSchema = BriefRefSchema.extend({
   target_date: z.iso.date().nullable(),
   /** The person it is owned_by; null when no owner is linked. */
   owner: PersonRefSchema.nullable(),
+});
+/** A problem. status is never null: a problem written before problems had statuses reads as open. */
+export const BriefProblemSchema = BriefRefSchema.extend({
+  status: z.enum(PROBLEM_STATUSES),
 });
 export const BriefIdeaSchema = BriefRefSchema.extend({
   hypothesis: z.string().nullable(),
@@ -111,9 +123,9 @@ export const contextBrief = defineOp({
   name: 'context.brief',
   description: [
     'What to know before advising at a given altitude, in one call. Call it before giving advice, shaping a problem or idea, running a workshop, drafting a message or coaching someone, then use vault.get or people.get on any id for the full object.',
-    'Centre it with focus (the question or topic in plain words; its best search matches become the centre) and/or ids (objects to centre on, such as a problem, an idea or a person). Everything linked one hop out from the centre is included, with why. With neither, or when focus matches nothing, the brief covers the scopes as a whole: initiatives not done or dropped, open problems, open ideas and bets, recent decisions, metrics and open commitments.',
+    'Centre it with focus (the question or topic in plain words; its best search matches become the centre) and/or ids (objects to centre on, such as a problem, an idea or a person). Everything linked one hop out from the centre is included, with why. With neither, or when focus matches nothing, the brief covers the scopes as a whole: initiatives not done or dropped, open problems (solved and dropped ones only show in the centre or one hop out), open, running and bet ideas, recent decisions, metrics and open commitments.',
     'scopes (slugs) narrows it, and includes their child scopes. altitude is the level you are advising at (50000 company, 10000 cross-team, the default, 1000 own surfaces, 100 one engineer or requirement): items one level above and below are shown too, and anchors (strategies and principles) from every level above, including those of parent scopes.',
-    'Sections: anchors; initiatives in the centre or one hop out (or, with no centre, those in the scopes), each with its status (proposed, active, paused, done, dropped), started_at, target_date and owner; problems; ideas (bets first, with hypothesis and kill criteria, then by rank); decisions (newest first); metrics with their latest reading; people involved (owners, attendees, who owes and is owed what), each with who they report to; open commitments; recent evidence and findings linked to the rest; assets (Docs, decks, dashboards, whiteboards, designs, pages, repos) with their url and type: those that document anything in the brief, or with no centre every asset in the scopes, at any altitude. Objects replaced by another (supersedes) are left out. limit caps each section; more says how many were cut.',
+    'Sections: anchors; initiatives in the centre or one hop out (or, with no centre, those in the scopes), each with its status (proposed, active, paused, done, dropped), started_at, target_date and owner; problems, each with its status (open, solved, dropped), open first; ideas (bets first, with hypothesis and kill criteria, then running ones, being tried right now, then the rest, each status by rank); decisions (newest first); metrics with their latest reading; people involved (owners, attendees, who owes and is owed what), each with who they report to; open commitments; recent evidence and findings linked to the rest; assets (Docs, decks, dashboards, whiteboards, designs, pages, repos) with their url and type: those that document anything in the brief, or with no centre every asset in the scopes, at any altitude. Objects replaced by another (supersedes) are left out. limit caps each section; more says how many were cut.',
   ].join(' '),
   input: z.object({
     focus: z.string().trim().min(1).max(500).optional().describe('The question or topic, in plain words. Searched like vault.search.'),
@@ -134,7 +146,7 @@ export const contextBrief = defineOp({
     match: z.enum(['all', 'any']).nullable(),
     anchors: z.array(BriefRefSchema),
     initiatives: z.array(BriefInitiativeSchema),
-    problems: z.array(BriefRefSchema),
+    problems: z.array(BriefProblemSchema),
     ideas: z.array(BriefIdeaSchema),
     decisions: z.array(BriefDecisionSchema),
     metrics: z.array(BriefMetricSchema),
@@ -183,7 +195,7 @@ export const pulseToday = defineOp({
   description: [
     "The daily picture for Pulse and Home, for one day (date, default today on this machine's clock).",
     `commitments: open ones overdue and due that day, each split into owed by me, owed to me and other; open ones with no due date (no_due), owed by me and owed to me, oldest filed first, at most ${NO_DUE_LIMIT} a side with more counting the rest; plus counts of every open commitment by direction. me is the person marked is_user (the person this Bousleh belongs to); pass me to override. With neither, the person on the most open commitments is taken as me, and me.inferred says so.`,
-    'meetings: meetings filed in Bousleh on that day (by their held_at), planned or held, with attendees. Bousleh keeps only meetings with prep or notes, not the schedule: read the calendar for the rest of the day and merge. inbox: files waiting for Capture and open items in the ambiguity queue. stale_metrics: metrics in use (instrumented, measured or reviewed) with no reading within their cadence (daily 1 day, weekly 7, monthly 31, quarterly 92; 30 days when they have no cadence). new_findings: Horizon findings filed since the start of the day before. open_bets: ideas that are bets, with hypothesis and kill criteria.',
+    'meetings: meetings filed in Bousleh on that day (by their held_at), planned or held, with attendees. Bousleh keeps only meetings with prep or notes, not the schedule: read the calendar for the rest of the day and merge. inbox: files waiting for Capture and open items in the ambiguity queue. stale_metrics: metrics in use (instrumented, measured or reviewed) with no reading within their cadence (daily 1 day, weekly 7, monthly 31, quarterly 92; 30 days when they have no cadence). new_findings: Horizon findings filed since the start of the day before. open_bets: ideas that are bets or running (being tried right now: an experiment under way, a build in progress), each with its status, bets first, with hypothesis and kill criteria (a running idea may have neither).',
     'metric_movement: metrics with at least two readings whose last change is not zero, with the latest and previous readings and the delta, most recently read first.',
     `touchpoints_due: the stakeholders, PMs and engineers (not me) whose last touchpoint (the newest held meeting they attended, or the newest object linked about them) is more than ${TOUCHPOINT_DUE_DAYS} days before the date, or who have none; never touched first, then the longest ago.`,
     'scopes (slugs, child scopes included) narrows everything except the inbox and the queue, which have no scope. Read-only.',
@@ -297,6 +309,8 @@ export const pulseToday = defineOp({
       z.object({
         id: IdSchema,
         title: z.string(),
+        /** bet, or running: being tried right now. */
+        status: z.enum(CONCLUDABLE_IDEA_STATUSES),
         altitude: AltitudeSchema,
         scopes: z.array(ScopeSlugSchema),
         hypothesis: z.string().nullable(),

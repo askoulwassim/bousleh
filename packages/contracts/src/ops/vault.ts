@@ -110,7 +110,7 @@ export const vaultSearch = defineOp({
 export const vaultLink = defineOp({
   name: 'vault.link',
   description:
-    'Link two existing objects with a typed link, from one object to another (for example a signal evidence_for a problem, a commitment owed_by a person). Only allowed pairs are accepted. Linking the same pair with the same kind again returns the existing link with created: false. A decision linked to an idea with concludes moves the idea to concluded (the idea must be a bet); the result then carries the new version of the idea under concluded.',
+    'Link two existing objects with a typed link, from one object to another (for example a signal evidence_for a problem, a commitment owed_by a person). Only allowed pairs are accepted. Linking the same pair with the same kind again returns the existing link with created: false. A decision linked to an idea with concludes moves the idea to concluded (the idea must be a bet or running); the result then carries the new version of the idea under concluded.',
   input: z.object({
     from: IdSchema,
     kind: LinkKindSchema,

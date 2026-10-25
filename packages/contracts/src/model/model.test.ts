@@ -19,7 +19,7 @@ describe('kinds', () => {
   });
 
   it('refuses a status on a kind without statuses, and a status outside the list', () => {
-    expect(checkKindFields('problem', { status: 'open' }).ok).toBe(false);
+    expect(checkKindFields('decision', { status: 'open' }).ok).toBe(false);
     expect(checkKindFields('strategy', { status: 'done' }).ok).toBe(false);
   });
 });
@@ -36,8 +36,13 @@ describe('assets', () => {
 });
 
 describe('idea statuses (Oct 25)', () => {
-  it('are open, bet, parked, dropped and concluded, with no won or lost', () => {
-    expect(KINDS.idea.statuses).toEqual(['open', 'bet', 'parked', 'dropped', 'concluded']);
+  it('are open, running, bet, parked, dropped and concluded, with no won or lost', () => {
+    expect(KINDS.idea.statuses).toEqual(['open', 'running', 'bet', 'parked', 'dropped', 'concluded']);
+  });
+
+  it('need nothing extra to be running', () => {
+    expect(checkKindFields('idea', { status: 'running' }, { status: 'open' })).toMatchObject({ ok: true, value: { status: 'running' } });
+    expect(checkKindFields('idea', { status: 'running' }, { status: 'concluded' }).ok).toBe(false);
   });
 
   it('need a hypothesis and kill criteria for a bet', () => {
@@ -59,9 +64,13 @@ describe('idea statuses (Oct 25)', () => {
     expect(checkKindFields('idea', { status: 'open', attrs }, { status: 'concluded' }).ok).toBe(false);
   });
 
-  it('keep the hypothesis and kill criteria on a concluded idea', () => {
-    expect(checkKindFields('idea', { attrs: { hypothesis: 'h' } }, { status: 'concluded' }).ok).toBe(false);
-    expect(checkKindFields('idea', { attrs: {} }, { status: 'concluded' }).ok).toBe(false);
+  it('keep the hypothesis and kill criteria on a concluded idea that had them', () => {
+    const had = { status: 'concluded', attrs: { hypothesis: 'h', kill_criteria: 'k' } };
+    expect(checkKindFields('idea', { attrs: { hypothesis: 'h' } }, had).ok).toBe(false);
+    expect(checkKindFields('idea', { attrs: {} }, had).ok).toBe(false);
+    expect(checkKindFields('idea', { attrs: { hypothesis: 'h', kill_criteria: 'k', rank: 2 } }, had).ok).toBe(true);
+    // Concluded from running, without either: still fine.
+    expect(checkKindFields('idea', { attrs: { rank: 2 } }, { status: 'concluded', attrs: {} }).ok).toBe(true);
   });
 });
 
@@ -142,8 +151,19 @@ describe('meetings', () => {
   });
 
   it('leave kinds without statuses reading as null', () => {
-    expect(effectiveStatus('problem', null)).toBeNull();
+    expect(effectiveStatus('decision', null)).toBeNull();
     expect(effectiveStatus('person', null)).toBeNull();
+  });
+});
+
+describe('problem statuses', () => {
+  it('are open, solved and dropped, open by default and when written before they had statuses', () => {
+    expect(KINDS.problem.statuses).toEqual(['open', 'solved', 'dropped']);
+    expect(checkKindFields('problem', {})).toMatchObject({ ok: true, value: { status: 'open' } });
+    expect(effectiveStatus('problem', null)).toBe('open');
+    expect(checkKindFields('problem', {}, { status: null })).toMatchObject({ ok: true, value: { status: 'open' } });
+    expect(checkKindFields('problem', { status: 'solved' }, { status: null })).toMatchObject({ ok: true, value: { status: 'solved' } });
+    expect(checkKindFields('problem', { status: 'fixed' }).ok).toBe(false);
   });
 });
 

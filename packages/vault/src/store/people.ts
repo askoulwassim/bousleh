@@ -91,7 +91,7 @@ export function personProfile(store: Store, id: string, recent: number): PersonP
         kind: row.other_kind,
         layer: row.other_layer,
         title: row.title,
-        status: row.status,
+        status: effectiveStatus(row.other_kind, row.status),
         links: [],
         last_activity: row.updated_at,
       };

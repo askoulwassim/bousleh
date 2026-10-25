@@ -41,7 +41,7 @@ export const LINK_KINDS = {
   },
   concludes: {
     description:
-      "A decision to the idea it concludes: the bet's outcome. Linking it moves the idea to `concluded`; the idea must be a bet.",
+      'A decision to the idea it concludes: the outcome of a bet or of an idea being tried (running). Linking it moves the idea to `concluded`; the idea must be a bet or running.',
     from: { kinds: ['decision'] },
     to: { kinds: ['idea'] },
   },

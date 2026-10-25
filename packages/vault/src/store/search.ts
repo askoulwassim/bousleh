@@ -1,4 +1,4 @@
-import type { Altitude, Kind, Layer, SearchHit } from '@bousleh/contracts';
+import { type Altitude, effectiveStatus, type Kind, type Layer, type SearchHit } from '@bousleh/contracts';
 import type { Store } from './store.js';
 
 /*
@@ -88,7 +88,8 @@ function run(store: Store, filter: SearchFilter, mode: 'all' | 'any'): SearchHit
     kind: row.kind,
     layer: row.layer,
     title: row.title,
-    status: row.status,
+    // Objects written before their kind had statuses read as its default (a problem as open).
+    status: effectiveStatus(row.kind, row.status),
     altitude: row.altitude,
     scopes: row.scopes.split(' ').filter(Boolean),
     snippet: row.snippet ?? '',

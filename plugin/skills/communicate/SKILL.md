@@ -35,7 +35,7 @@ If one message goes to a mixed room, pitch it at the highest altitude present an
 3. Judge:
    - What this audience must decide or do, in one sentence. Lead with it.
    - Only what the brief holds. Where a fact or number is missing, mark it as a gap; never fill it in.
-   - Status honesty: a `forming` or `contested` strategy is presented as a draft. An idea that's a `bet` shows its hypothesis and kill criteria.
+   - Status honesty: a `forming` or `contested` strategy is presented as a draft. An idea that's a `bet` shows its hypothesis and kill criteria; a `running` one is presented as being tried, not as decided. A `solved` or `dropped` problem is presented as closed, with the decision behind it.
    - What to leave out for this audience.
 4. Pick the surface:
    - **Docs** for written briefs, updates, one-pagers and anything people will comment on.

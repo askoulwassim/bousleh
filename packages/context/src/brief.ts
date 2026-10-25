@@ -19,8 +19,8 @@ import { ancestorsOf, call, coverScopes, inCover, isReplaced, Objects, shorten }
  * context.brief: what to know before advising at an altitude.
  * 1. The centre: the ids asked for, and the best matches for focus (vault.search).
  * 2. One hop out: everything linked to the centre, in either direction.
- * 3. With no centre, the scopes as a whole: live initiatives, open problems and ideas, decisions, metrics,
- *    open commitments.
+ * 3. With no centre, the scopes as a whole: live initiatives, open problems, open, running and bet ideas,
+ *    decisions, metrics, open commitments. Solved and dropped problems show only near the centre.
  * 4. Anchors of the scopes (and their parent scopes) at or above one level below the altitude, and
  *    the metrics that serve them.
  * 5. Evidence linked to what is shown, then the people involved in it.
@@ -56,7 +56,13 @@ export const CENTRE_FROM_SEARCH = 5;
 const SNIPPET_CHARS = 200;
 const MAX_REASONS = 4;
 /** Idea statuses, in the order the ideas section lists them. */
-const IDEA_ORDER = ['bet', 'open', 'parked', 'concluded', 'dropped'];
+const IDEA_ORDER = ['bet', 'running', 'open', 'parked', 'concluded', 'dropped'];
+/** Ideas the brief keeps when it has no centre. */
+const LIVE_IDEAS = ['bet', 'running', 'open'];
+/** Problem statuses, in the order the problems section lists them. */
+const PROBLEM_ORDER = ['open', 'solved', 'dropped'];
+/** Problems the brief leaves out when it has no centre. */
+const CLOSED_PROBLEMS = ['solved', 'dropped'];
 /** Initiative statuses, in the order the initiatives section lists them. */
 const INITIATIVE_ORDER = ['active', 'proposed', 'paused', 'done', 'dropped'];
 /** Initiatives the brief leaves out when it has no centre. */
@@ -198,7 +204,8 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
     for (const object of objects.ofKinds(['initiative', 'problem', 'idea', 'decision', 'metric', 'commitment', 'asset'])) {
       if (!eligible(object)) continue;
       if (object.kind === 'initiative' && CLOSED_INITIATIVES.includes(effectiveStatus('initiative', object.version.status) ?? '')) continue;
-      if (object.kind === 'idea' && !['open', 'bet'].includes(object.version.status ?? '')) continue;
+      if (object.kind === 'problem' && CLOSED_PROBLEMS.includes(effectiveStatus('problem', object.version.status) ?? '')) continue;
+      if (object.kind === 'idea' && !LIVE_IDEAS.includes(object.version.status ?? '')) continue;
       if (object.kind === 'commitment' && object.version.status !== 'open') continue;
       picked.add(object, 2, scopeReason(object));
     }
@@ -254,7 +261,8 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
     const order = (entry: Entry) => INITIATIVE_ORDER.indexOf(initiativeStatus(entry));
     return order(a) - order(b) || targetDate(a).localeCompare(targetDate(b)) || newestFirst(a, b);
   });
-  const problems = take('problems', picked.inSection('problems'), newestFirst);
+  const problemOrder = (entry: Entry) => PROBLEM_ORDER.indexOf(effectiveStatus('problem', entry.object.version.status) ?? 'open');
+  const problems = take('problems', picked.inSection('problems'), (a, b) => problemOrder(a) - problemOrder(b) || newestFirst(a, b));
   const ideaRank = (entry: Entry) => (entry.object.version.attrs.rank as number | undefined) ?? Number.MAX_SAFE_INTEGER;
   const ideas = take('ideas', picked.inSection('ideas'), (a, b) => {
     const order = (entry: Entry) => IDEA_ORDER.indexOf(entry.object.version.status ?? 'open');
@@ -336,7 +344,8 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
       kind: object.kind,
       title: object.version.title,
       altitude: object.version.altitude,
-      status: object.version.status,
+      // Objects written before their kind had statuses read as its default (a problem as open).
+      status: effectiveStatus(object.kind, object.version.status),
       scopes: object.scopes,
       ...(snippet ? { snippet } : {}),
       why: entry.why.slice(0, MAX_REASONS),
@@ -363,7 +372,10 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
       target_date: attr<string>(entry.object, 'target_date'),
       owner: personVia(entry.object, 'owned_by'),
     })),
-    problems: problems.map((entry) => ref(entry, 'problems')),
+    problems: problems.map((entry) => ({
+      ...ref(entry, 'problems'),
+      status: (effectiveStatus('problem', entry.object.version.status) ?? 'open') as Output['problems'][number]['status'],
+    })),
     ideas: ideas.map((entry) => ({
       ...ref(entry, 'ideas'),
       hypothesis: attr<string>(entry.object, 'hypothesis'),

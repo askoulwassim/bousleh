@@ -25,7 +25,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 | --- | --- |
 | Something someone said, asked for or complained about | `signal` (attrs `source`, `sentiment`, `tags`) |
 | Something he noticed first-hand | `observation` |
-| A pain or gap, stated as a problem | `problem` |
+| A pain or gap, stated as a problem | `problem` (status `open`, the default) |
 | "What if we...", a possible move | `idea` (status `open`) |
 | "We decided...", "we're going with..." | `decision` (attrs `decided_at`, `reversible`) |
 | "I owe...", "X owes me...", "I'll send..." | `commitment` (attrs `due`), links `owed_by`, `owed_to` |
@@ -67,9 +67,10 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 ## Ideas and bets
 
 - New ideas are `open`. Write one as `bet` only when Wassim states both a hypothesis and kill criteria (attrs `hypothesis`, `kill_criteria`). Otherwise write it `open` and say which is missing.
-- Statuses are `open`, `bet`, `parked`, `dropped`, `concluded`. There is no won or lost.
-- A bet ends only through a `decision`: deposit the decision with a `concludes` link to the idea (or `vault_link` decision → idea if the decision exists). The engine moves the idea to `concluded`. Never set `concluded` yourself. If the idea isn't a bet yet, queue the decision.
-- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", and a person's email, under "People's emails"). A request to park, drop or reword an idea, or to close a commitment, goes in your read-back as "for Shape" or "for Pulse". In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
+- New ideas are written `open`, or `running` when he says it is already being tried (an experiment under way, a build in progress); never `running` on a guess.
+- Statuses are `open`, `running`, `bet`, `parked`, `dropped`, `concluded`. There is no won or lost.
+- A bet ends only through a `decision`: deposit the decision with a `concludes` link to the idea (or `vault_link` decision → idea if the decision exists). The engine moves the idea to `concluded`. Never set `concluded` yourself. Only a `bet` or a `running` idea can be concluded; if it is neither, queue the decision.
+- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", and a person's email, under "People's emails"). A request to park, drop, start or reword an idea, a problem said to be solved or no longer worth solving, or a commitment to close, goes in your read-back as "for Shape" or "for Pulse" (starting an existing idea and marking a problem solved or dropped are Shape's). In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
 
 ## Meetings
 
