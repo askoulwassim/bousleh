@@ -35,7 +35,7 @@ Op names are provisional; the "Package map" tab is the source of truth.
 | Package | Owns | Op namespaces | Depends on |
 | --- | --- | --- | --- |
 | contracts | Object kinds, layers, altitude, scope; every op's name and schemas | none (definitions only) | nothing |
-| vault | Storage, migrations, history, typed objects, scopes | `vault.*` (health, get, search, link, supersede), `deposits.*` (write), `scopes.*` (list, add), `commitments.*`, `people.*` | contracts |
+| vault | Storage, migrations, history, typed objects, scopes | `vault.*` (health, get, search, supersede, link, unlink), `deposits.*` (write), `scopes.*` (list, add), `commitments.*` (list, close), `people.*` (get) | contracts |
 | intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (list, take, sweep), `queue.*` (add, resolve), `signals.*` (patterns) | contracts, vault |
 | context | The brief at a given altitude, and Pulse's daily picture | `context.*` (brief), `pulse.*` (today) | contracts, vault, metrics, watch |
 | metrics | The registry, its lifecycle and readings | `metrics.*` (upsert, reading, list) | contracts, vault |
