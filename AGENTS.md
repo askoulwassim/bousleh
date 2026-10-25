@@ -16,7 +16,7 @@ Bousleh (بوصلة, "compass") is Wassim's personal operating system for produc
 
 Perfect Placement (`askoulwassim/perfect-placement`) is the reference: `packages/contracts` for the registry, `packages/engine` for `runOp` and handlers, `packages/mcp` generated from ops.
 
-Two more rules follow from these. **Nothing is overwritten:** history uses "supersedes" links. **Your data never enters this repo:** it lives in `~/.bousleh` (or `BOUSLEH_HOME`), local only, never committed, never pushed, not a git repo.
+Two more rules follow from these. **Nothing is overwritten:** history uses "supersedes" links. **Your data never enters this repo:** it lives in `~/.bousleh` (or `BOUSLEH_HOME`), local only, never committed, never pushed, not a git repo. That makes it the only copy, so Time Machine must cover it (Alethea's backup on the work Mac).
 
 ## Naming
 
