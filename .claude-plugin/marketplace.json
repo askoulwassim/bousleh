@@ -1,0 +1,14 @@
+{
+  "name": "bousleh",
+  "description": "Bousleh, as a local Claude Code marketplace: the plugin lives in ./plugin.",
+  "owner": {
+    "name": "Wassim Askoul"
+  },
+  "plugins": [
+    {
+      "name": "bousleh",
+      "source": "./plugin",
+      "description": "The Bousleh modes (Capture, Pulse, Counsel, Shape, Workshop, Communicate, Coach, Horizon) and Drop, over the local Bousleh MCP server."
+    }
+  ]
+}

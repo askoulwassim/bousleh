@@ -45,7 +45,7 @@ export const DriveInboxStatusSchema = z.object({
 export const inboxSweep = defineOp({
   name: 'inbox.sweep',
   description:
-    'Bring everything waiting into the local inbox and report it. Moves each file from the synced Google Drive "Bousleh Inbox" folder (set by BOUSLEH_DRIVE_INBOX) into the local inbox; moved, not copied, so it leaves Google Drive. Files whose content was already seen are not handed to you again: they move straight to inbox/processed and are listed as duplicates. If the Drive inbox is not configured or not found, says so and sweeps only the local inbox. Run it before inbox.list when you want new phone captures and Horizon findings included.',
+    'Bring everything waiting into the local inbox and report it. Optional legacy path: if BOUSLEH_DRIVE_INBOX points at a Google Drive folder synced by the desktop app and macOS lets Bousleh read it, moves each file from there into the local inbox (moved, not copied). The usual path for Drive captures is inbox.drop through the Google Drive connector. Files whose content was already seen are not handed to you again: they move straight to inbox/processed and are listed as duplicates. If the Drive inbox is not configured or not found, says so and sweeps only the local inbox. Run it before inbox.list when you want new phone captures and Horizon findings included.',
   input: NoInput,
   output: z.object({
     drive: DriveInboxStatusSchema,
@@ -113,7 +113,25 @@ export const inboxSettle = defineOp({
   }),
 });
 
+export const inboxDrop = defineOp({
+  name: 'inbox.drop',
+  description:
+    'Put one text file into the local inbox, from content you read elsewhere. This is how Google Drive captures arrive: read each file in the "Bousleh Inbox" Drive folder with the Google Drive connector, call inbox.drop with its name and full text, and only after it succeeds move the Drive file to the trash. A file whose content was already seen (logged or already waiting) is not written again: duplicate is true, and you can still trash the Drive copy. Then read and settle it like any inbox file (inbox.take, inbox.settle). Text only (markdown or plain text); the name keeps a .md or .txt extension.',
+  input: z.object({
+    name: z.string().min(1).max(200).describe('The file name, e.g. capture-2026-10-25-0930-pricing.md. Folders are stripped.'),
+    content: z.string().min(1).max(2_000_000).describe('The full text of the file, exactly as read.'),
+    source: InboxSourceSchema.default('drive').describe('Where it came from: drive (default), local or transcript.'),
+  }),
+  output: z.object({
+    sha256: Sha256Schema,
+    duplicate: z.boolean(),
+    /** The file now waiting, or null for a duplicate. */
+    file: InboxFileSchema.nullable(),
+  }),
+});
+
 export const inboxOps = {
+  'inbox.drop': inboxDrop,
   'inbox.sweep': inboxSweep,
   'inbox.list': inboxList,
   'inbox.take': inboxTake,

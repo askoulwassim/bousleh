@@ -11,7 +11,7 @@ import { ObjectViewSchema, WrittenSchema } from './shapes.js';
 export const vaultHealth = defineOp({
   name: 'vault.health',
   description:
-    'Health check for Bousleh: engine version, where your data lives (~/.bousleh unless configured otherwise) and whether it exists yet, and how many ops are registered. Call it first if any other tool fails.',
+    'Health check for Bousleh: engine version, where your data lives (~/.bousleh unless configured otherwise) and whether it exists yet, how many ops are registered, and the latest backup snapshot. Call it first if any other tool fails.',
   input: NoInput,
   output: z.object({
     ok: z.boolean(),
@@ -22,7 +22,28 @@ export const vaultHealth = defineOp({
       db: z.boolean(),
     }),
     ops: z.number().int(),
+    backups: z.object({
+      dir: z.string(),
+      latest: z.string().nullable().describe('Folder name of the newest complete snapshot, or null if none yet.'),
+      count: z.number().int(),
+    }),
     now: z.iso.datetime(),
+  }),
+  readOnly: true,
+});
+
+export const vaultBackup = defineOp({
+  name: 'vault.backup',
+  description:
+    'Take a snapshot of your data now: a consistent copy of vault.db plus every markdown and inbox file, in a new dated folder next to your data (~/.bousleh-backups unless BOUSLEH_BACKUPS says otherwise). Keeps the newest `keep` snapshots and removes older ones. The engine already takes one automatically once a day, so call this only before something risky or when asked. To restore, close Claude Desktop and Claude Code, move ~/.bousleh aside, and copy a snapshot folder into its place.',
+  input: z.object({
+    keep: z.number().int().min(1).max(365).default(14).describe('How many snapshots to keep, newest first. Default 14.'),
+  }),
+  output: z.object({
+    path: z.string(),
+    files: z.number().int(),
+    bytes: z.number().int(),
+    pruned: z.array(z.string()),
   }),
   readOnly: true,
 });
@@ -129,4 +150,5 @@ export const vaultOps = {
   'vault.supersede': vaultSupersede,
   'vault.link': vaultLink,
   'vault.unlink': vaultUnlink,
+  'vault.backup': vaultBackup,
 } as const;

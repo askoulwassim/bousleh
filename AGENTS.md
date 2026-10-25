@@ -16,7 +16,7 @@ Bousleh (بوصلة, "compass") is Wassim's personal operating system for produc
 
 Perfect Placement (`askoulwassim/perfect-placement`) is the reference: `packages/contracts` for the registry, `packages/engine` for `runOp` and handlers, `packages/mcp` generated from ops.
 
-Two more rules follow from these. **Nothing is overwritten:** history uses "supersedes" links. **Your data never enters this repo:** it lives in `~/.bousleh` (or `BOUSLEH_HOME`), local only, never committed, never pushed, not a git repo. That makes it the only copy, so Time Machine must cover it (Alethea's backup on the work Mac).
+Two more rules follow from these. **Nothing is overwritten:** history uses "supersedes" links. **Your data never enters this repo:** it lives in `~/.bousleh` (or `BOUSLEH_HOME`), local only, never committed, never pushed, not a git repo. The MCP server snapshots it once a day to `~/.bousleh-backups` on the same disk (newest 14 kept; `vault.backup` takes one on demand). That guards against a bad op, a bug or a slip, not a lost disk; Time Machine is optional.
 
 ## Naming
 
@@ -36,7 +36,7 @@ Op names are provisional; the "Package map" tab is the source of truth.
 | --- | --- | --- | --- |
 | contracts | Object kinds, layers, altitude, scope; every op's name and schemas | none (definitions only) | nothing |
 | vault | Storage, migrations, history, typed objects, scopes | `vault.*` (health, get, search, supersede, link, unlink), `deposits.*` (write), `scopes.*` (list, add), `commitments.*` (list, close), `people.*` (get) | contracts |
-| intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (list, take, sweep, settle), `queue.*` (add, list, resolve), `signals.*` (patterns, not built yet) | contracts, vault |
+| intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (drop, list, take, sweep, settle), `queue.*` (add, list, resolve), `signals.*` (patterns, not built yet) | contracts, vault |
 | context | The brief at a given altitude, and Pulse's daily picture | `context.*` (brief), `pulse.*` (today) | contracts, vault, metrics, watch |
 | metrics | The registry, its lifecycle and readings | `metrics.*` (upsert, reading, list) | contracts, vault |
 | watch | Watch lists per scope, filing scan findings, the digest | `watchlists.*` (get, set), `watch.*` (file, digest) | contracts, vault |
@@ -49,7 +49,8 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 
 | Skill | Reads | Writes | Hands off to |
 | --- | --- | --- | --- |
-| Capture | `inbox.list`, `inbox.take`, `vault.search` | `deposits.write`, `queue.add`, `queue.resolve`, `vault.link` | nothing |
+| Capture | `inbox.list`, `inbox.take`, `vault.search`; the Google Drive connector for "Bousleh Inbox" | `inbox.drop`, `inbox.settle`, `deposits.write`, `queue.add`, `queue.resolve`, `vault.link` | nothing |
+| Drop (phone) | nothing | a new `.md` file in "Bousleh Inbox", through the Google Drive connector | Capture |
 | Pulse | `pulse.today`, `commitments.list`, `metrics.list` | `commitments.close`; `vault.supersede` or `deposits.write` once, to mark the user | Home |
 | Counsel | `context.brief`, `people.get` | `deposits.write` | nothing |
 | Shape | `context.brief`, `metrics.list` | `deposits.write`, `vault.supersede`, `metrics.upsert`, `vault.link` | Docs |
@@ -58,7 +59,7 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 | Coach | `people.get`, `context.brief` | `deposits.write` | Docs |
 | Horizon | `watchlists.get`, `watch.digest` | `watchlists.set`, `watch.file`, `vault.link` | Home, Docs |
 
-Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Daily inbox sweep runs on the Mac and calls `inbox.sweep`, then the Capture skill. The Daily Horizon scan runs in the cloud, can't reach the Mac, and only writes files to the Drive inbox.
+Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Daily inbox sweep runs the Capture skill on the Mac: Drive captures come in through the Google Drive connector and `inbox.drop`, then the inbox is filed. The Daily Horizon scan runs in the cloud, can't reach the Mac, and only writes files to the Drive inbox.
 
 ### Adding an op
 
@@ -118,12 +119,18 @@ bousleh.nosync/              this repo (private GitHub: askoulwassim/bousleh)
 | Packages | `contracts`, `vault`, `intake`, `context`, `metrics`, `watch`, `engine`, `mcp-server` (see the package table) |
 | Search v0 | SQLite full-text search plus links; no embeddings. Graphiti is the next step later, not vectors |
 | Modes | Eight skills in one Claude plugin: Capture, Pulse, Counsel, Shape, Workshop, Communicate, Coach, Horizon |
-| Phone capture | Claude app dictation into a Google Drive folder named "Bousleh Inbox", one file per capture, never appended. The Google Drive desktop app syncs that folder to the Mac, and the inbox sweep reads the local copy. The engine never calls the Drive connector, and file contents never pass through Claude |
-| Inbox processing | The Daily inbox sweep (a scheduled task on the Mac) plus on demand from any session; silent, in the background. Each file is logged by content hash in SQLite, skipped if already seen, then moved to `inbox/processed` |
+| Phone capture | The Drop skill in the Claude app saves each dictation as a new `.md` file in the Google Drive folder "Bousleh Inbox" (one file per capture, never appended), through the Claude account's Google Drive connector. On the Mac, Capture reads the folder through the same connector, hands each file to `inbox.drop`, then trashes it in Drive (moved, not copied). No Google Drive desktop app and no Full Disk Access (Oct 25: macOS blocks other apps from the synced Drive folder). The engine never calls Google itself |
+| Inbox processing | The Daily inbox sweep (a scheduled task that runs Capture) plus on demand from any session; silent, in the background. Each file is logged by content hash in SQLite, skipped if already seen, then moved to `inbox/processed` |
+| Backups | Daily snapshot to `~/.bousleh-backups` on the same disk, newest 14 kept, taken by the MCP server; `vault.backup` on demand. Restore: quit Claude, move `~/.bousleh` aside, copy a snapshot folder into its place |
+| Setup | `scripts/setup-mac.sh` sets up a Mac end to end (see SETUP.md); the work Mac runs the same script |
 | Horizon scan | The Daily Horizon scan, a Claude scheduled task in the cloud: web search, findings written to the Drive inbox. Podcasts: show notes, plus a transcript only when the show publishes one; no transcription |
 | Voice | Dictation in Claude, plus meeting transcripts handed to Capture. No Voicebox, no messaging gateway |
 | Home | A Claude page. No Home code before a Claude Design session exists. Live engine data in the Claude desktop app, a daily snapshot elsewhere |
 | Later | Graphiti, the signal bridge between accounts, live phone access, open-sourcing |
+
+## Set up a Mac
+
+`scripts/setup-mac.sh` does the whole setup (build, MCP server in Claude Desktop and Claude Code, plugin, account plugin file, health check); SETUP.md has the ten-minute walkthrough. Rerun it after `git pull`.
 
 ## Run and test
 

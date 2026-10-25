@@ -61,7 +61,7 @@ Work instance: Alethea's competitors and the narrative-intelligence space, from 
 
 ## The Daily Horizon scan
 
-You're in the cloud. You can't reach the Mac or the Bousleh MCP server: don't try. Your only output is new files in the Google Drive folder "Bousleh Inbox". The inbox sweep on the Mac picks them up, and Capture files them.
+You're in the cloud. You can't reach the Mac or the Bousleh MCP server: don't try. Your only output is new files in the Google Drive folder "Bousleh Inbox", written with the Google Drive connector (content type `text/markdown`, conversion to a Google Doc turned off). Capture on the Mac brings them in through the same Drive connection and files them.
 
 1. Take the watch lists from the task prompt.
 2. For each entry, web search for what's new since the last run (default: the last two days; overlap is fine, filing dedupes by url):

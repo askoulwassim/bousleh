@@ -1,6 +1,6 @@
 # Bousleh plugin
 
-The eight Bousleh modes as Claude skills, in one plugin named `bousleh`.
+The eight Bousleh modes, plus Drop for phone captures, as Claude skills in one plugin named `bousleh`.
 
 | Skill | Job | Surface |
 | --- | --- | --- |
@@ -12,27 +12,20 @@ The eight Bousleh modes as Claude skills, in one plugin named `bousleh`.
 | Communicate | One truth rendered per audience | Docs, Slides |
 | Coach | Coaching the PMs he leads; growth notes | Conversation, Docs |
 | Horizon | The outside view: digest, watch lists, the Daily Horizon scan | Home, Docs |
+| Drop | Phone dictation saved verbatim to the Drive folder "Bousleh Inbox" for Capture | Google Drive |
 
 ## Requirements
 
-The skills expect the Bousleh MCP server, registered locally as `bousleh` on the Mac (stdio; see `AGENTS.md`, "Run and test"). This plugin does not bundle or configure it. Without it, every skill except the Daily Horizon scan setting of Horizon has nothing to call.
+The eight modes expect the Bousleh MCP server, registered locally as `bousleh` on the Mac. Drop needs only the Google Drive connector, so it works on the phone. `scripts/setup-mac.sh` sets all of it up (see SETUP.md at the repo root).
 
-Skills name tools as the server exposes them, with underscores (`inbox_sweep`), and the dotted op name alongside (`inbox.sweep`). Claude Code shows them as `mcp__bousleh__inbox_sweep`.
+Skills name tools as the server exposes them, with underscores (`inbox_drop`), and the dotted op name alongside (`inbox.drop`). Claude Code shows them as `mcp__bousleh__inbox_drop`.
 
-`context.brief` and `pulse.today` are being built in parallel. The skills use them by name and intent:
+## Install
 
-- `context.brief(focus?, scopes?, altitude?, ids?)`: anchors, problems, ideas, decisions, metrics, people, commitments and evidence around a focus at an altitude.
-- `pulse.today(date?, scopes?)`: commitment buckets, today's meetings, inbox and queue counts, stale metrics, new findings, open bets.
+- **Claude Code:** the setup script registers the repo as a local marketplace (`.claude-plugin/marketplace.json` at the repo root) and installs `bousleh@bousleh`. Skills are read from the repo, so edits show up at the next session or after `/reload-plugins`. For a quick try without installing, run `claude --plugin-dir plugin`.
+- **Your Claude account (Desktop, web, phone):** upload `dist/bousleh.plugin`, which the setup script builds. Re-upload it after skills change.
 
-## Use
-
-For local testing in Claude Code:
-
-```sh
-claude --plugin-dir plugin
-```
-
-Skills are then available as `/bousleh:capture`, `/bousleh:pulse` and so on, and load on their own when what Wassim says matches a skill's description. The plugin isn't in a marketplace yet. `claude plugin validate plugin` passes.
+`claude plugin validate plugin` passes.
 
 ## Rules every skill follows
 

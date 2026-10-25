@@ -5,7 +5,7 @@ description: Files what Wassim says or drops in into his Bousleh data. Splits vo
 
 # Capture
 
-Turn raw input into typed, linked deposits. You decide what the input means. The engine files, dedupes, moves files and keeps history. Never write files or SQL yourself. Never move, copy or delete inbox files, and never read the "Bousleh Inbox" Drive folder through a Drive connector: the inbox sweep moves Drive files (moved, not copied) and `inbox_settle` moves each one to `inbox/processed`.
+Turn raw input into typed, linked deposits. You decide what the input means. The engine files, dedupes, moves files and keeps history. Never write files or SQL yourself, and never move, copy or delete files in the local inbox: `inbox_settle` moves each one to `inbox/processed`. The one thing you carry by hand is Drive captures: you read them through the Google Drive connector, hand each one to `inbox_drop`, then move the Drive file to Drive's trash (moved, not copied; see "Flow: Google Drive").
 
 ## Ops
 
@@ -14,7 +14,8 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Reads: `inbox_list` (inbox.list), `inbox_take` (inbox.take), `vault_search` (vault.search)
 - Writes: `deposits_write` (deposits.write), `queue_add` (queue.add), `queue_resolve` (queue.resolve), `vault_link` (vault.link), `inbox_settle` (inbox.settle)
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs, `queue_list` (queue.list) to clear the queue, `vault_get` (vault.get) to check a candidate
-- Added, write: `inbox_sweep` (inbox.sweep), only when Wassim asks for a fresh sweep in a session. The Daily inbox sweep runs it before handing over.
+- Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox.
+- Google Drive connector (your Claude account's Drive): search the folder, read each file, and trash it after `inbox_drop` succeeds.
 
 ## What to judge
 
@@ -59,9 +60,20 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 2. Split it into atoms. For each: search, judge kind, altitude, scope and links, then `deposits_write` with `from_moment` → the dump, or `queue_add`.
 3. Read back in a few spoken-style lines: what was filed, what was queued and why. Then ask at most one question, about the queued item that matters most.
 
+## Flow: Google Drive
+
+Phone captures (the Drop skill) and the Daily Horizon scan land in the Google Drive folder "Bousleh Inbox". Bring them in before working the inbox:
+
+1. With the Google Drive connector, find the folder titled exactly `Bousleh Inbox` in My Drive, then list the files in it (`parentId` = that folder, not trashed), oldest first.
+2. For each file: read its full text (the connector reads markdown, plain text and Google Docs alike), then `inbox_drop` with its title as `name` and the text as `content`.
+3. Only when `inbox_drop` returned ok (a new file or a duplicate), move the Drive file to the trash with the connector. If the drop failed, leave the file in Drive and say so.
+4. A file you can't read as text (a PDF, an image): leave it in Drive and mention it.
+
+If the Google Drive connector isn't available in this session, skip this and say Drive captures are waiting.
+
 ## Flow: the inbox
 
-1. `inbox_list`. Run `inbox_sweep` first only if Wassim asked for a fresh sweep.
+1. Run "Flow: Google Drive" first, then `inbox_list`.
 2. Take files oldest first with `inbox_take`. If `content` is null, `inbox_settle` it as `failed` (unreadable) or `skipped`, and mention it.
 3. A file whose frontmatter has `bousleh: horizon-scan` came from the Daily Horizon scan. Follow "File a scan" in the Horizon skill (`watch_file`), then settle it `filed` with the first filed finding's id, or `skipped` if every finding was already filed.
 4. A meeting transcript: deposit a `meeting` (attrs `held_at`, `attended_by` links to people, body a short summary). The raw transcript stays in `inbox/processed`. Then file its atoms with `from_moment` → the meeting.
