@@ -218,6 +218,59 @@ describe('inbox.sweep', () => {
   });
 });
 
+describe('inbox.drop', () => {
+  interface Dropped {
+    sha256: string;
+    duplicate: boolean;
+    file: InboxFile | null;
+  }
+
+  it('writes a capture read through the Drive connector into inbox/drive, ready to take and settle', async () => {
+    const text = '---\ncaptured_at: 2026-10-25T09:30:00-04:00\nvia: phone\n---\n\nPricing page confuses analysts.';
+    const dropped = ok<Dropped>(await run('inbox.drop', { name: 'capture-2026-10-25-0930-pricing.md', content: text }));
+    expect(dropped).toMatchObject({ sha256: sha(text), duplicate: false });
+    expect(dropped.file).toMatchObject({
+      source: 'drive',
+      name: 'capture-2026-10-25-0930-pricing.md',
+      path: 'inbox/drive/capture-2026-10-25-0930-pricing.md',
+      text: true,
+    });
+    expect(readFileSync(join(home, 'inbox', 'drive', 'capture-2026-10-25-0930-pricing.md'), 'utf8')).toBe(text);
+
+    expect(ok<{ content: string }>(await run('inbox.take', { sha256: sha(text) })).content).toBe(text);
+    ok(await run('inbox.settle', { sha256: sha(text), outcome: 'skipped' }));
+    expect(existsSync(join(home, 'inbox', 'drive', 'capture-2026-10-25-0930-pricing.md'))).toBe(false);
+  });
+
+  it('writes nothing for content already waiting or already settled', async () => {
+    ok(await run('inbox.drop', { name: 'a.md', content: 'same words' }));
+    expect(ok<Dropped>(await run('inbox.drop', { name: 'b.md', content: 'same words' }))).toMatchObject({ duplicate: true, file: null });
+    ok(await run('inbox.settle', { sha256: sha('same words'), outcome: 'skipped' }));
+    expect(ok<Dropped>(await run('inbox.drop', { name: 'c.md', content: 'same words' }))).toMatchObject({ duplicate: true, file: null });
+    expect(readdirSync(join(home, 'inbox', 'drive'))).toEqual([]);
+  });
+
+  it('keeps names safe: no folders, not hidden, a text extension, no clobbering', async () => {
+    const names = [];
+    for (const [i, name] of ['../../escape.md', '.hidden', 'voice note.gdoc', 'note.md'].entries()) {
+      names.push((ok<Dropped>(await run('inbox.drop', { name, content: `text ${i}` })).file as InboxFile).path);
+    }
+    names.push((ok<Dropped>(await run('inbox.drop', { name: 'note.md', content: 'text 9' })).file as InboxFile).path);
+    expect(names).toEqual([
+      'inbox/drive/escape.md',
+      'inbox/drive/hidden.md',
+      'inbox/drive/voice note.md',
+      'inbox/drive/note.md',
+      'inbox/drive/note (2).md',
+    ]);
+  });
+
+  it('files transcripts where transcripts wait', async () => {
+    const dropped = ok<Dropped>(await run('inbox.drop', { name: 'standup.txt', content: 'Transcript.', source: 'transcript' }));
+    expect(dropped.file).toMatchObject({ source: 'transcript', path: 'inbox/transcripts/standup.txt' });
+  });
+});
+
 describe('inbox.take and inbox.settle', () => {
   it('returns a text file in full and explains files it cannot read', async () => {
     drop(join(home, 'inbox', 'transcripts', 'sync.md'), '﻿# Weekly sync\n\nWe agreed to ship.');

@@ -188,13 +188,35 @@ export function processedPath(stager: FileStager, sha256: string, name: string, 
 
 /** A free path in `inbox/drive/` for a file coming in from the Drive folder: its name, or `name (2).ext`. */
 export function driveArrivalPath(stager: FileStager, name: string): string {
+  return arrivalPath(stager, SOURCE_DIRS.drive, name);
+}
+
+/** A free path in `dir` for a new file: its name, or `name (2).ext`. */
+export function arrivalPath(stager: FileStager, dir: string, name: string): string {
   const base = clampName(name);
   const ext = extname(base);
   const stem = ext ? base.slice(0, -ext.length) : base;
   for (let n = 1; ; n++) {
-    const candidate = toPosix(join(SOURCE_DIRS.drive, n === 1 ? base : `${stem} (${n})${ext}`));
+    const candidate = toPosix(join(dir, n === 1 ? base : `${stem} (${n})${ext}`));
     if (stager.isFree(candidate)) return candidate;
   }
+}
+
+/**
+ * A safe file name for a dropped file: no folders, no control characters, not hidden, and a text
+ * extension (.md unless it already ends in .md, .markdown or .txt).
+ */
+export function dropName(raw: string): string {
+  let name = raw.split(/[\\/]/).pop() ?? '';
+  name = name
+    .split('')
+    .filter((ch) => ch.charCodeAt(0) > 0x1f && ch.charCodeAt(0) !== 0x7f)
+    .join('')
+    .trim()
+    .replace(/^[.~$]+/, '');
+  if (name === '') name = 'capture';
+  if (!/\.(md|markdown|txt)$/i.test(name)) name = `${name.replace(/\.[^.]*$/, '')}.md`;
+  return clampName(name);
 }
 
 /** True when `inner` is `outer` or inside it. */

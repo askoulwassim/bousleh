@@ -1,19 +1,24 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { type InboxOutcome, type InboxSource, inboxList, inboxSettle, inboxSweep, inboxTake } from '@bousleh/contracts';
+import { type InboxOutcome, type InboxSource, inboxDrop, inboxList, inboxSettle, inboxSweep, inboxTake } from '@bousleh/contracts';
 import { defineHandler, type HandlerContext, OpError, type OpHandler } from '@bousleh/vault';
 import {
+  arrivalPath,
   decodeText,
   driveArrivalPath,
+  dropName,
   FAILED_DIR,
   type Found,
   INBOX_DIR,
+  inspect,
   isWithin,
   PROCESSED_DIR,
   partition,
   processedPath,
+  SOURCE_DIRS,
   scanDrive,
   scanInbox,
+  sha256Of,
   toView,
 } from './files.js';
 
@@ -124,21 +129,35 @@ export function inboxHandlers(options: IntakeOptions = {}): OpHandler[] {
     };
     for (const file of local.duplicates) moveDuplicate(file);
 
-    const drive = driveStatus(driveInbox(), h.home);
+    let drive = driveStatus(driveInbox(), h.home);
     const movedIn = [];
+    let driveFiles: ReturnType<typeof scanDrive> = [];
     if (drive.available && drive.path) {
-      for (const file of scanDrive(drive.path)) {
-        if (known.has(file.sha256) || isLogged(file.sha256)) {
-          moveDuplicate(file);
-          continue;
-        }
-        known.add(file.sha256);
-        const target = driveArrivalPath(stager, file.name);
-        stager.stageMove(file.abs, target);
-        const view = toView({ ...file, abs: join(h.home, target), name: target.slice(target.lastIndexOf('/') + 1) }, h.home);
-        movedIn.push(view);
-        waiting.push(view);
+      try {
+        driveFiles = scanDrive(drive.path);
+      } catch (e) {
+        const code = (e as NodeJS.ErrnoException).code;
+        drive = {
+          ...drive,
+          available: false,
+          message:
+            code === 'EPERM' || code === 'EACCES'
+              ? `macOS isn't letting Bousleh read ${drive.path}. Drive captures come in through inbox.drop with the Google Drive connector instead. Only the local inbox was swept.`
+              : `The Drive inbox at ${drive.path} could not be read (${e instanceof Error ? e.message : String(e)}). Only the local inbox was swept.`,
+        };
       }
+    }
+    for (const file of driveFiles) {
+      if (known.has(file.sha256) || isLogged(file.sha256)) {
+        moveDuplicate(file);
+        continue;
+      }
+      known.add(file.sha256);
+      const target = driveArrivalPath(stager, file.name);
+      stager.stageMove(file.abs, target);
+      const view = toView({ ...file, abs: join(h.home, target), name: target.slice(target.lastIndexOf('/') + 1) }, h.home);
+      movedIn.push(view);
+      waiting.push(view);
     }
     waiting.sort((a, b) => a.arrived_at.localeCompare(b.arrived_at) || a.path.localeCompare(b.path));
     return { drive, moved_in: movedIn, duplicates, waiting };
@@ -186,5 +205,17 @@ export function inboxHandlers(options: IntakeOptions = {}): OpHandler[] {
     };
   });
 
-  return [sweep, list, take, settle];
+  const drop = defineHandler(inboxDrop, (input, h) => {
+    const bytes = Buffer.from(input.content, 'utf8');
+    const sha256 = sha256Of(bytes);
+    const { waiting } = inboxState(h);
+    if (logRow(h, sha256) !== undefined || waiting.some((f) => f.sha256 === sha256)) return { sha256, duplicate: true, file: null };
+    const stager = h.store.stagedFiles;
+    const target = arrivalPath(stager, SOURCE_DIRS[input.source], dropName(input.name));
+    stager.stage(target, input.content);
+    const { content: _content, ...found } = inspect(join(h.home, target), input.source);
+    return { sha256, duplicate: false, file: toView(found, h.home) };
+  });
+
+  return [sweep, list, take, settle, drop];
 }
