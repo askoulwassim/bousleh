@@ -137,14 +137,14 @@ export const pulseToday = defineOp({
   name: 'pulse.today',
   description: [
     "The daily picture for Pulse and Home, for one day (date, default today on this machine's clock).",
-    'commitments: open ones overdue and due that day, each split into owed by me, owed to me and other, plus counts of every open commitment by direction. Pass me (your own per_ id; vault.search with kinds [person] finds it); without it the person on the most open commitments is taken as me, and me.inferred says so.',
+    'commitments: open ones overdue and due that day, each split into owed by me, owed to me and other, plus counts of every open commitment by direction. me is the person marked is_user (the person this Bousleh belongs to); pass me to override. With neither, the person on the most open commitments is taken as me, and me.inferred says so.',
     'meetings: meetings held that day (by their held_at), with attendees. inbox: files waiting for Capture and open items in the ambiguity queue. stale_metrics: metrics in use (instrumented, measured or reviewed) with no reading within their cadence (daily 1 day, weekly 7, monthly 31, quarterly 92; 30 days when they have no cadence). new_findings: Horizon findings filed since the start of the day before. open_bets: ideas that are bets, with hypothesis and kill criteria.',
     'scopes (slugs, child scopes included) narrows everything except the inbox and the queue, which have no scope. Read-only.',
   ].join(' '),
   input: z.object({
     date: z.iso.date().optional().describe("The day, YYYY-MM-DD. Default: today on this machine's clock."),
     scopes: z.array(ScopeSlugSchema).optional().describe('Only these scopes and their child scopes. Default: every scope.'),
-    me: IdSchema.optional().describe('Your own person id (per_…), to split commitments into owed by you and owed to you.'),
+    me: IdSchema.optional().describe('A person id (per_…) to treat as me. Default: the person marked is_user.'),
   }),
   output: z.object({
     date: z.iso.date(),

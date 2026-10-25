@@ -14,7 +14,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Reads: `pulse_today` (pulse.today), `commitments_list` (commitments.list), `metrics_list` (metrics.list)
 - Writes: `commitments_close` (commitments.close)
 
-`pulse_today(date?, scopes?, me?)` returns the commitment buckets (overdue and due today, split into owed by me, owed to me and other), today's meetings, the inbox and queue counts, stale metrics, new findings and open bets. `me` is Wassim's own person id; without it Pulse guesses from who is on the most open commitments and says `inferred: true`. Pass it when you know it (find it once with `vault_search`).
+`pulse_today(date?, scopes?, me?)` returns the commitment buckets (overdue and due today, split into owed by me, owed to me and other), today's meetings, the inbox and queue counts, stale metrics, new findings and open bets. "Me" is the person marked `is_user` (the person this Bousleh belongs to), so you don't pass it. If `me` comes back `inferred: true` or null, no one is marked yet: ask Wassim to confirm it's him, then `vault_supersede` his person with attrs `is_user: true` (or `deposits_write` a person for him with it). Only one person can be marked.
 
 ## Altitude
 

@@ -24,6 +24,12 @@ export const LINK_KINDS = {
     to: { kinds: ['problem', 'idea'] },
   },
   about: { description: 'Anything to the person or topic it is about.' },
+  addresses: {
+    description:
+      'An idea to the problem it addresses. Optional: an idea can stand on its own as an opportunity, with no problem behind it.',
+    from: { kinds: ['idea'] },
+    to: { kinds: ['problem'] },
+  },
   part_of: { description: 'To the initiative or strategy something is part of.', to: { kinds: ['initiative', 'strategy'] } },
   serves: { description: 'A metric to the strategy line it serves.', from: { kinds: ['metric'] }, to: { kinds: ['strategy'] } },
   owned_by: { description: 'To the person who owns it.', to: { kinds: ['person'] } },

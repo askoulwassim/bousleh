@@ -50,13 +50,13 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 | Skill | Reads | Writes | Hands off to |
 | --- | --- | --- | --- |
 | Capture | `inbox.list`, `inbox.take`, `vault.search` | `deposits.write`, `queue.add`, `queue.resolve`, `vault.link` | nothing |
-| Pulse | `pulse.today`, `commitments.list`, `metrics.list` | `commitments.close` | Home |
+| Pulse | `pulse.today`, `commitments.list`, `metrics.list` | `commitments.close`; `vault.supersede` or `deposits.write` once, to mark the user | Home |
 | Counsel | `context.brief`, `people.get` | `deposits.write` | nothing |
-| Shape | `context.brief`, `metrics.list` | `deposits.write`, `vault.supersede`, `metrics.upsert` | Docs |
-| Workshop | `context.brief`, `metrics.list` | `deposits.write` | Whiteboard, Specdr POC lane |
+| Shape | `context.brief`, `metrics.list` | `deposits.write`, `vault.supersede`, `metrics.upsert`, `vault.link` | Docs |
+| Workshop | `context.brief`, `metrics.list` | `deposits.write`, `vault.link` | Whiteboard, Specdr POC lane |
 | Communicate | `context.brief` | nothing | Docs, Slides |
 | Coach | `people.get`, `context.brief` | `deposits.write` | Docs |
-| Horizon | `watchlists.get`, `watch.digest` | `watchlists.set`, `watch.file` | Home, Docs |
+| Horizon | `watchlists.get`, `watch.digest` | `watchlists.set`, `watch.file`, `vault.link` | Home, Docs |
 
 Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes nothing. The Daily inbox sweep runs on the Mac and calls `inbox.sweep`, then the Capture skill. The Daily Horizon scan runs in the cloud, can't reach the Mac, and only writes files to the Drive inbox.
 

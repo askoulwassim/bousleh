@@ -340,6 +340,18 @@ describe('pulse.today', () => {
 
     // Without me, the person on the most open commitments is taken as me.
     expect((await pulse()).me).toEqual({ id: wassim, name: 'Wassim', inferred: true });
+    // Marked as the user, he is me without being passed, and not inferred.
+    ok(await run('vault.supersede', { id: wassim, attrs: { is_user: true } }));
+    expect((await pulse()).me).toEqual({ id: wassim, name: 'Wassim', inferred: false });
+    // Only one person can be the user.
+    expect(failed(await run('vault.supersede', { id: jen, attrs: { is_user: true } })).code).toBe('conflict');
+    expect(failed(await run('deposits.write', { kind: 'person', title: 'Other me', altitude: 10000, attrs: { is_user: true } })).code).toBe(
+      'conflict',
+    );
+    // Unmarking frees the flag.
+    ok(await run('vault.supersede', { id: wassim, attrs: { is_user: null } }));
+    ok(await run('vault.supersede', { id: jen, attrs: { is_user: true } }));
+    expect((await pulse()).me).toMatchObject({ id: jen, inferred: false });
     // A past date moves the boundary: on Oct 24 the memo is due today, not overdue.
     const before = await pulse({ me: wassim, date: '2026-10-24', scopes: ['alethea'] });
     expect(ids(before.commitments.due_today.by_me)).toEqual([yesterday]);

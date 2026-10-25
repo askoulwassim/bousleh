@@ -16,14 +16,23 @@ export const DEFAULT_STALE_DAYS = 30;
 const MEASURED = ['instrumented', 'measured', 'reviewed'] as const;
 const SUMMARY_CHARS = 280;
 
-/** Who "me" is: the person given, or else the one person on the most open commitments. */
-function resolveMe(objects: Objects, given: string | undefined, open: CommitmentView[]): Me | null {
+/**
+ * Who "me" is: the person given; else the person marked `is_user`; else, as a fallback, the one
+ * person on the most open commitments (returned with inferred: true).
+ */
+function resolveMe(
+  objects: Objects,
+  given: string | undefined,
+  user: { id: string; name: string } | undefined,
+  open: CommitmentView[],
+): Me | null {
   if (given !== undefined) {
     const person = objects.get(given);
     if (!person) throw new OpError('not_found', `me: no object with id ${given}`);
     if (person.kind !== 'person') throw new OpError('invalid_input', `me: ${given} is a ${person.kind}, not a person`);
     return { id: person.id, name: person.version.title, inferred: false };
   }
+  if (user) return { id: user.id, name: user.name, inferred: false };
   const counts = new Map<string, { name: string; n: number }>();
   for (const commitment of open) {
     const people = new Map([...commitment.owed_by, ...commitment.owed_to].map((p) => [p.id, p.name]));
@@ -49,7 +58,7 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
 
   // ------------------------------------------------------------ commitments
   const allOpen = (await call(h, 'commitments.list', { status: 'open', limit: 200 })).commitments;
-  const me = resolveMe(objects, input.me, allOpen);
+  const me = resolveMe(objects, input.me, h.store.userPerson(), allOpen);
   const open = allOpen.filter((c) => inCover(cover, c.scopes));
   const group = () => ({ by_me: [], to_me: [], other: [] }) as Output['commitments']['overdue'];
   const overdue = group();
