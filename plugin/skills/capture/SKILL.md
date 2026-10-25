@@ -65,7 +65,10 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 Phone captures (the Drop skill) and the Daily Horizon scan land in the Google Drive folder "Bousleh Inbox". Bring them in before working the inbox:
 
 1. With the Google Drive connector, find the folder titled exactly `Bousleh Inbox` in My Drive, then list the files in it (`parentId` = that folder, not trashed), oldest first.
-2. For each file: read its full text (the connector reads markdown, plain text and Google Docs alike), then `inbox_drop` with its title as `name` and the text as `content`.
+2. For each file, get its exact text:
+   - Markdown and plain-text files: **download** the file's content (`download_file_content`) and decode it from base64. Don't use `read_file_content` for these: it returns a reformatted rendering (escaped `\---`, `captured\_at`, extra spaces), which breaks frontmatter and the content hash.
+   - A Google Doc: download it exported as `text/plain`.
+   Then `inbox_drop` with its title as `name` and the exact text as `content`.
 3. Only when `inbox_drop` returned ok (a new file or a duplicate), move the Drive file to the trash with the connector. If the drop failed, leave the file in Drive and say so.
 4. A file you can't read as text (a PDF, an image): leave it in Drive and mention it.
 

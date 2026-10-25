@@ -97,7 +97,7 @@ describe('the daily automatic backup', () => {
     expect(existsSync(backups)).toBe(false);
 
     await seed('First');
-    advance(2); // past the hourly check
+    // The first op after your data exists takes the first snapshot, without waiting for the hourly check.
     ok(await run('scopes.list', {}));
     expect(readdirSync(backups)).toHaveLength(1);
 
