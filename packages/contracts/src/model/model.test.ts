@@ -147,6 +147,22 @@ describe('meetings', () => {
   });
 });
 
+describe('watch list entries', () => {
+  it('say who added them: wassim by default, or horizon with an optional reason', () => {
+    expect(checkKindFields('watch_list', { attrs: { entries: [{ type: 'competitor', name: 'Glean' }] } })).toEqual({
+      ok: true,
+      value: { status: null, attrs: { entries: [{ type: 'competitor', name: 'Glean', added_by: 'wassim' }] } },
+    });
+    const scanned = { type: 'outlet', name: 'Stratechery', added_by: 'horizon', reason: 'broke 2 stories this week' };
+    expect(checkKindFields('watch_list', { attrs: { entries: [scanned] } })).toMatchObject({
+      ok: true,
+      value: { attrs: { entries: [scanned] } },
+    });
+    expect(checkKindFields('watch_list', { attrs: { entries: [{ type: 'topic', name: 'x', added_by: 'bot' }] } }).ok).toBe(false);
+    expect(checkKindFields('watch_list', { attrs: { entries: [{ type: 'topic', name: 'x', reason: '' }] } }).ok).toBe(false);
+  });
+});
+
 describe('links', () => {
   it('lets reports_to run only from a person to a person', () => {
     expect(checkLink('reports_to', 'person', 'person')).toBeNull();

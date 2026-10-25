@@ -83,7 +83,7 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 
 ## Flow: Google Drive
 
-Phone captures (the Drop skill) and the Daily Horizon scan land in the Google Drive folder "Bousleh Inbox". Bring them in before working the inbox:
+Phone captures (the Drop skill) and the Weekly Horizon scan land in the Google Drive folder "Bousleh Inbox". Only that folder: the file `Bousleh Watch Lists.md` in the Drive folder `Bousleh` is Horizon's, never swept or trashed. Bring them in before working the inbox:
 
 1. With the Google Drive connector, find the folder titled exactly `Bousleh Inbox` in My Drive, then list the files in it (`parentId` = that folder, not trashed), oldest first.
 2. For each file, get its exact text:
@@ -99,7 +99,7 @@ If the Google Drive connector isn't available in this session, skip this and say
 
 1. Run "Flow: Google Drive" first, then `inbox_list`.
 2. Take files oldest first with `inbox_take`. If `content` is null, `inbox_settle` it as `failed` (unreadable) or `skipped`, and mention it.
-3. A file whose frontmatter has `bousleh: horizon-scan` came from the Daily Horizon scan. Follow "File a scan" in the Horizon skill (`watch_file`), then settle it `filed` with the first filed finding's id, or `skipped` if every finding was already filed.
+3. A file whose frontmatter has `bousleh: horizon-scan` came from the Weekly Horizon scan. Follow "Flow: filing a scan file" in the Horizon skill: `watch_file` the findings, apply its `## Watch list changes` with `watchlists_set` under Horizon's rules (the scan's adds are marked `added_by: horizon`; it removes only entries it added; a removal of one of Wassim's is queued for him), then refresh `Bousleh Watch Lists.md` in Drive. Then settle the file `filed` with the first filed finding's id, or `skipped` if every finding was already filed and no watch list change applied. Say the watch list changes in your summary.
 4. A meeting transcript: deposit a `meeting` (status `held`, attrs `held_at`, `attended_by` links to people, body a short summary), or move the planned one to `held` (see "Meetings"). The raw transcript stays in `inbox/processed`. Then file its atoms with `from_moment` → the meeting.
 5. Anything else (a phone dictation, a note): the dump flow above.
 6. Settle every file once with `inbox_settle`:

@@ -114,4 +114,31 @@ describe('objects written before Oct 25', () => {
     ok(await run('vault.supersede', { id: signal, attrs: { tags: ['export-speed'] } }));
     expect((await get(signal)).version.attrs).toEqual({ source: 'Peter', tags: ['export-speed'] });
   });
+
+  it("watch list entries without added_by read as Wassim's, and set keeps them his", async () => {
+    const list = ok<{ id: string }>(await run('watchlists.set', { scope: 'bousleh', entries: [{ type: 'competitor', name: 'Glean' }] })).id;
+    const old = [
+      { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
+      { type: 'outlet', name: 'Stratechery', notes: 'weekly' },
+    ];
+    makeOld(home, list, { status: null, attrs: { entries: old } });
+
+    const read = ok<OpOutput<'watchlists.get'>>(await run('watchlists.get', { id: list })).watch_lists[0];
+    expect(read?.entries).toEqual(old.map((entry) => ({ ...entry, added_by: 'wassim' })));
+    expect((await get(list)).version.attrs.entries).toEqual(old);
+
+    // Sending the same entries back changes nothing; adding a scan's entry keeps the old ones Wassim's.
+    expect(ok<{ new_version: boolean }>(await run('watchlists.set', { id: list, entries: old })).new_version).toBe(false);
+    const added = ok<OpOutput<'watchlists.set'>>(
+      await run('watchlists.set', {
+        id: list,
+        entries: [...old, { type: 'competitor', name: 'Hebbia', added_by: 'horizon', reason: 'direct alternative in 3 articles' }],
+      }),
+    );
+    expect(added.entries.map((e) => [e.name, e.added_by])).toEqual([
+      ['Glean', 'wassim'],
+      ['Stratechery', 'wassim'],
+      ['Hebbia', 'horizon'],
+    ]);
+  });
 });

@@ -11,7 +11,7 @@ The eight Bousleh modes, plus Drop for phone captures, as Claude skills in one p
 | Workshop | Ideas against a problem, ranked against metrics and strategy | Whiteboard, Design, Specdr POC lane |
 | Communicate | One truth rendered per audience | Docs, Slides |
 | Coach | Coaching the PMs he leads; growth notes | Conversation, Docs |
-| Horizon | The outside view: digest, watch lists, the Daily Horizon scan | Home, Docs |
+| Horizon | The outside view: digest, watch lists, the reading queue, the Weekly Horizon scan and the watch list changes it proposes | Home, Docs |
 | Drop | Phone dictation saved verbatim to the Drive folder "Bousleh Inbox" for Capture | Google Drive |
 
 ## Requirements
@@ -50,6 +50,7 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 | Capture, Counsel | `vault.supersede` (write) | Only to move a planned meeting to `held` once it has happened (Counsel also updates the prep on it). |
 | Workshop | `vault.supersede` (write) | Only to set `rank` on ideas that already exist. |
 | Horizon | `vault.supersede` (write) | Only to move a finding through the reading queue (`to_read`, `read`, `dismissed`). |
+| Horizon | `queue.add` (write), `queue.list` (read) | Only to suggest that Wassim remove a watch list entry he added, when a scan proposes it. |
 
 ## Gaps
 
@@ -60,7 +61,7 @@ Ops or data a mode needs that don't exist yet. Not invented here.
 3. ~~Coach has no list of people by role.~~ Resolved Oct 25: `people.list` filters by role, scope and org, with each person's manager, open commitments and last touchpoint.
 4. ~~Pulse has no metric history.~~ Resolved Oct 25: `metrics.history` returns every effective reading; `metrics.list` gives each metric's last change, and `pulse.today` has `metric_movement` (and `touchpoints_due`).
 5. **Horizon scan files cross two skills.** Reading and settling inbox files are Capture's ops; filing findings (`watch.file`) is Horizon's. The skills hand off: Capture takes the file, Horizon files it, Capture settles.
-6. **The cloud scan can't read watch lists.** v0 copies them into the "Daily Horizon scan" task prompt (defined in `docs/scheduled-tasks.md`), refreshed by applying that file again after every `watchlists.set`.
+6. ~~The cloud scan can't read watch lists.~~ Resolved Oct 25: the Mac writes them to `Bousleh Watch Lists.md` in the Drive folder "Bousleh" (Horizon after every `watchlists.set`, the Hourly inbox sweep after it files a scan), and the Weekly Horizon scan reads that file instead of a copy in its prompt. Each scan proposes watch list changes, which filing applies with `watchlists.set` (entries carry `added_by`). Applying them is skill instructions over `watchlists.set`, not an op.
 7. ~~Idea ranking has no field.~~ Resolved Oct 25: ideas have a `rank` attr (1 the top), which Workshop sets and the brief sorts by. (Ideas link to their problem with `addresses`, also Oct 25.)
 8. ~~Horizon's reading and listening queue has no op or kind.~~ Resolved Oct 25: a finding's status is the queue (new, to_read, read, dismissed), and `watch.digest` filters by it.
 9. ~~Feedback patterns.~~ Resolved Oct 25: `signals.patterns` counts signals by tag ("heard N times from M people"). **Load across both worlds** (the signal bridge) still isn't built, so Pulse leaves it out.

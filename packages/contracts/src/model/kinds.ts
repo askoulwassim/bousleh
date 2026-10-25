@@ -47,6 +47,8 @@ export const FINDING_STATUSES = ['new', 'to_read', 'read', 'dismissed'] as const
 export const MEETING_STATUSES = ['planned', 'held'] as const;
 
 export const WATCH_ENTRY_TYPES = ['competitor', 'topic', 'outlet', 'person', 'podcast'] as const;
+/** Who put an entry on a watch list: Wassim, or the Weekly Horizon scan's learning loop. Entries without it are Wassim's. */
+export const WATCH_ENTRY_ADDED_BY = ['wassim', 'horizon'] as const;
 export const PERSON_ROLES = ['stakeholder', 'pm', 'engineer', 'analyst', 'other'] as const;
 /** What an asset is: a Claude Doc, a Slides deck, a sheet, a dashboard, a whiteboard, a design, a published page, a repo, a file. */
 export const ASSET_TYPES = ['doc', 'slides', 'sheet', 'dashboard', 'whiteboard', 'design', 'page', 'repo', 'file', 'other'] as const;
@@ -84,7 +86,8 @@ export const KINDS = {
   watch_list: {
     layer: 'anchors',
     prefix: 'wls',
-    description: 'What Horizon watches for a scope: competitors, topics, outlets, people and podcasts.',
+    description:
+      'What Horizon watches for a scope: competitors, topics, outlets, people and podcasts. Each entry says who added it (wassim, the default, or horizon, for one the weekly scan proposed) and optionally why.',
     attrs: z.strictObject({
       entries: z
         .array(
@@ -93,6 +96,10 @@ export const KINDS = {
             name: text,
             url: z.url().optional(),
             notes: text.optional(),
+            /** Entries written before Oct 25 have none: they are Wassim's. */
+            added_by: z.enum(WATCH_ENTRY_ADDED_BY).default('wassim'),
+            /** Why it was added, for an entry the scan proposed. */
+            reason: text.optional(),
           }),
         )
         .default([]),
