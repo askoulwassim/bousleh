@@ -50,12 +50,9 @@ Capture reads Daily Horizon scan files from the inbox and hands them here. For e
 
 ## Flow: setting up the Daily Horizon scan
 
-The scan is a Claude scheduled task in the cloud named "Daily Horizon scan", running daily. It can't read watch lists, so its prompt carries a copy of them.
+The scan is a Claude scheduled task in the cloud named "Daily Horizon scan". It is defined in the repo, in `docs/scheduled-tasks.md`, and never set up by hand. It can't read watch lists, so its prompt carries a copy of them.
 
-1. `watchlists_get` with no arguments for every list.
-2. Write the task prompt: "Run the Horizon skill in the Daily Horizon scan setting", followed by each list's scope slug, watch list id, altitude and entries.
-3. Create the task, or update it if it exists. Confirm the time with Wassim (once).
-4. Repeat steps 1-3 whenever a watch list changes.
+After every `watchlists_set`, tell Wassim to say, in Claude Desktop's Code tab on the repo, "Set up the scheduled tasks in docs/scheduled-tasks.md", so the scan carries the current lists. Never write the task's prompt yourself.
 
 Work instance: Alethea's competitors and the narrative-intelligence space, from public sources only, set up in the work account.
 

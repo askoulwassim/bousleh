@@ -143,7 +143,8 @@ rm -f "$REPO/dist/bousleh.plugin"
 ok "the repo is a plugin marketplace (.claude-plugin/marketplace.json); dist/bousleh.plugin is built as a fallback"
 LEFT+=("Once per Claude account, in Claude Desktop: Customize > Plugins > Add > Add marketplace > Add from a repository, enter askoulwassim/bousleh, then add the Bousleh plugin. It brings the nine skills, Drop included, to Desktop chat and the web, and updates from GitHub. Skip this if the account already has it. Fallback, if that option is missing or the repo can't be reached: upload dist/bousleh.plugin there instead.")
 LEFT+=("Check that Google Drive is connected to this Claude account (Settings, Connectors). Capture and Drop use it for the \"Bousleh Inbox\" folder; Drop creates the folder on first use.")
-LEFT+=("In a Claude Desktop chat, say: \"Bousleh: mark me as the user, I'm <your name>.\"")
+LEFT+=("In a Claude Desktop chat, say: \"Bousleh: mark me as the user, I'm <your name>.\" (Once per Mac; skip if done.)")
+LEFT+=("In Claude Desktop's Code tab, on this repo folder, say: \"Set up the scheduled tasks in docs/scheduled-tasks.md.\" That file is the only definition of the Daily inbox sweep (this Mac) and the Daily Horizon scan (cloud); saying it again updates them, never duplicates. Repeat after git pull or a watch list change.")
 
 step "Check"
 OPS="$("$NODE" --input-type=module -e '
