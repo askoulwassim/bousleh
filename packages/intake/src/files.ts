@@ -12,6 +12,8 @@ import type { FileStager } from '@bousleh/vault';
  *   inbox/transcripts/   meeting transcripts handed over   source transcript
  *   inbox/drive/         files inbox.sweep brought in from the synced Google Drive folder   source drive
  *   inbox/processed/<yyyy-mm>/<sha256 prefix>-<name>   settled files and duplicates
+ *   inbox/failed/<yyyy-mm>/<sha256 prefix>-<name>      files that could not be read; not logged, so
+ *                                                      dropping one in the inbox again retries it
  *
  * A file is waiting while it sits in one of the first three folders and its content hash is not in
  * `inbox_log`. Only top-level files count; hidden files (`.DS_Store`), Office lock files (`~$…`) and
@@ -20,6 +22,7 @@ import type { FileStager } from '@bousleh/vault';
 
 export const INBOX_DIR = 'inbox';
 export const PROCESSED_DIR = join(INBOX_DIR, 'processed');
+export const FAILED_DIR = join(INBOX_DIR, 'failed');
 
 /** Where each source waits, relative to the data home. */
 export const SOURCE_DIRS: Readonly<Record<InboxSource, string>> = {
@@ -173,12 +176,12 @@ const toPosix = (path: string) => path.split(sep).join('/');
  * `<sha256 prefix>-<n>-<name>` when that is taken (a duplicate of a file settled the same month).
  * The month is UTC.
  */
-export function processedPath(stager: FileStager, sha256: string, name: string, now: Date): string {
+export function processedPath(stager: FileStager, sha256: string, name: string, now: Date, dir: string = PROCESSED_DIR): string {
   const month = now.toISOString().slice(0, 7);
   const prefix = sha256.slice(0, HASH_PREFIX_LENGTH);
   const base = clampName(name);
   for (let n = 1; ; n++) {
-    const candidate = toPosix(join(PROCESSED_DIR, month, n === 1 ? `${prefix}-${base}` : `${prefix}-${n}-${base}`));
+    const candidate = toPosix(join(dir, month, n === 1 ? `${prefix}-${base}` : `${prefix}-${n}-${base}`));
     if (stager.isFree(candidate)) return candidate;
   }
 }

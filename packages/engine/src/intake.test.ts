@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { defineOp, NoInput, OPS, type OpContext, type OpOutcome } from '@bousleh/contracts';
 import { DRIVE_INBOX_ENV, intakeHandlers } from '@bousleh/intake';
-import { defineHandler, handlers as vaultHandlers } from '@bousleh/vault';
+import { defineHandler } from '@bousleh/vault';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ALL_HANDLERS, type Engine, openEngine } from './engine.js';
@@ -132,8 +132,12 @@ describe('inbox.sweep', () => {
 
   it('takes the Drive folder from the handlers when one is injected', async () => {
     delete process.env[DRIVE_INBOX_ENV];
+    const intakeOps = new Set(intakeHandlers().map((handler) => handler.op));
     const other = mkdtempSync(join(tmpdir(), 'bousleh-drive-other-'));
-    const injected = openEngine({ home, handlers: [...vaultHandlers, ...intakeHandlers({ driveInbox: () => other })] });
+    const injected = openEngine({
+      home,
+      handlers: [...ALL_HANDLERS.filter((handler) => !intakeOps.has(handler.op)), ...intakeHandlers({ driveInbox: () => other })],
+    });
     try {
       drop(join(other, 'finding.md'), 'A Horizon finding.');
       const sweep = ok<Sweep>(await injected.runOp('inbox.sweep', {}, ctx));
@@ -272,6 +276,21 @@ describe('inbox.take and inbox.settle', () => {
 
     drop(join(home, 'inbox', 'feedback copy.md'), 'Exports are slow.');
     expect(failed(await run('inbox.settle', { sha256: hash, outcome: 'skipped' }))).toMatchObject({ code: 'conflict' });
+  });
+
+  it('keeps a failed file retryable: moved to inbox/failed, not logged', async () => {
+    const path = drop(join(home, 'inbox', 'voice.gdoc'), '{"url":"https://docs.google.com/x"}');
+    const hash = sha('{"url":"https://docs.google.com/x"}');
+    const settled = ok(await run('inbox.settle', { sha256: hash, outcome: 'failed' }));
+    const failedPath = `inbox/failed/2026-10/${hash.slice(0, 12)}-voice.gdoc`;
+    expect(settled).toMatchObject({ outcome: 'failed', processed_path: failedPath });
+    expect(existsSync(path)).toBe(false);
+    expect(existsSync(join(home, failedPath))).toBe(true);
+    expect(query('SELECT sha256 FROM inbox_log')).toEqual([]);
+
+    // Dropped in again, it is waiting again.
+    drop(join(home, 'inbox', 'voice.gdoc'), '{"url":"https://docs.google.com/x"}');
+    expect(ok<{ files: InboxFile[] }>(await run('inbox.list')).files.map((file) => file.sha256)).toEqual([hash]);
   });
 });
 

@@ -95,7 +95,7 @@ export const inboxTake = defineOp({
 export const inboxSettle = defineOp({
   name: 'inbox.settle',
   description:
-    'Close out one inbox file once you have handled it: records the outcome in the inbox log and moves the file to inbox/processed/<yyyy-mm>/. Outcomes: filed (you wrote objects from it; pass the main one as object_id), queued (it went to the ambiguity queue), skipped (nothing worth keeping) or failed (it could not be read). A file is settled once; after that its content is never handed to you again. If a file produced both objects and queue items, settle it as filed first, then queue the rest with queue.add.',
+    'Close out one inbox file once you have handled it: records the outcome in the inbox log and moves the file to inbox/processed/<yyyy-mm>/. Outcomes: filed (you wrote objects from it; pass the main one as object_id), queued (it went to the ambiguity queue), skipped (nothing worth keeping) or failed (it could not be read). A failed file moves to inbox/failed/<yyyy-mm>/ instead and is not logged, so dropping it into the inbox again retries it. Otherwise a file is settled once; after that its content is never handed to you again. If a file produced both objects and queue items, settle it as filed first, then queue the rest with queue.add.',
   input: z.object({
     sha256: Sha256Schema,
     outcome: InboxOutcomeSchema,

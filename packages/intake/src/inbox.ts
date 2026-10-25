@@ -5,9 +5,11 @@ import { defineHandler, type HandlerContext, OpError, type OpHandler } from '@bo
 import {
   decodeText,
   driveArrivalPath,
+  FAILED_DIR,
   type Found,
   INBOX_DIR,
   isWithin,
+  PROCESSED_DIR,
   partition,
   processedPath,
   scanDrive,
@@ -163,13 +165,17 @@ export function inboxHandlers(options: IntakeOptions = {}): OpHandler[] {
       throw new OpError('not_found', `no object with id ${input.object_id}`);
     }
     const stager = h.store.stagedFiles;
-    const target = processedPath(stager, file.sha256, file.name, h.ctx.now());
+    // A failed file goes to inbox/failed without a log row, so it stays retryable: drop it in again.
+    const failed = input.outcome === 'failed';
+    const target = processedPath(stager, file.sha256, file.name, h.ctx.now(), failed ? FAILED_DIR : PROCESSED_DIR);
     stager.stageMove(file.abs, target);
-    h.store.db
-      .prepare(
-        'INSERT INTO inbox_log (sha256, source, original_name, seen_at, outcome, object_id, processed_path) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run(file.sha256, file.source, file.name, file.mtime.toISOString(), input.outcome, input.object_id ?? null, target);
+    if (!failed) {
+      h.store.db
+        .prepare(
+          'INSERT INTO inbox_log (sha256, source, original_name, seen_at, outcome, object_id, processed_path) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )
+        .run(file.sha256, file.source, file.name, file.mtime.toISOString(), input.outcome, input.object_id ?? null, target);
+    }
     return {
       sha256: file.sha256,
       source: file.source,

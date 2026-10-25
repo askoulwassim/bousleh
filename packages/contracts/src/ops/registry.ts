@@ -1,9 +1,9 @@
 import type { z } from 'zod';
 import { commitmentOps } from './commitments.js';
 import { depositOps } from './deposits.js';
+import { inboxOps } from './inbox.js';
 import { metricOps } from './metrics.js';
 import { peopleOps } from './people.js';
-import { inboxOps } from './inbox.js';
 import { queueOps } from './queue.js';
 import { scopeOps } from './scopes.js';
 import { vaultOps } from './vault.js';
