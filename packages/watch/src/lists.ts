@@ -1,19 +1,30 @@
 import {
   type ObjectView,
   type OpInput,
+  type OpOutput,
   type ScopeView,
   type WatchEntry,
+  type WatchEntryInput,
+  WatchEntrySchema,
   type WatchListView,
+  watchlistsApply,
   watchlistsGet,
   watchlistsSet,
 } from '@bousleh/contracts';
 import { defineHandler, type HandlerContext, OpError } from '@bousleh/vault';
 import { call } from './call.js';
+import { urlKey } from './findings.js';
 
-/* watchlists.get and watchlists.set. A watch list is a `watch_list` object; its entries are its attrs. */
+/* watchlists.get, watchlists.set and watchlists.apply. A watch list is a `watch_list` object; its entries are its attrs. */
 
 /** The altitude a new watch list gets when the caller gives none. */
 export const DEFAULT_WATCH_LIST_ALTITUDE = 10000;
+
+/** A stored entry as it reads today: entries from before Oct 25 have no added_by, and are Wassim's. */
+function readEntry(raw: unknown): WatchEntry {
+  const parsed = WatchEntrySchema.safeParse(raw);
+  return parsed.success ? parsed.data : ({ added_by: 'wassim', ...(raw as object) } as WatchEntry);
+}
 
 export function toWatchListView(object: ObjectView): WatchListView {
   return {
@@ -21,7 +32,7 @@ export function toWatchListView(object: ObjectView): WatchListView {
     title: object.version.title,
     altitude: object.version.altitude,
     scopes: object.scopes,
-    entries: (object.version.attrs.entries as WatchEntry[] | undefined) ?? [],
+    entries: ((object.version.attrs.entries as unknown[] | undefined) ?? []).map(readEntry),
     version: { id: object.version.id, n: object.version.n },
     updated_at: object.version.created_at,
   };
@@ -71,6 +82,36 @@ export async function resolveWatchList(
   return lists[0] as ObjectView;
 }
 
+/** What makes two entries the same thing: the url when both have one, else the type and the name. */
+function sameEntry(
+  a: { type: string; name: string; url?: string | undefined },
+  b: { type: string; name: string; url?: string | undefined },
+) {
+  if (a.url !== undefined && b.url !== undefined) {
+    try {
+      return urlKey(a.url) === urlKey(b.url);
+    } catch {
+      return a.url === b.url;
+    }
+  }
+  return a.type === b.type && a.name.trim().toLowerCase() === b.name.trim().toLowerCase();
+}
+
+/**
+ * The entries to store: an entry given without added_by keeps the added_by (and, if it gives none,
+ * the reason) of the same entry already on the list; a new one is Wassim's.
+ */
+export function resolveEntries(input: readonly WatchEntryInput[], current: readonly WatchEntry[]): WatchEntry[] {
+  return input.map((entry) => {
+    if (entry.added_by !== undefined) return WatchEntrySchema.parse(entry);
+    const existing = current.find((c) => sameEntry(c, entry));
+    if (!existing) return WatchEntrySchema.parse({ ...entry, added_by: 'wassim' });
+    const reason = entry.reason ?? existing.reason;
+    // Parsed again so keys come out in the schema's order, as stored entries do.
+    return WatchEntrySchema.parse({ ...entry, added_by: existing.added_by, ...(reason !== undefined ? { reason } : {}) });
+  });
+}
+
 export const watchlistsGetHandler = defineHandler(watchlistsGet, async (input, h) => {
   if (input.id !== undefined) {
     const list = await loadWatchList(h, input.id);
@@ -101,7 +142,7 @@ export const watchlistsSetHandler = defineHandler(watchlistsSet, async (input, h
         title: input.title ?? `Watch list: ${scope.name}`,
         altitude: input.altitude ?? DEFAULT_WATCH_LIST_ALTITUDE,
         scopes: [scope.slug],
-        attrs: { entries: input.entries },
+        attrs: { entries: resolveEntries(input.entries, []) },
         body: input.body ?? '',
       });
       const created = await loadWatchList(h, written.id);
@@ -110,8 +151,9 @@ export const watchlistsSetHandler = defineHandler(watchlistsSet, async (input, h
   }
 
   const current = toWatchListView(existing);
+  const entries = resolveEntries(input.entries, current.entries);
   const patch: OpInput<'vault.supersede'> = { id: existing.id };
-  if (JSON.stringify(input.entries) !== JSON.stringify(current.entries)) patch.attrs = { entries: input.entries };
+  if (JSON.stringify(entries) !== JSON.stringify(current.entries)) patch.attrs = { entries };
   if (input.title !== undefined && input.title !== current.title) patch.title = input.title;
   if (input.altitude !== undefined && input.altitude !== current.altitude) patch.altitude = input.altitude;
   if (input.body !== undefined && input.body !== existing.version.body) patch.body = input.body;
@@ -119,4 +161,93 @@ export const watchlistsSetHandler = defineHandler(watchlistsSet, async (input, h
 
   await call(h, 'vault.supersede', patch);
   return { ...toWatchListView(await loadWatchList(h, existing.id)), created: false, new_version: true };
+});
+
+/** The title of a queued suggestion to remove one of Wassim's entries; also how a repeat is recognised. */
+export function removalSuggestionTitle(entryName: string, list: WatchListView): string {
+  const scope = list.scopes.join(', ');
+  return `Remove "${entryName}" from the ${scope} watch list?`;
+}
+
+type ApplyResult = OpOutput<'watchlists.apply'>['results'][number];
+
+export const watchlistsApplyHandler = defineHandler(watchlistsApply, async (input, h) => {
+  const list = toWatchListView(await loadWatchList(h, input.id));
+  let entries = [...list.entries];
+  const results: ApplyResult[] = [];
+  let openQueue: { id: string; title: string | undefined; candidates: string[] }[] | undefined;
+
+  for (const change of input.changes) {
+    const base = { action: change.action, type: change.type, name: change.name };
+    const match = entries.find((e) => sameEntry(e, change));
+    if (change.action === 'add') {
+      if (match) {
+        results.push({ ...base, outcome: 'already_on_list' });
+        continue;
+      }
+      entries.push(
+        WatchEntrySchema.parse({
+          type: change.type,
+          name: change.name,
+          ...(change.url !== undefined ? { url: change.url } : {}),
+          added_by: 'horizon',
+          reason: change.reason,
+        }),
+      );
+      results.push({ ...base, outcome: 'added' });
+      continue;
+    }
+
+    if (!match) {
+      results.push({ ...base, outcome: 'not_on_list' });
+      continue;
+    }
+    if (match.added_by === 'horizon') {
+      entries = entries.filter((e) => e !== match);
+      results.push({ ...base, outcome: 'removed' });
+      continue;
+    }
+
+    // One of Wassim's: never removed here. Suggest it once, in the queue.
+    const title = removalSuggestionTitle(match.name, list);
+    if (openQueue === undefined) {
+      openQueue = (await call(h, 'queue.list', {})).items.map((item) => ({
+        id: item.id,
+        title: item.draft.title,
+        candidates: item.candidates.map((c) => c.id),
+      }));
+    }
+    const existing = openQueue.find((item) => item.title === title && item.candidates.includes(list.id));
+    if (existing) {
+      results.push({ ...base, outcome: 'already_queued', queue_id: existing.id });
+      continue;
+    }
+    const what = `${match.type} "${match.name}"${match.url !== undefined ? ` (${match.url})` : ''}`;
+    const queued = await call(h, 'queue.add', {
+      draft: {
+        kind: 'observation',
+        title,
+        altitude: list.altitude,
+        scopes: list.scopes,
+        body: [
+          `The Weekly Horizon scan suggests removing ${what} from ${list.title}: ${change.reason}`,
+          input.source !== undefined ? `Source: ${input.source}.` : undefined,
+          'Wassim added this entry, so it stays on the list until he decides.',
+        ]
+          .filter((line) => line !== undefined)
+          .join('\n\n'),
+        links: [{ kind: 'related', to: list.id }],
+      },
+      reason: 'Horizon suggests removing an entry Wassim added; Wassim decides',
+      candidates: [list.id],
+    });
+    openQueue.push({ id: queued.id, title, candidates: [list.id] });
+    results.push({ ...base, outcome: 'queued', queue_id: queued.id });
+  }
+
+  if (JSON.stringify(entries) === JSON.stringify(list.entries)) {
+    return { watch_list: list, new_version: false, results };
+  }
+  await call(h, 'vault.supersede', { id: list.id, attrs: { entries } });
+  return { watch_list: toWatchListView(await loadWatchList(h, list.id)), new_version: true, results };
 });

@@ -78,7 +78,9 @@ describe('watchlists.set and watchlists.get', () => {
     expect(specdr.id).not.toBe(bousleh.id);
 
     const byScope = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { scope: 'specdr' })).watch_lists;
-    expect(byScope).toEqual([expect.objectContaining({ id: specdr.id, entries: [{ type: 'podcast', name: 'Latent Space' }] })]);
+    expect(byScope).toEqual([
+      expect.objectContaining({ id: specdr.id, entries: [{ type: 'podcast', name: 'Latent Space', added_by: 'wassim' }] }),
+    ]);
     const byId = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { id: bousleh.id })).watch_lists;
     expect(byId.map((list) => list.id)).toEqual([bousleh.id]);
     const all = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', {})).watch_lists;
@@ -107,6 +109,196 @@ describe('watchlists.set and watchlists.get', () => {
     expect(failed(await run('watchlists.get', { scope: 'nowhere' })).code).toBe('invalid_input');
     expect(failed(await run('watchlists.set', { scope: 'bousleh', entries: [{ type: 'rumour', name: 'x' }] })).code).toBe('invalid_input');
     expect(ok<{ watch_lists: unknown[] }>(await run('watchlists.get', { scope: 'specdr' })).watch_lists).toEqual([]);
+  });
+});
+
+describe('watch list entries: who added them', () => {
+  const entries = async (scope = 'bousleh') =>
+    ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { scope })).watch_lists[0]?.entries ?? [];
+
+  it("are Wassim's by default, and take horizon with a reason", async () => {
+    const created = ok<SetResult>(
+      await run('watchlists.set', {
+        scope: 'bousleh',
+        entries: [
+          { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
+          { type: 'outlet', name: 'Stratechery', added_by: 'horizon', reason: 'cited in 3 findings as the source' },
+        ],
+      }),
+    );
+    expect(created.entries).toEqual([
+      { type: 'competitor', name: 'Glean', url: 'https://www.glean.com', added_by: 'wassim' },
+      { type: 'outlet', name: 'Stratechery', added_by: 'horizon', reason: 'cited in 3 findings as the source' },
+    ]);
+    const stored = ok<{ version: { attrs: { entries: unknown[] } } }>(await run('vault.get', { id: created.id }));
+    expect(stored.version.attrs.entries).toEqual(created.entries);
+    expect(failed(await run('watchlists.set', { scope: 'bousleh', entries: [{ type: 'topic', name: 'x', added_by: 'bot' }] })).code).toBe(
+      'invalid_input',
+    );
+  });
+
+  it('keep their added_by and reason when watchlists.set leaves them out, matched by url or by type and name', async () => {
+    const first = ok<SetResult>(
+      await run('watchlists.set', {
+        scope: 'bousleh',
+        entries: [
+          { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
+          { type: 'competitor', name: 'Hebbia', url: 'https://hebbia.ai', added_by: 'horizon', reason: 'direct alternative in 3 articles' },
+          { type: 'podcast', name: 'Latent Space', added_by: 'horizon', reason: 'two episodes on agent memory' },
+        ],
+      }),
+    );
+
+    // The complete list again, as a model would send it after adding one entry: nothing marked.
+    const second = ok<SetResult>(
+      await run('watchlists.set', {
+        id: first.id,
+        entries: [
+          { type: 'competitor', name: 'Glean', url: 'https://glean.com/' },
+          { type: 'competitor', name: 'Hebbia AI', url: 'https://www.hebbia.ai' },
+          { type: 'podcast', name: 'latent space', notes: 'show notes only' },
+          { type: 'topic', name: 'Agent memory' },
+        ],
+      }),
+    );
+    expect(second.version.n).toBe(2);
+    expect(second.entries.map((e) => [e.name, e.added_by, e.reason ?? null])).toEqual([
+      ['Glean', 'wassim', null],
+      ['Hebbia AI', 'horizon', 'direct alternative in 3 articles'],
+      ['latent space', 'horizon', 'two episodes on agent memory'],
+      ['Agent memory', 'wassim', null],
+    ]);
+
+    // The same list again writes nothing; an explicit added_by wins (Wassim adopts an entry).
+    const same = ok<SetResult>(await run('watchlists.set', { id: first.id, entries: second.entries.map(({ added_by, ...e }) => e) }));
+    expect(same.new_version).toBe(false);
+    const adopted = ok<SetResult>(
+      await run('watchlists.set', {
+        id: first.id,
+        entries: second.entries.map((e) => (e.name === 'Hebbia AI' ? { ...e, added_by: 'wassim' as const } : e)),
+      }),
+    );
+    expect(adopted.entries.find((e) => e.name === 'Hebbia AI')?.added_by).toBe('wassim');
+    expect((await entries()).map((e) => e.added_by)).toEqual(['wassim', 'wassim', 'horizon', 'wassim']);
+
+    // Every change is a version: the history shows what the list held before.
+    const history = ok<{ history: { n: number }[] }>(await run('vault.get', { id: first.id, history: true })).history;
+    expect(history.map((v) => v.n)).toEqual([1, 2, 3]);
+  });
+});
+
+describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => {
+  interface ApplyResult {
+    watch_list: WatchListView;
+    new_version: boolean;
+    results: { action: string; type: string; name: string; outcome: string; queue_id?: string }[];
+  }
+  interface QueueItems {
+    items: {
+      id: string;
+      reason: string;
+      draft: { kind: string; title: string; scopes: string[]; altitude: number; body: string };
+      candidates: { id: string }[];
+    }[];
+  }
+
+  async function seedList(): Promise<SetResult> {
+    return ok<SetResult>(
+      await run('watchlists.set', {
+        scope: 'bousleh',
+        entries: [
+          { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
+          { type: 'outlet', name: 'Some Blog', url: 'https://someblog.example', added_by: 'horizon', reason: 'covered agent memory twice' },
+          { type: 'topic', name: 'Agentic analytics' },
+        ],
+      }),
+    );
+  }
+
+  it('adds as horizon, removes only what horizon added, and queues removing one of Wassim’s entries once', async () => {
+    const list = await seedList();
+    const applied = ok<ApplyResult>(
+      await run('watchlists.apply', {
+        id: list.id,
+        source: 'horizon-scan-bousleh-2026-10-26.md',
+        changes: [
+          { action: 'add', type: 'competitor', name: 'Hebbia', url: 'https://hebbia.ai', reason: 'direct alternative in 3 articles' },
+          { action: 'add', type: 'competitor', name: 'Glean', url: 'https://glean.com/', reason: 'again' },
+          { action: 'remove', type: 'outlet', name: 'Some Blog', url: 'https://www.someblog.example/', reason: 'now covers crypto' },
+          { action: 'remove', type: 'topic', name: 'agentic analytics', reason: 'quiet for 4 weeks' },
+          { action: 'remove', type: 'podcast', name: 'Not There', reason: 'n/a' },
+        ],
+      }),
+    );
+    expect(applied.new_version).toBe(true);
+    expect(applied.results.map((r) => [r.name, r.outcome])).toEqual([
+      ['Hebbia', 'added'],
+      ['Glean', 'already_on_list'],
+      ['Some Blog', 'removed'],
+      ['agentic analytics', 'queued'],
+      ['Not There', 'not_on_list'],
+    ]);
+    expect(applied.watch_list.version.n).toBe(2);
+    expect(applied.watch_list.entries).toEqual([
+      { type: 'competitor', name: 'Glean', url: 'https://www.glean.com', added_by: 'wassim' },
+      { type: 'topic', name: 'Agentic analytics', added_by: 'wassim' },
+      { type: 'competitor', name: 'Hebbia', url: 'https://hebbia.ai', added_by: 'horizon', reason: 'direct alternative in 3 articles' },
+    ]);
+
+    // The suggestion waits in the queue for Wassim, tied to the watch list.
+    const queue = ok<QueueItems>(await run('queue.list', {})).items;
+    expect(queue).toHaveLength(1);
+    const item = queue[0];
+    expect(item?.id).toBe(applied.results[3]?.queue_id);
+    expect(item?.reason).toBe('Horizon suggests removing an entry Wassim added; Wassim decides');
+    expect(item?.candidates.map((c) => c.id)).toEqual([list.id]);
+    expect(item?.draft).toMatchObject({
+      kind: 'observation',
+      title: 'Remove "Agentic analytics" from the bousleh watch list?',
+      scopes: ['bousleh'],
+      altitude: 10000,
+    });
+    expect(item?.draft.body).toContain('quiet for 4 weeks');
+    expect(item?.draft.body).toContain('horizon-scan-bousleh-2026-10-26.md');
+
+    // Next week's scan says the same: nothing new is written or queued.
+    const again = ok<ApplyResult>(
+      await run('watchlists.apply', {
+        id: list.id,
+        changes: [
+          { action: 'add', type: 'competitor', name: 'hebbia', url: 'https://www.hebbia.ai', reason: 'still' },
+          { action: 'remove', type: 'topic', name: 'Agentic analytics', reason: 'still quiet' },
+          { action: 'remove', type: 'outlet', name: 'Some Blog', reason: 'gone' },
+        ],
+      }),
+    );
+    expect(again.new_version).toBe(false);
+    expect(again.results.map((r) => r.outcome)).toEqual(['already_on_list', 'already_queued', 'not_on_list']);
+    expect(again.results[1]?.queue_id).toBe(item?.id);
+    expect(ok<QueueItems>(await run('queue.list', {})).items).toHaveLength(1);
+
+    // Once Wassim has decided (the item is resolved), a later scan may ask again.
+    ok(await run('queue.resolve', { id: item?.id, action: 'discard', note: 'keeping it' }));
+    const later = ok<ApplyResult>(
+      await run('watchlists.apply', {
+        id: list.id,
+        changes: [{ action: 'remove', type: 'topic', name: 'Agentic analytics', reason: 'quiet for 8 weeks' }],
+      }),
+    );
+    expect(later.results[0]?.outcome).toBe('queued');
+  });
+
+  it('needs a watch list and at least one change, and writes nothing when refused', async () => {
+    const list = await seedList();
+    const problem = ok<{ id: string }>(
+      await run('deposits.write', { kind: 'problem', title: 'Not a list', altitude: 1000, scopes: ['bousleh'], body: '' }),
+    );
+    expect(
+      failed(await run('watchlists.apply', { id: problem.id, changes: [{ action: 'add', type: 'topic', name: 'x', reason: 'y' }] })).code,
+    ).toBe('invalid_input');
+    expect(failed(await run('watchlists.apply', { id: list.id, changes: [] })).code).toBe('invalid_input');
+    const unchanged = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { id: list.id })).watch_lists[0];
+    expect(unchanged?.version.n).toBe(1);
   });
 });
 
