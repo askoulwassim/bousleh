@@ -68,9 +68,10 @@ Home reads `pulse.today`, `commitments.list` and `watch.digest`, and writes noth
 
 ### How writes work
 
-- Every op that isn't `readOnly` runs in one SQLite transaction. Its markdown files are staged in `~/.bousleh/.staging` and moved into place only after COMMIT, so a failed op leaves no rows and no files.
+- Every op that isn't `readOnly` runs in one SQLite transaction that holds the write lock (so a second Bousleh process waits). Files are written through `h.store.stagedFiles` while it's held and undone on rollback, so a failed op leaves no rows and no files. A nested `h.runOp` write runs in a SAVEPOINT: if it fails, its rows and files are undone even if your handler carries on.
 - Top-level calls run one at a time. Every top-level write, ok or failed, lands in `op_log`.
-- A `readOnly` op gets a store that refuses writes, including through `h.runOp`.
+- A `readOnly` op gets a store that refuses writes, including through `h.runOp` and raw SQL (`query_only`). Tables are append-only by trigger.
+- Don't call `h.runOp` after your handler returns; it's refused.
 - Kind rules (statuses, attrs, the bet rules) live in `contracts` (`checkKindFields`), link rules too (`checkLink`); the store enforces both, so every door gets the same answers.
 
 ## Layout

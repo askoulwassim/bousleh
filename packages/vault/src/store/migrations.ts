@@ -3,9 +3,37 @@ import type Database from 'better-sqlite3';
 /*
  * Schema migrations, applied in order, each in its own transaction, recorded in
  * `schema_migrations`. Never edit a shipped migration: add a new one.
- * The tables follow docs/design/data-schema.md, section 2. Every table is append-only except the
- * FTS index `search`, which is rebuilt per object in the same transaction as the change.
+ * The tables follow docs/design/data-schema.md, section 2. Every table is append-only (triggers refuse
+ * UPDATE and DELETE) except the FTS index `search`, which is rebuilt per object in the same
+ * transaction as the change.
  */
+
+/** Every table except the FTS index. Nothing in them is ever updated or deleted. */
+export const APPEND_ONLY_TABLES = [
+  'objects',
+  'versions',
+  'scopes',
+  'object_scopes',
+  'object_scope_retractions',
+  'links',
+  'link_retractions',
+  'metric_readings',
+  'inbox_log',
+  'deposit_queue',
+  'deposit_resolutions',
+  'op_log',
+] as const;
+
+/** Triggers that make each table refuse UPDATE and DELETE, so "nothing is overwritten" holds even for raw SQL. */
+function appendOnly(tables: readonly string[]): string {
+  return tables
+    .map(
+      (table) => `
+CREATE TRIGGER ${table}_no_update BEFORE UPDATE ON ${table} BEGIN SELECT RAISE(ABORT, '${table} is append-only'); END;
+CREATE TRIGGER ${table}_no_delete BEFORE DELETE ON ${table} BEGIN SELECT RAISE(ABORT, '${table} is append-only'); END;`,
+    )
+    .join('');
+}
 
 export interface Migration {
   version: number;
@@ -57,7 +85,7 @@ CREATE TABLE scopes (
   parent_id     TEXT REFERENCES scopes(id),
   supersedes_id TEXT UNIQUE REFERENCES scopes(id),
   op            TEXT NOT NULL,
-  actor         TEXT NOT NULL,
+  actor         TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
   created_at    TEXT NOT NULL
 ) STRICT;
 CREATE INDEX scopes_slug ON scopes(slug);
@@ -65,19 +93,23 @@ CREATE INDEX scopes_slug ON scopes(slug);
 CREATE TABLE object_scopes (
   object_id   TEXT NOT NULL REFERENCES objects(id),
   scope_id    TEXT NOT NULL REFERENCES scopes(id),
+  seq         INTEGER NOT NULL,
   op          TEXT NOT NULL,
-  actor       TEXT NOT NULL,
-  created_at  TEXT NOT NULL
+  actor       TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
+  created_at  TEXT NOT NULL,
+  UNIQUE (object_id, seq)
 ) STRICT;
 CREATE INDEX object_scopes_object ON object_scopes(object_id);
 
 CREATE TABLE object_scope_retractions (
   object_id   TEXT NOT NULL REFERENCES objects(id),
   scope_id    TEXT NOT NULL REFERENCES scopes(id),
+  seq         INTEGER NOT NULL,
   reason      TEXT,
   op          TEXT NOT NULL,
-  actor       TEXT NOT NULL,
-  created_at  TEXT NOT NULL
+  actor       TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
+  created_at  TEXT NOT NULL,
+  UNIQUE (object_id, seq)
 ) STRICT;
 CREATE INDEX object_scope_retractions_object ON object_scope_retractions(object_id);
 
@@ -88,7 +120,7 @@ CREATE TABLE links (
   kind        TEXT NOT NULL,
   note        TEXT,
   op          TEXT NOT NULL,
-  actor       TEXT NOT NULL,
+  actor       TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
   created_at  TEXT NOT NULL,
   CHECK (from_id <> to_id)
 ) STRICT;
@@ -99,7 +131,7 @@ CREATE TABLE link_retractions (
   link_id     TEXT PRIMARY KEY REFERENCES links(id),
   reason      TEXT,
   op          TEXT NOT NULL,
-  actor       TEXT NOT NULL,
+  actor       TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
   created_at  TEXT NOT NULL
 ) STRICT;
 
@@ -112,7 +144,7 @@ CREATE TABLE metric_readings (
   source        TEXT,
   supersedes_id TEXT UNIQUE REFERENCES metric_readings(id),
   op            TEXT NOT NULL,
-  actor         TEXT NOT NULL,
+  actor         TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
   created_at    TEXT NOT NULL
 ) STRICT;
 CREATE INDEX metric_readings_metric ON metric_readings(metric_id);
@@ -134,7 +166,7 @@ CREATE TABLE deposit_queue (
   candidates_json  TEXT,
   source_sha256    TEXT REFERENCES inbox_log(sha256),
   op               TEXT NOT NULL,
-  actor            TEXT NOT NULL,
+  actor            TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
   created_at       TEXT NOT NULL
 ) STRICT;
 
@@ -143,14 +175,14 @@ CREATE TABLE deposit_resolutions (
   resolution_json  TEXT NOT NULL,
   object_id        TEXT REFERENCES objects(id),
   op               TEXT NOT NULL,
-  actor            TEXT NOT NULL,
+  actor            TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
   created_at       TEXT NOT NULL
 ) STRICT;
 
 CREATE TABLE op_log (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   op          TEXT NOT NULL,
-  actor       TEXT NOT NULL,
+  actor       TEXT NOT NULL CHECK (actor IN ('human', 'agent', 'schedule')),
   input_json  TEXT NOT NULL,
   result      TEXT NOT NULL,
   created_at  TEXT NOT NULL
@@ -165,22 +197,41 @@ CREATE VIRTUAL TABLE search USING fts5(
   scopes,
   tokenize = 'porter unicode61'
 );
+
+-- A new version supersedes the current version of the same object: n - 1, never another object's.
+CREATE TRIGGER versions_supersede_same_object BEFORE INSERT ON versions
+WHEN NEW.supersedes_id IS NOT NULL AND NOT EXISTS (
+  SELECT 1 FROM versions p WHERE p.id = NEW.supersedes_id AND p.object_id = NEW.object_id AND p.n = NEW.n - 1
+)
+BEGIN
+  SELECT RAISE(ABORT, 'a version must supersede version n - 1 of the same object');
+END;
+${appendOnly(APPEND_ONLY_TABLES)}
 `,
   },
 ];
 
 /** Apply every migration not yet recorded. Returns the versions applied. */
+/**
+ * Apply every migration not yet recorded. Returns the versions applied. Runs under the database
+ * write lock (BEGIN IMMEDIATE), so two Bousleh processes opening the same data home can't both
+ * apply the same migration.
+ */
 export function migrate(db: Database.Database, now: () => Date = () => new Date()): number[] {
-  db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL) STRICT');
-  const applied = new Set((db.prepare('SELECT version FROM schema_migrations').all() as { version: number }[]).map((row) => row.version));
-  const ran: number[] = [];
-  for (const migration of MIGRATIONS) {
-    if (applied.has(migration.version)) continue;
-    db.transaction(() => {
-      db.exec(migration.sql);
-      db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(migration.version, now().toISOString());
-    })();
-    ran.push(migration.version);
-  }
-  return ran;
+  return db
+    .transaction(() => {
+      db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL) STRICT');
+      const applied = new Set(
+        (db.prepare('SELECT version FROM schema_migrations').all() as { version: number }[]).map((row) => row.version),
+      );
+      const ran: number[] = [];
+      for (const migration of MIGRATIONS) {
+        if (applied.has(migration.version)) continue;
+        db.exec(migration.sql);
+        db.prepare('INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)').run(migration.version, now().toISOString());
+        ran.push(migration.version);
+      }
+      return ran;
+    })
+    .immediate();
 }

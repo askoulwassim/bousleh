@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   type Actor,
@@ -8,6 +8,7 @@ import {
   checkLink,
   KINDS,
   type Kind,
+  LAYERS,
   type Layer,
   type LinkKind,
   type ObjectView,
@@ -17,7 +18,7 @@ import {
 import Database from 'better-sqlite3';
 import { OpError } from '../handler.js';
 import { VAULT_DB } from '../home.js';
-import type { FileStager } from './files.js';
+import { type FileStager, OPEN_MARKER_PREFIX, STAGING_DIR, writeAtomic } from './files.js';
 import { bodyOf, currentPath, renderMarkdown, versionPath } from './markdown.js';
 import { migrate } from './migrations.js';
 import { newId } from './ulid.js';
@@ -31,6 +32,7 @@ import { newId } from './ulid.js';
 
 export class Vault {
   private connection: Database.Database | undefined;
+  private queryOnly = false;
 
   constructor(readonly home: string) {}
 
@@ -48,9 +50,26 @@ export class Vault {
       db.pragma('foreign_keys = ON');
       db.pragma('busy_timeout = 5000');
       migrate(db);
+      recover(db, this.home);
+      if (this.queryOnly) db.pragma('query_only = ON');
       this.connection = db;
     }
     return this.connection;
+  }
+
+  /**
+   * Run `fn` with the connection refusing every write (SQLite `query_only`), for read-only ops.
+   * The database still opens lazily: a read-only op that never touches it doesn't create it.
+   */
+  async readOnly<T>(fn: () => Promise<T>): Promise<T> {
+    this.queryOnly = true;
+    this.connection?.pragma('query_only = ON');
+    try {
+      return await fn();
+    } finally {
+      this.queryOnly = false;
+      this.connection?.pragma('query_only = OFF');
+    }
   }
 
   close(): void {
@@ -160,7 +179,7 @@ export class Store {
     return this.vault.db;
   }
 
-  /** The op's staged files (write ops only): stage file writes so they land only after COMMIT. */
+  /** The op's file writes (write ops only): written now, undone if the op rolls back. */
   get stagedFiles(): FileStager {
     return this.files();
   }
@@ -227,14 +246,29 @@ export class Store {
     return { id, slug: input.slug, name: input.name, kind: input.kind, parent: input.parent ?? null };
   }
 
+  /**
+   * The next membership event number for an object, shared by adds and retractions, so the order of
+   * events never depends on the clock. Safe because writes hold the database write lock.
+   */
+  private nextScopeSeq(objectId: string): number {
+    const row = this.db
+      .prepare(
+        `SELECT max(seq) AS seq FROM (
+           SELECT max(seq) AS seq FROM object_scopes WHERE object_id = ?
+           UNION ALL SELECT max(seq) FROM object_scope_retractions WHERE object_id = ?)`,
+      )
+      .get(objectId, objectId) as { seq: number | null };
+    return (row.seq ?? 0) + 1;
+  }
+
   /** Slugs of an object's current scopes: for each scope, the latest add or retraction wins. */
   scopeSlugsOf(objectId: string): string[] {
     const events = this.db
       .prepare(
-        `SELECT scope_id, created_at, 1 AS added, rowid AS seq FROM object_scopes WHERE object_id = ?
+        `SELECT scope_id, 1 AS added, seq FROM object_scopes WHERE object_id = ?
          UNION ALL
-         SELECT scope_id, created_at, 0 AS added, rowid AS seq FROM object_scope_retractions WHERE object_id = ?
-         ORDER BY created_at, added DESC, seq`,
+         SELECT scope_id, 0 AS added, seq FROM object_scope_retractions WHERE object_id = ?
+         ORDER BY seq`,
       )
       .all(objectId, objectId) as { scope_id: string; added: number }[];
     const member = new Map<string, boolean>();
@@ -258,11 +292,16 @@ export class Store {
     return this.db.prepare('SELECT * FROM current WHERE object_id = ?').get(objectId) as VersionRow | undefined;
   }
 
+  /** The body of one version, from its markdown file. Refuses a missing file or one whose hash doesn't match. */
   private readBody(version: VersionRow): string {
-    const staged = this.stager?.read(version.body_path);
-    if (staged !== undefined) return bodyOf(staged);
     const file = join(this.home, version.body_path);
-    return existsSync(file) ? bodyOf(readFileSync(file, 'utf8')) : '';
+    if (!existsSync(file))
+      throw new Error(`the markdown file for ${version.object_id} version ${version.n} is missing (${version.body_path})`);
+    const content = readFileSync(file, 'utf8');
+    if (sha256(content) !== version.body_sha256) {
+      throw new Error(`the markdown file for ${version.object_id} version ${version.n} was changed outside Bousleh (${version.body_path})`);
+    }
+    return bodyOf(content);
   }
 
   /** Create one object with its first version, scopes and links. */
@@ -300,8 +339,10 @@ export class Store {
       attrs: checked.value.attrs,
       body: input.body,
     });
-    const addScope = this.db.prepare('INSERT INTO object_scopes (object_id, scope_id, op, actor, created_at) VALUES (?, ?, ?, ?, ?)');
-    for (const scopeId of scopeIds) addScope.run(object.id, scopeId, this.meta.op, this.meta.actor, now);
+    const addScope = this.db.prepare(
+      'INSERT INTO object_scopes (object_id, scope_id, seq, op, actor, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    );
+    for (const scopeId of scopeIds) addScope.run(object.id, scopeId, this.nextScopeSeq(object.id), this.meta.op, this.meta.actor, now);
     for (const link of input.links) this.addLink(object.id, link.kind, link.to, link.note);
     this.refreshSearch(object.id);
     return { id: object.id, kind: object.kind, layer: object.layer, version, path: currentPath(object.layer, object.id) };
@@ -489,7 +530,7 @@ export class Store {
     );
     const bodyPath = versionPath(object.layer, object.id, n);
     const files = this.files();
-    files.stage(bodyPath, content);
+    files.stage(bodyPath, content, { allowVersions: true });
     files.stage(currentPath(object.layer, object.id), content);
     this.db
       .prepare(
@@ -516,6 +557,7 @@ export class Store {
 
   /** Rebuild the FTS row for one object from its current version and scopes. */
   refreshSearch(objectId: string): void {
+    this.files();
     const object = this.objectRow(objectId);
     const version = this.currentVersion(objectId);
     this.db.prepare('DELETE FROM search WHERE object_id = ?').run(objectId);
@@ -534,4 +576,71 @@ interface LinkRow {
   other_title: string;
   note: string | null;
   created_at: string;
+}
+
+/**
+ * Repair files after a process died with a transaction open (an `open-*` marker left in `.staging`).
+ * Runs when the database opens, under the write lock, so it never races a live write:
+ * - version files with no row in `versions` (written by a transaction that never committed) are removed;
+ * - each object's current copy is rewritten from its current version file;
+ * - leftover temporary files and markers are cleared.
+ * What it did is recorded in op_log as `vault.recover`.
+ */
+export function recover(db: Database.Database, home: string): void {
+  const staging = join(home, STAGING_DIR);
+  if (!existsSync(staging)) return;
+  const leftovers = () => readdirSync(staging);
+  if (!leftovers().some((name) => name.startsWith(OPEN_MARKER_PREFIX))) return;
+
+  db.transaction(() => {
+    const markers = leftovers().filter((name) => name.startsWith(OPEN_MARKER_PREFIX));
+    if (markers.length === 0) return;
+    const known = new Set((db.prepare('SELECT body_path FROM versions').all() as { body_path: string }[]).map((row) => row.body_path));
+    const removed: string[] = [];
+    for (const layer of LAYERS) {
+      const versionsDir = join(home, layer, '.versions');
+      if (!existsSync(versionsDir)) continue;
+      for (const id of readdirSync(versionsDir)) {
+        for (const file of readdirSync(join(versionsDir, id))) {
+          const rel = `${layer}/.versions/${id}/${file}`;
+          if (!known.has(rel)) {
+            rmSync(join(home, rel), { force: true });
+            removed.push(rel);
+          }
+        }
+        if (readdirSync(join(versionsDir, id)).length === 0) rmSync(join(versionsDir, id), { recursive: true, force: true });
+      }
+    }
+    const rewritten: string[] = [];
+    const missing: string[] = [];
+    const current = db
+      .prepare('SELECT c.object_id, o.layer, c.body_path, c.body_sha256 FROM current c JOIN objects o ON o.id = c.object_id')
+      .all() as {
+      object_id: string;
+      layer: Layer;
+      body_path: string;
+      body_sha256: string;
+    }[];
+    for (const row of current) {
+      const source = join(home, row.body_path);
+      if (!existsSync(source)) {
+        missing.push(row.body_path);
+        continue;
+      }
+      const content = readFileSync(source, 'utf8');
+      const copy = join(home, currentPath(row.layer, row.object_id));
+      if (!existsSync(copy) || readFileSync(copy, 'utf8') !== content) {
+        writeAtomic(home, copy, content);
+        rewritten.push(currentPath(row.layer, row.object_id));
+      }
+    }
+    for (const name of leftovers()) rmSync(join(staging, name), { force: true });
+    db.prepare('INSERT INTO op_log (op, actor, input_json, result, created_at) VALUES (?, ?, ?, ?, ?)').run(
+      'vault.recover',
+      'agent',
+      JSON.stringify({ markers: markers.length, removed, rewritten, missing }),
+      missing.length > 0 ? 'missing_files' : 'ok',
+      new Date().toISOString(),
+    );
+  }).immediate();
 }

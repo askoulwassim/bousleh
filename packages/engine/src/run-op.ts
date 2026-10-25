@@ -6,12 +6,13 @@ import { z } from 'zod';
  * The single entry point: `runOp(name, input, ctx)`.
  * 1. look up the op; refuse unknown and unimplemented ones
  * 2. validate the input with the op's zod schema
- * 3. run the handler; a write op runs inside one SQLite transaction, with its files staged and moved
- *    into place only after COMMIT
+ * 3. run the handler; a write op runs inside one SQLite transaction (BEGIN IMMEDIATE, so it also holds
+ *    the write lock against a second Bousleh process), and its file writes are undone if it rolls back
  * 4. validate the output against the op's contract; a broken output rolls the write back
  * Top-level calls run one at a time, so two writes never interleave on the one connection. Ops a
- * handler runs through `h.runOp` join the caller's transaction instead. Every top-level write op,
- * ok or failed, lands in `op_log`.
+ * handler runs through `h.runOp` join the caller's transaction inside a SAVEPOINT: if a nested op
+ * fails, its rows and files are undone even when the caller carries on. Read-only ops run with the
+ * connection set to refuse writes. Every top-level write op, ok or failed, lands in `op_log`.
  */
 
 export interface CreateRunOpOptions {
@@ -46,11 +47,14 @@ interface Session {
   stager: FileStager | undefined;
   /** True when the outermost op of this call is read-only. */
   readOnly: boolean;
+  /** Set once the top-level op has returned; a late `h.runOp` (fire and forget) is refused. */
+  closed: boolean;
 }
 
 export function createRunOp({ registry, handlers, vault }: CreateRunOpOptions): RunOp {
   const byOp = indexHandlers(registry, handlers);
   const ops = Object.keys(registry);
+  let savepoints = 0;
 
   let queue: Promise<unknown> = Promise.resolve();
   const oneAtATime = <T>(fn: () => Promise<T>): Promise<T> => {
@@ -89,10 +93,28 @@ export function createRunOp({ registry, handlers, vault }: CreateRunOpOptions): 
   const nested =
     (session: Session): RunOp =>
     async (name, input, ctx) => {
+      if (session.closed) return err('internal', `${name} was called after the op that started it had finished`);
       const found = resolve(name, input);
       if ('status' in found) return found;
-      if (found.def.readOnly !== true && session.readOnly) return err('internal', `${name} writes, so it can't run inside a read-only op`);
-      return execute(found.def, found.handler, found.input, ctx, session);
+      if (found.def.readOnly === true) return execute(found.def, found.handler, found.input, ctx, session);
+      if (session.readOnly || !session.stager) return err('internal', `${name} writes, so it can't run inside a read-only op`);
+
+      const db = vault.db;
+      const savepoint = `nested_${++savepoints}`;
+      const mark = session.stager.mark();
+      db.exec(`SAVEPOINT ${savepoint}`);
+      let outcome: OpOutcome;
+      try {
+        outcome = await execute(found.def, found.handler, found.input, ctx, session);
+      } catch (e) {
+        outcome = err('internal', describe(e));
+      }
+      if (outcome.status !== 'ok') {
+        db.exec(`ROLLBACK TO ${savepoint}`);
+        session.stager.rollbackTo(mark);
+      }
+      db.exec(`RELEASE ${savepoint}`);
+      return outcome;
     };
 
   const runOp: RunOp = (name, input, ctx) =>
@@ -103,31 +125,54 @@ export function createRunOp({ registry, handlers, vault }: CreateRunOpOptions): 
         return found;
       }
       const { def, handler } = found;
-      if (def.readOnly === true) return execute(def, handler, found.input, ctx, { stager: undefined, readOnly: true });
+      if (def.readOnly === true) {
+        const session: Session = { stager: undefined, readOnly: true, closed: false };
+        try {
+          return await vault.readOnly(() => execute(def, handler, found.input, ctx, session));
+        } catch (e) {
+          return err('internal', describe(e));
+        } finally {
+          session.closed = true;
+        }
+      }
 
       const stager = new FileStager(vault.home);
-      const db = vault.db;
-      db.exec('BEGIN IMMEDIATE');
+      const session: Session = { stager, readOnly: false, closed: false };
       let outcome: OpOutcome;
       try {
-        outcome = await execute(def, handler, found.input, ctx, { stager, readOnly: false });
-        if (outcome.status === 'ok') {
-          vault.logOp({ op: name, actor: ctx.actor, input, result: 'ok', at: ctx.now() });
-          db.exec('COMMIT');
+        const db = vault.db;
+        db.exec('BEGIN IMMEDIATE');
+        try {
+          outcome = await execute(def, handler, found.input, ctx, session);
+          if (outcome.status === 'ok') {
+            vault.logOp({ op: name, actor: ctx.actor, input, result: 'ok', at: ctx.now() });
+            db.exec('COMMIT');
+          }
+        } catch (e) {
+          outcome = err('internal', describe(e));
         }
+        if (outcome.status !== 'ok' && db.inTransaction) db.exec('ROLLBACK');
       } catch (e) {
+        // Opening the database or BEGIN failed (e.g. another process held the lock past busy_timeout).
         outcome = err('internal', describe(e));
+      } finally {
+        session.closed = true;
       }
+
       if (outcome.status !== 'ok') {
-        if (db.inTransaction) db.exec('ROLLBACK');
-        stager.discard();
+        try {
+          stager.discard();
+        } catch (e) {
+          outcome = err('internal', `${outcome.message}; undoing its files also failed: ${describe(e)}`);
+        }
         log(name, input, ctx, outcome.code);
         return outcome;
       }
+      // Committed. Nothing after this point can turn the op into an error: it is saved.
       try {
         stager.commit();
       } catch (e) {
-        return err('internal', `${name} was saved, but its markdown files did not all land: ${describe(e)}`);
+        log(name, { error: describe(e) }, ctx, 'ok_cleanup_failed');
       }
       return outcome;
     });

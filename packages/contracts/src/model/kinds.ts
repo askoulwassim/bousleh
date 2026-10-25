@@ -233,7 +233,7 @@ export interface CheckedFields {
  * Validate status and attrs for a kind and apply defaults. `previous` is the current version
  * when this writes a new version of an existing object.
  * Rules: statuses must belong to the kind; reserved statuses can't be set directly; a bet needs a
- * hypothesis and kill criteria; a concluded idea stays concluded.
+ * hypothesis and kill criteria, and so does a concluded idea; a concluded idea stays concluded.
  */
 export function checkKindFields(
   kind: Kind,
@@ -274,7 +274,8 @@ export function checkKindFields(
   }
 
   const attrs = parsed.success ? (parsed.data as Record<string, unknown>) : {};
-  if (kind === 'idea' && status === 'bet') {
+  // A concluded idea was a bet, so it keeps the hypothesis and kill criteria it was judged against.
+  if (kind === 'idea' && (status === 'bet' || status === 'concluded')) {
     if (attrs.hypothesis === undefined) issues.push({ path: 'attrs.hypothesis', message: 'a bet needs a hypothesis' });
     if (attrs.kill_criteria === undefined) issues.push({ path: 'attrs.kill_criteria', message: 'a bet needs kill criteria' });
   }

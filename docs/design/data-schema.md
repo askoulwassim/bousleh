@@ -21,8 +21,8 @@ So history has two levels. Versions cover "this thing changed". The `supersedes`
 | `versions` | every state, append-only | `id`, `object_id`, `n` (1, 2, …), `supersedes_id` (previous version, unique so history stays a line), `title`, `altitude` (CHECK `IN (50000, 10000, 1000, 100)`), `status`, `attrs_json` (kind-specific fields, zod-validated per kind), `body_path`, `body_sha256`, `op`, `actor`, `created_at` |
 | `current` (view) | latest version per object | versions with no successor |
 | `scopes` | what objects belong to (Perfect Placement, Specdr, Pandora, AI Anvil, Bousleh; Alethea on the work side) | `id`, `slug`, `name`, `kind` (`company`, `product`, `project`, `team`, `life`), `parent_id`, `supersedes_id` (a rename is a new row) |
-| `object_scopes` | which scopes an object belongs to (many-to-many), append-only | `object_id`, `scope_id`, `op`, `actor`, `created_at` |
-| `object_scope_retractions` | an object taken out of a scope, without deleting the row | `object_id`, `scope_id`, `reason`, `op`, `actor`, `created_at` |
+| `object_scopes` | which scopes an object belongs to (many-to-many), append-only | `object_id`, `scope_id`, `seq` (per object, shared with retractions), `op`, `actor`, `created_at` |
+| `object_scope_retractions` | an object taken out of a scope, without deleting the row | `object_id`, `scope_id`, `seq`, `reason`, `op`, `actor`, `created_at` |
 | `links` | typed edges, immutable | `id`, `from_id`, `to_id`, `kind`, `note`, `op`, `actor`, `created_at` |
 | `link_retractions` | a link withdrawn, without deleting it | `link_id`, `reason`, `actor`, `created_at` |
 | `metric_readings` | readings, append-only (a correction supersedes) | `id`, `metric_id` (object), `value`, `unit`, `observed_at`, `source`, `supersedes_id`, `created_at` |
@@ -35,7 +35,7 @@ So history has two levels. Versions cover "this thing changed". The `supersedes`
 
 Nothing gets an `UPDATE` except `search`. It's a rebuildable index, refreshed in the same transaction as the version or scope change that affects it.
 
-**Scopes.** An object can belong to several scopes, for example a person who sits in both Alethea and Specdr, or a decision that spans two projects. Every object needs at least one scope, except people, who may have none because they span scopes. SQLite can't express "at least one row elsewhere" as a constraint, so `deposits.write` enforces it per kind (a zod rule in contracts), and a later `vault.doctor` reports violations. An object's current scopes are its `object_scopes` rows with no matching retraction. Scope changes don't create a new version: membership has its own append-only history, as links do. Scopes themselves are created with `scopes.add` (slug, name, kind, optional parent) and listed with `scopes.list`; objects name their scopes by slug.
+**Scopes.** An object can belong to several scopes, for example a person who sits in both Alethea and Specdr, or a decision that spans two projects. Every object needs at least one scope, except people, who may have none because they span scopes. SQLite can't express "at least one row elsewhere" as a constraint, so `deposits.write` enforces it per kind (a zod rule in contracts), and a later `vault.doctor` reports violations. An object's current scopes come from replaying its adds and retractions in `seq` order (one counter per object across both tables), latest event per scope wins; the order never depends on the clock. Scope changes don't create a new version: membership has its own append-only history, as links do. Scopes themselves are created with `scopes.add` (slug, name, kind, optional parent) and listed with `scopes.list`; objects name their scopes by slug.
 
 **Altitude** is stored as feet and limited by a CHECK constraint to four values: `50000` company, `10000` cross-team, `1000` own surfaces, `100` one engineer or requirement. It lives on the version, so an object can change altitude over time. Altitude is required. Anything Capture can't place goes to `deposit_queue` and doesn't become an object until it's placed.
 
@@ -85,7 +85,11 @@ New link kinds are added in contracts, not freehand.
 ## 6. Writes and safety
 
 - **Backups.** `~/.bousleh` is the only copy of all data: it's local only, never pushed and not a git repo. Time Machine must cover it on the personal Mac; on the work Mac, Alethea's backup does. A later `vault.doctor` check can warn when no recent backup is detected (not built yet).
-- Each top-level write op runs in one SQLite transaction (WAL mode). File writes are staged, then moved into place after commit. If a write fails before commit, nothing lands.
+- Each top-level write op runs in one SQLite transaction (WAL mode, `BEGIN IMMEDIATE`, so it holds the write lock against a second Bousleh process too). Its files are written while that lock is held, and each write remembers what it replaced: if the op rolls back, every file goes back the way it was. An op called from inside another op runs in a SAVEPOINT, so a nested failure is undone even when the caller carries on.
+- A marker in `.staging` says a transaction is open. If a process dies mid-op, the next one to open your data removes version files no committed row points at, rewrites each current copy from its version file, and logs `vault.recover` in `op_log`.
+- Reading a version checks its file against `body_sha256`. A missing or changed file is an error, never an empty body.
+- Every table except `search` refuses UPDATE and DELETE (triggers), and a new version must supersede version n - 1 of the same object. Read-only ops run with SQLite's `query_only` on.
+- File writes stay inside the data home: no absolute paths, no `..`, nothing in `.staging` or `vault.db*`, and only the store writes `.versions`.
 - **No hand edits in v0.** Your data is engine-written only. A later `vault.doctor` op checks every current file's `body_sha256` against disk. On a mismatch (a hand-edited file), it records the file's content as a new version through an op, so even a hand edit goes through the engine and keeps history. It also reports objects outside any scope, other than people.
 
 ## Decisions (Oct 24)

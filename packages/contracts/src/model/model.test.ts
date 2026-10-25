@@ -42,9 +42,15 @@ describe('idea statuses (Oct 25)', () => {
   });
 
   it('keep a concluded idea concluded', () => {
-    expect(checkKindFields('idea', {}, { status: 'concluded' })).toMatchObject({ ok: true, value: { status: 'concluded' } });
-    expect(checkKindFields('idea', { status: 'concluded' }, { status: 'concluded' }).ok).toBe(true);
-    expect(checkKindFields('idea', { status: 'open' }, { status: 'concluded' }).ok).toBe(false);
+    const attrs = { hypothesis: 'h', kill_criteria: 'k' };
+    expect(checkKindFields('idea', { attrs }, { status: 'concluded' })).toMatchObject({ ok: true, value: { status: 'concluded' } });
+    expect(checkKindFields('idea', { status: 'concluded', attrs }, { status: 'concluded' }).ok).toBe(true);
+    expect(checkKindFields('idea', { status: 'open', attrs }, { status: 'concluded' }).ok).toBe(false);
+  });
+
+  it('keep the hypothesis and kill criteria on a concluded idea', () => {
+    expect(checkKindFields('idea', { attrs: { hypothesis: 'h' } }, { status: 'concluded' }).ok).toBe(false);
+    expect(checkKindFields('idea', { attrs: {} }, { status: 'concluded' }).ok).toBe(false);
   });
 });
 
