@@ -50,7 +50,7 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 | Capture, Counsel | `vault.supersede` (write) | Only to move a planned meeting to `held` once it has happened (Counsel also updates the prep on it). |
 | Workshop | `vault.supersede` (write) | Only to set `rank` on ideas that already exist. |
 | Horizon | `vault.supersede` (write) | Only to move a finding through the reading queue (`to_read`, `read`, `dismissed`). |
-| Horizon | `queue.add` (write), `queue.list` (read) | Only to suggest that Wassim remove a watch list entry he added, when a scan proposes it. |
+| Horizon | `queue.list` (read), `queue.resolve` (write) | Only for the removals `watchlists.apply` queued for Wassim: list them, and resolve one once he has decided. |
 
 ## Gaps
 
