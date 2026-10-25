@@ -122,17 +122,18 @@ describe('metrics.upsert', () => {
     expect((await list())[0]).toMatchObject({ owner: { id: peter, title: 'Peter' }, unit: null });
   });
 
-  it('writes nothing new when an update changes nothing, and keeps one owner', async () => {
+  it('writes nothing new when an update changes nothing, and replaces the owner', async () => {
     const id = await idOf('metrics.upsert', { title: 'Hours saved', altitude: 10000, scopes: ['bousleh'], owner: peter });
     const same = ok(await run('metrics.upsert', { id, title: 'Hours saved', altitude: 10000, scopes: ['bousleh'], owner: peter }));
     expect(same).toMatchObject({ version: { n: 1 }, new_version: false });
     expect(count(`SELECT count(*) AS n FROM versions WHERE object_id = '${id}'`)).toBe(1);
     expect(count(`SELECT count(*) AS n FROM links WHERE from_id = '${id}' AND kind = 'owned_by'`)).toBe(1);
 
-    const other = failed(await run('metrics.upsert', { id, status: 'defined', owner: wassim }));
-    expect(other.code).toBe('conflict');
-    expect(other.message).toMatch(/Peter/);
-    expect(count(`SELECT count(*) AS n FROM versions WHERE object_id = '${id}'`)).toBe(1);
+    // A new owner replaces the old one: the old link is retracted, not deleted.
+    expect(ok(await run('metrics.upsert', { id, status: 'defined', owner: wassim }))).toMatchObject({ version: { n: 2 } });
+    expect(count(`SELECT count(*) AS n FROM links WHERE from_id = '${id}' AND kind = 'owned_by'`)).toBe(2);
+    expect(count('SELECT count(*) AS n FROM link_retractions')).toBe(1);
+    expect((await list())[0]).toMatchObject({ owner: { id: wassim } });
 
     expect(ok(await run('metrics.upsert', { id, serves: strategy }))).toMatchObject({ new_version: false });
     expect((await list())[0]).toMatchObject({ serves: { id: strategy, title: 'Automate the analysts' } });

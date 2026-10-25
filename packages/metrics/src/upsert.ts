@@ -47,9 +47,8 @@ async function update(id: string, input: Input, h: HandlerContext): Promise<Outp
       `metrics.upsert can't move a metric between scopes yet; this metric is in ${current.scopes.join(', ')}. Leave scopes out to keep them.`,
     );
   }
-  // Check both links before writing anything, so a refused owner leaves no new version behind.
-  const owner = pendingLink(current, 'owned_by', input.owner, 'owner');
-  const serves = pendingLink(current, 'serves', input.serves, 'strategy it serves');
+  const owner = pendingLink(current, 'owned_by', input.owner);
+  const serves = pendingLink(current, 'serves', input.serves);
 
   const patch: OpInput<'vault.supersede'> = { id };
   const version = current.version;
@@ -69,10 +68,12 @@ async function update(id: string, input: Input, h: HandlerContext): Promise<Outp
   const changes = Object.keys(patch).length > 1;
   if (changes) written = await call(h, 'vault.supersede', patch);
 
-  // There is no vault.link op yet, so links to an existing object go through the store's own method,
-  // which applies the same link rules as deposits.write.
-  if (owner) h.store.addLink(id, 'owned_by', owner);
-  if (serves) h.store.addLink(id, 'serves', serves);
+  // A new owner or strategy replaces the old one: retract the old link, then add the new one.
+  for (const change of [owner, serves]) {
+    if (!change) continue;
+    for (const old of change.replaces) await call(h, 'vault.unlink', { id: old, reason: `replaced by metrics.upsert` });
+    await call(h, 'vault.link', { from: id, kind: change.kind, to: change.to });
+  }
 
   return {
     id,
@@ -85,19 +86,19 @@ async function update(id: string, input: Input, h: HandlerContext): Promise<Outp
   };
 }
 
-/** The target to link, or undefined when the link is already there or wasn't asked for. Refuses to add a second one. */
-function pendingLink(current: ObjectView, kind: LinkKind, to: string | undefined, what: string): string | undefined {
+interface LinkChange {
+  kind: LinkKind;
+  to: string;
+  /** Ids of the live links of this kind that the new one replaces. */
+  replaces: string[];
+}
+
+/** The link to add and the ones it replaces, or undefined when it is already there or wasn't asked for. */
+function pendingLink(current: ObjectView, kind: LinkKind, to: string | undefined): LinkChange | undefined {
   if (to === undefined) return undefined;
   const existing = current.links.out.filter((link) => link.kind === kind);
-  if (existing.some((link) => link.to === to)) return undefined;
-  const other = existing[0];
-  if (other) {
-    throw new OpError(
-      'conflict',
-      `this metric's ${what} is already ${other.to_title} (${other.to}); replacing it needs a link retraction, which isn't available yet`,
-    );
-  }
-  return to;
+  if (existing.length === 1 && existing[0]?.to === to) return undefined;
+  return { kind, to, replaces: existing.filter((link) => link.to !== to).map((link) => link.id) };
 }
 
 function sameSet(a: readonly string[], b: readonly string[]): boolean {

@@ -3,7 +3,7 @@ import { IdSchema, ScopeSlugSchema } from '../model/ids.js';
 import { KINDS } from '../model/kinds.js';
 import { AltitudeSchema } from '../model/layers.js';
 import { defineOp } from './define.js';
-import { ObjectRefSchema } from './metrics.js';
+import { ObjectRefSchema } from './shapes.js';
 
 /*
  * watchlists.* and watch.*: owned by @bousleh/watch. A watch list (kind `watch_list`) says what

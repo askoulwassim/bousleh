@@ -8,6 +8,9 @@ import { LinkKindSchema } from '../model/links.js';
 
 const isoDateTime = z.iso.datetime({ offset: true });
 
+/** An object referred to by id, with its current title. */
+export const ObjectRefSchema = z.object({ id: IdSchema, title: z.string() });
+
 export const ActorSchema = z.enum(['human', 'agent', 'schedule']);
 
 /** One version of an object, as ops return it. */

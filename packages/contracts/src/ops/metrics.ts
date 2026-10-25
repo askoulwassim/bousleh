@@ -3,7 +3,7 @@ import { IdSchema, ScopeSlugSchema } from '../model/ids.js';
 import { KINDS, METRIC_STATUSES } from '../model/kinds.js';
 import { AltitudeSchema } from '../model/layers.js';
 import { defineOp } from './define.js';
-import { WrittenSchema } from './shapes.js';
+import { ObjectRefSchema, WrittenSchema } from './shapes.js';
 
 /* metrics.*: owned by @bousleh/metrics. A metric is an object (kind `metric`); its readings live in `metric_readings`. */
 
@@ -13,9 +13,6 @@ const dateOrDateTime = z.union([z.iso.date(), isoDateTime]);
 /** How often a metric is read, straight from the metric kind so the two never drift. */
 export const MetricCadenceSchema = KINDS.metric.attrs.shape.cadence.unwrap();
 export const MetricStatusSchema = z.enum(METRIC_STATUSES);
-
-/** An object referred to by id, with its current title. */
-export const ObjectRefSchema = z.object({ id: IdSchema, title: z.string() });
 
 /** One row of `metric_readings`. */
 export const MetricReadingSchema = z.object({
@@ -52,7 +49,7 @@ export type MetricSummary = z.output<typeof MetricSummarySchema>;
 export const metricsUpsert = defineOp({
   name: 'metrics.upsert',
   description:
-    'Create a metric in the registry, or update one by id. To create, leave out id and give a title, an altitude (50000 company, 10000 cross-team, 1000 own surfaces, 100 one engineer or requirement) and at least one scope slug. To update, give the id and only the fields that change; an update that changes nothing writes no new version. status is the lifecycle: idea, defined, instrumented, measured, reviewed (new metrics start as idea). cadence is daily, weekly, monthly or quarterly; set cadence or unit to null to clear it. owner is the id of the person who owns the metric and serves is the id of the strategy it serves; both are links, and a metric that already has a different owner or strategy is refused. Scopes are set when the metric is created.',
+    'Create a metric in the registry, or update one by id. To create, leave out id and give a title, an altitude (50000 company, 10000 cross-team, 1000 own surfaces, 100 one engineer or requirement) and at least one scope slug. To update, give the id and only the fields that change; an update that changes nothing writes no new version. status is the lifecycle: idea, defined, instrumented, measured, reviewed (new metrics start as idea). cadence is daily, weekly, monthly or quarterly; set cadence or unit to null to clear it. owner is the id of the person who owns the metric and serves is the id of the strategy it serves; both are links, and giving a different one replaces the old link (it is retracted, not deleted). Scopes are set when the metric is created.',
   input: z.object({
     id: IdSchema.optional(),
     title: z.string().trim().min(1).max(200).optional(),

@@ -1,7 +1,7 @@
 import { type ObjectView, type OpInput, watchDigest, watchFile } from '@bousleh/contracts';
 import { defineHandler, type HandlerContext } from '@bousleh/vault';
 import { call } from './call.js';
-import { loadWatchList, requireScope, resolveWatchList } from './lists.js';
+import { loadWatchList, resolveWatchList } from './lists.js';
 
 /* watch.file and watch.digest: findings from Horizon scans, filed against their watch lists. */
 
@@ -99,7 +99,7 @@ interface DigestItem {
 export const watchDigestHandler = defineHandler(watchDigest, async (input, h) => {
   const until = h.ctx.now();
   const since = input.since !== undefined ? new Date(input.since) : new Date(until.getTime() - 7 * DAY_MS);
-  if (input.scope !== undefined) requireScope(h, input.scope);
+  const inScope = input.scope === undefined ? undefined : h.store.expandScopes([input.scope]);
   if (input.watch_list_id !== undefined) await loadWatchList(h, input.watch_list_id);
 
   const rows = h.store.db
@@ -109,7 +109,7 @@ export const watchDigestHandler = defineHandler(watchDigest, async (input, h) =>
   const matched: DigestItem[] = [];
   for (const row of rows) {
     const finding = await call(h, 'vault.get', { id: row.id });
-    if (input.scope !== undefined && !finding.scopes.includes(input.scope)) continue;
+    if (inScope !== undefined && !finding.scopes.some((slug) => inScope.has(slug))) continue;
     const link = finding.links.out.find((l) => l.kind === 'from_watch_list');
     if (input.watch_list_id !== undefined && link?.to !== input.watch_list_id) continue;
     matched.push({ finding, watchList: link ? { id: link.to, title: link.to_title } : null });
