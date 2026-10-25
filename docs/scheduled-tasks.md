@@ -17,7 +17,7 @@ Say it again after `git pull` changes this file. A watch list change doesn't nee
 2. **List what exists:** the scheduled tasks on this Mac and the cloud scheduled tasks (routines) on this account.
 3. **For each task below:**
    - If a task with that exact name already exists in the same place (this Mac or the cloud), update its prompt and schedule to match this file. Otherwise create it. Never create a second task with the same name.
-   - **Connectors:** attach only the connectors the task lists under **Needs**, and nothing else from the account.
+   - **Connectors:** a scheduled task gets every connector on the account, and neither the scheduling tools nor the app can limit that (checked Oct 25). Don't try to remove any, and don't report the extra ones as a problem. Each task's prompt limits what it touches instead: Bousleh's own tools, the "Bousleh Inbox" folder and the watch lists file. **Needs** lists what a task actually uses; check those are available.
    - **Tasks that need the Mac:** create a scheduled task that requires this Mac, with this repo folder as its working folder. Set the permission mode so runs don't stall on approvals for the Bousleh tools and the Google Drive connector. If only a mode that asks is available, say so, and tell Wassim to click **Run now** once and choose "always allow" for each tool.
    - **Cloud-only tasks:** give the run no access to the Mac.
 4. **Remove strays.** If a scheduled task looks like an older copy of one of these under another name, name it and ask before deleting it.
@@ -35,7 +35,7 @@ This task was called "Daily inbox sweep" until Oct 25. If a task by that name ex
 
 - **Runs:** as a scheduled task that requires this Mac. It works through the Mac's `bousleh` MCP server.
 - **Schedule:** every hour from 07:00 to 22:00, local time.
-- **Needs:** the Bousleh MCP server on this Mac, and the Google Drive connector. No other connectors.
+- **Needs:** the Bousleh MCP server on this Mac, and the Google Drive connector. The other connectors on the account stay attached but unused: the prompt keeps the run to Bousleh and those two Drive locations.
 - **Permissions:** runs without asking, for the Bousleh tools and the Google Drive connector.
 
 Prompt:
@@ -65,7 +65,7 @@ Use the Bousleh plugin's Capture skill (bousleh:capture) and follow its "Unatten
    - for each horizon-scan file: the watch list entries added, removed, and suggested to Wassim for removal;
    - anything left in Drive.
 
-Never create, change or delete scheduled tasks. Never touch files outside Bousleh's own tools, the "Bousleh Inbox" folder, and the file "Bousleh Watch Lists.md" in the "Bousleh" folder.
+Never create, change or delete scheduled tasks. Never touch files outside Bousleh's own tools, the "Bousleh Inbox" folder, and the file "Bousleh Watch Lists.md" in the "Bousleh" folder. Use no connector other than Google Drive: never read or send email, chat messages, calendar events or meetings.
 ```
 
 ## Task 2: Weekly Horizon scan
@@ -74,7 +74,7 @@ This task was called "Daily Horizon scan", run every day, until Oct 25: daily wa
 
 - **Runs:** in the cloud, as a cloud scheduled task, so it works when the Mac is off.
 - **Schedule:** every Monday at 06:40, local time, before the first inbox sweep.
-- **Needs:** web search and the Google Drive connector, with no access to the Mac. No other connectors.
+- **Needs:** web search and the Google Drive connector, with no access to the Mac. The other connectors on the account stay attached but unused: the prompt keeps the run to reading the watch lists file and writing to "Bousleh Inbox".
 - **Permissions:** runs on its own.
 - **Watch lists:** the prompt carries none. Each run reads them from `Bousleh Watch Lists.md` in the Drive folder `Bousleh`, which the Mac keeps current: Horizon rewrites it after every watch list change, and the Hourly inbox sweep after it files a scan. So a watch list change never needs this file applied again.
 
@@ -94,5 +94,5 @@ Use the Bousleh plugin's Horizon skill (bousleh:horizon), in its "The Weekly Hor
    - each file named and formatted exactly as the skill says, including the `bousleh: horizon-scan` frontmatter and the `## Watch list changes` section at the end.
 4. In "## Watch list changes", propose adding the competitors, outlets, people, podcasts and topics this week's evidence shows belong on the list, and removing entries the evidence shows are irrelevant. One line each, with the reason grounded in what you found. Propose nothing you can't back with what you found; write `none` when nothing should change.
 
-Never change the watch lists file yourself: the Mac applies your proposals. End with one line per watch list: how many items were written, and how many changes proposed. Never create, change or delete scheduled tasks.
+Never change the watch lists file yourself: the Mac applies your proposals. End with one line per watch list: how many items were written, and how many changes proposed. Never create, change or delete scheduled tasks. Use no connector other than Google Drive, and in Drive touch only the watch lists file (read) and "Bousleh Inbox" (new files): never read or send email, chat messages, calendar events or meetings.
 ```
