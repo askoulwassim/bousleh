@@ -35,7 +35,7 @@ Op names are provisional; the "Package map" tab is the source of truth.
 | Package | Owns | Op namespaces | Depends on |
 | --- | --- | --- | --- |
 | contracts | Object kinds, layers, altitude, scope; every op's name and schemas | none (definitions only) | nothing |
-| vault | Storage, migrations, history, typed objects, scopes, assets, people | `vault.*` (health, get, search, supersede, link, unlink), `deposits.*` (write), `scopes.*` (list, add, move), `commitments.*` (list, close), `people.*` (get, list), `assets.*` (add, list) | contracts |
+| vault | Storage, migrations, history, typed objects, scopes, assets, people | `vault.*` (health, get, search, supersede, link, unlink), `deposits.*` (write), `scopes.*` (list, add, move, rename), `commitments.*` (list, close), `people.*` (get, list), `assets.*` (add, list) | contracts |
 | intake | Inbox files, Drive sweep, content-hash dedupe, the ambiguity queue, feedback patterns for v0 | `inbox.*` (drop, list, take, sweep, settle), `queue.*` (add, list, resolve), `signals.*` (patterns) | contracts, vault |
 | context | The brief at a given altitude, Home's strata (every scope at every altitude in one call), and Pulse's daily picture | `context.*` (brief, strata), `pulse.*` (today) | contracts, vault, metrics, watch |
 | metrics | The registry, its lifecycle and readings | `metrics.*` (upsert, reading, list, history) | contracts, vault |

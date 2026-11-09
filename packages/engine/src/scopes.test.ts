@@ -104,3 +104,39 @@ describe('scopes.move', () => {
     expect(await parentOf('mcp')).toBe('alethea');
   });
 });
+
+describe('scopes.rename', () => {
+  type Renamed = ScopeView & { renamed: boolean };
+  const rename = (slug: string, name: string) => run('scopes.rename', { slug, name });
+
+  it('changes the display name and keeps the slug, parent, children and what is filed in it', async () => {
+    const problem = await deposit('Noise, not signal', 'mcp');
+    const renamed = ok<Renamed>(await rename('mcp', 'Themis'));
+    expect(renamed).toMatchObject({ slug: 'mcp', name: 'Themis', kind: 'product', parent: 'alethea', renamed: true });
+    const list = await scopes();
+    expect(list.filter((s) => s.slug === 'mcp')).toEqual([expect.objectContaining({ name: 'Themis', parent: 'alethea' })]);
+    expect(await parentOf('mcp-auth')).toBe('mcp');
+    expect(ok<ObjectView>(await run('vault.get', { id: problem })).scopes).toEqual(['mcp']);
+  });
+
+  it('shows the new name on its grid column', async () => {
+    ok(await move('zeus', null));
+    ok(await rename('zeus', 'Zeus platform'));
+    const strata = ok<OpOutput<'context.strata'>>(await run('context.strata', {}));
+    expect(strata.columns.find((c) => c.slug === 'zeus')?.name).toBe('Zeus platform');
+  });
+
+  it('survives a later move, and a move survives a later rename', async () => {
+    ok(await rename('zeus', 'Zeus platform'));
+    ok(await move('zeus', null));
+    expect((await scopes()).find((s) => s.slug === 'zeus')).toMatchObject({ name: 'Zeus platform', parent: null });
+    ok(await rename('zeus', 'Zeus'));
+    expect((await scopes()).find((s) => s.slug === 'zeus')).toMatchObject({ name: 'Zeus', parent: null });
+  });
+
+  it('changes nothing for the same name, and refuses unknown slugs', async () => {
+    const before = (await scopes()).find((s) => s.slug === 'zeus');
+    expect(ok<Renamed>(await rename('zeus', 'Zeus'))).toMatchObject({ id: before?.id, renamed: false });
+    expect(failed(await rename('nope', 'Nope')).code).toBe('invalid_input');
+  });
+});

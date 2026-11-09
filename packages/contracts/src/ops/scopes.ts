@@ -37,8 +37,20 @@ export const scopesMove = defineOp({
   output: ScopeViewSchema.extend({ moved: z.boolean() }),
 });
 
+export const scopesRename = defineOp({
+  name: 'scopes.rename',
+  description:
+    'Give a scope a new display name, the name Home, briefs and lists show. The slug stays the same, so everything filed in the scope, its parent and its children are untouched. Nothing is overwritten: the rename is a new version of the scope that supersedes the old one. Renaming to the name it already has changes nothing.',
+  input: z.object({
+    slug: ScopeSlugSchema,
+    name: z.string().trim().min(1).max(120),
+  }),
+  output: ScopeViewSchema.extend({ renamed: z.boolean() }),
+});
+
 export const scopeOps = {
   'scopes.list': scopesList,
   'scopes.add': scopesAdd,
   'scopes.move': scopesMove,
+  'scopes.rename': scopesRename,
 } as const;
