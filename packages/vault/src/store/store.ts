@@ -225,7 +225,10 @@ export class Store {
          ORDER BY s.slug`,
       )
       .all() as ScopeRow[];
-    const slugById = new Map(rows.map((row) => [row.id, row.slug]));
+    // A child's parent_id names the parent row current when the child was written; a parent moved
+    // since has a newer row with the same slug, so resolve parents through every row, not only current ones.
+    const allRows = this.db.prepare('SELECT id, slug FROM scopes').all() as { id: string; slug: string }[];
+    const slugById = new Map(allRows.map((row) => [row.id, row.slug]));
     return rows.map((row) => ({
       id: row.id,
       slug: row.slug,
@@ -283,6 +286,36 @@ export class Store {
       )
       .run(id, input.slug, input.name, input.kind, parentId, this.meta.op, this.meta.actor, this.now());
     return { id, slug: input.slug, name: input.name, kind: input.kind, parent: input.parent ?? null };
+  }
+
+  /**
+   * Move a scope under a new parent (or to the top with null) as a new scope row that supersedes the
+   * current one. Memberships and children resolve by slug, so everything filed in it, and every scope
+   * below it, moves with it.
+   */
+  moveScope(input: { slug: string; parent: string | null }): ScopeView & { moved: boolean } {
+    this.files();
+    const current = this.scopeBySlug(input.slug);
+    if (!current) throw new OpError('invalid_input', `no scope named ${input.slug}; scopes.list shows them all`);
+    let parentId: string | null = null;
+    if (input.parent !== null) {
+      const parent = this.scopeBySlug(input.parent);
+      if (!parent) throw new OpError('invalid_input', `no scope named ${input.parent}`);
+      if (this.expandScopes([input.slug]).has(input.parent)) {
+        throw new OpError('invalid_input', `${input.parent} is ${input.slug} or below it, so it can't be its parent`);
+      }
+      parentId = parent.id;
+    }
+    const currentParent = this.listScopes().find((scope) => scope.slug === input.slug)?.parent ?? null;
+    const view = { slug: current.slug, name: current.name, kind: current.kind };
+    if (currentParent === input.parent) return { id: current.id, ...view, parent: currentParent, moved: false };
+    const id = newId(ROW_PREFIXES.scope, this.meta.now());
+    this.db
+      .prepare(
+        'INSERT INTO scopes (id, slug, name, kind, parent_id, supersedes_id, op, actor, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(id, current.slug, current.name, current.kind, parentId, current.id, this.meta.op, this.meta.actor, this.now());
+    return { id, ...view, parent: input.parent, moved: true };
   }
 
   /**
