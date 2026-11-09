@@ -71,7 +71,7 @@ export const tokens = {
     56: '56px',
   },
   motion: { fast: '150ms', base: '250ms', ring: '600ms', pulse: '1.4s' },
-  layout: { 'strata-label': '132px', 'strata-launch': '200px', 'max-width': '1364px', phone: '720px' },
+  layout: { 'strata-label': '132px', 'strata-launch': '200px', 'strata-col-min': '168px', phone: '720px' },
 } as const;
 
 /** Every token as `--bsl-<name>: value;` lines. Colours keep their name; other groups are prefixed (`--bsl-radius-card`). */

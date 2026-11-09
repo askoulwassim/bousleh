@@ -1,5 +1,5 @@
 // Preview harness: renders the built page against fixtures from preview/seed.mjs, with a stand-in
-// for the Claude page runtime, and screenshots it at desktop (1440) and phone (390) widths, live,
+// for the Claude page runtime, and screenshots it at wide (2560), desktop (1440), tablet (1024) and phone (390) widths, live,
 // from a snapshot, and with no data. Also screenshots the Claude Design boards for comparison.
 //
 //   node preview/shoot.mjs [out-dir]      (default: preview/out/shots)
@@ -111,6 +111,7 @@ try {
   const writes = await shot(browser, inject(page, fakeRuntime(fixtures, 'live')), 'home-live-desktop', 1440, 900);
   await shot(browser, inject(page, fakeRuntime(fixtures, 'live')), 'home-live-phone', 390, 844);
   await shot(browser, inject(page, fakeRuntime(fixtures, 'live')), 'home-live-tablet', 1024, 800);
+  await shot(browser, inject(page, fakeRuntime(fixtures, 'live')), 'home-live-wide', 2560, 1300);
   const snapshot = writes.find((w) => w.path === 'snapshot/latest')?.data;
   if (!snapshot) console.log('no snapshot was written by the live page');
   writeFileSync(join(here, 'out/snapshot.json'), JSON.stringify(snapshot ?? null, null, 2));
