@@ -10,6 +10,7 @@ import {
   scopesAddHandler,
   scopesListHandler,
   scopesMoveHandler,
+  scopesRenameHandler,
   vaultGetHandler,
   vaultSupersedeHandler,
 } from './objects.js';
@@ -27,6 +28,7 @@ export {
   scopesAddHandler,
   scopesListHandler,
   scopesMoveHandler,
+  scopesRenameHandler,
   vaultGetHandler,
   vaultSupersedeHandler,
 } from './objects.js';
@@ -59,6 +61,7 @@ export const handlers: readonly OpHandler[] = [
   scopesListHandler,
   scopesAddHandler,
   scopesMoveHandler,
+  scopesRenameHandler,
   commitmentsListHandler,
   commitmentsCloseHandler,
   peopleGetHandler,

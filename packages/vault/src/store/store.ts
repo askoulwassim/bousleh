@@ -293,6 +293,24 @@ export class Store {
    * current one. Memberships and children resolve by slug, so everything filed in it, and every scope
    * below it, moves with it.
    */
+  /** Give a scope a new display name as a new scope row that supersedes the current one; the slug, parent and memberships stay. */
+  renameScope(input: { slug: string; name: string }): ScopeView & { renamed: boolean } {
+    this.files();
+    const current = this.scopeBySlug(input.slug);
+    if (!current) throw new OpError('invalid_input', `no scope named ${input.slug}; scopes.list shows them all`);
+    const parent = this.listScopes().find((scope) => scope.slug === input.slug)?.parent ?? null;
+    const view = { slug: current.slug, kind: current.kind, parent };
+    if (current.name === input.name) return { id: current.id, ...view, name: current.name, renamed: false };
+    const parentId = parent === null ? null : (this.scopeBySlug(parent)?.id ?? null);
+    const id = newId(ROW_PREFIXES.scope, this.meta.now());
+    this.db
+      .prepare(
+        'INSERT INTO scopes (id, slug, name, kind, parent_id, supersedes_id, op, actor, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(id, current.slug, input.name, current.kind, parentId, current.id, this.meta.op, this.meta.actor, this.now());
+    return { id, ...view, name: input.name, renamed: true };
+  }
+
   moveScope(input: { slug: string; parent: string | null }): ScopeView & { moved: boolean } {
     this.files();
     const current = this.scopeBySlug(input.slug);
