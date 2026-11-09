@@ -4,6 +4,7 @@ Source: the Claude Design canvas "Bousleh Home" (artboards Home, Home-Phone, Log
 
 ## Direction
 - Home is a cross-section with altitude as rows (50,000 company, 10,000 cross-team, 1,000 my surfaces, 100 one thing) and the scopes as columns (Specdr, Placement, Pandora, Anvil, Bousleh; on the work instance, Alethea's scopes). Each cell holds the objects at that scope and altitude. Empty cells are drawn dashed: the gaps are the message.
+- The desktop view fills the window at any width (no maximum width; side padding grows with the window). Scope columns share the width but never shrink below 168 px (140 px from 720 to 1099 px): when they can't all fit, the grid scrolls sideways and the altitude labels stay pinned on the left. Below 720 px the phone view takes over.
 - Each mode launches from the band it works at: 50K Shape; 10K Horizon, Communicate; 1K Workshop, Pulse, Coach; 100 Counsel, Capture.
 - The header shows the hero count of what needs you, plus readouts (owed me, meetings, inbox, touch due, Alethea countdown) and two actions (one primary, one secondary).
 - Below the grid sits the Horizon front page: a masthead (issue number, scan date), a lead story with the week's findings by day, side stories, the beat (findings per watched entry), list changes, and scopes with no watch list.

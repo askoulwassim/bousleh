@@ -248,10 +248,10 @@ p {
   }
 }
 .main {
+  /* Fills the window beside the rail at any width; side padding grows with it. */
   flex: 999 1 560px;
   min-width: 0;
-  max-width: var(--bsl-layout-max-width);
-  padding: 32px 48px 64px;
+  padding: 32px clamp(24px, 3vw, 64px) 64px;
   display: flex;
   flex-direction: column;
   gap: 28px;
@@ -354,9 +354,15 @@ p {
 .strata {
   padding: 20px;
   display: grid;
-  grid-template-columns: var(--bsl-layout-strata-label) repeat(var(--cols), minmax(0, 1fr)) var(--bsl-layout-strata-launch);
+  /* Scope columns share the width but never shrink below a readable minimum: when they can't all
+     fit, the grid scrolls sideways and the altitude labels stay pinned on the left. */
+  grid-template-columns:
+    var(--bsl-layout-strata-label) repeat(var(--cols), minmax(var(--bsl-layout-strata-col-min), 1fr))
+    var(--bsl-layout-strata-launch);
   gap: 10px;
   background: var(--bsl-well);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 .colh {
   display: flex;
@@ -382,8 +388,10 @@ p {
   padding: 0 14px 0 0;
   border: 0;
   border-right: 2px solid var(--bsl-line-2);
-  position: relative;
-  background: transparent;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bsl-well);
   text-align: left;
   transition: border-color var(--bsl-motion-fast);
 }
@@ -1161,7 +1169,7 @@ p {
   .strata {
     padding: 14px;
     gap: 8px;
-    grid-template-columns: 84px repeat(var(--cols), minmax(0, 1fr)) 156px;
+    grid-template-columns: 84px repeat(var(--cols), minmax(140px, 1fr)) 156px;
   }
   .cell {
     padding: 10px;
