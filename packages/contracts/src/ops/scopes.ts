@@ -26,7 +26,19 @@ export const scopesAdd = defineOp({
   output: ScopeViewSchema,
 });
 
+export const scopesMove = defineOp({
+  name: 'scopes.move',
+  description:
+    'Move a scope to a new parent, or make it top-level with parent null. The scope keeps its slug, name, kind and everything filed in it; its children move with it. Nothing is overwritten: the move is a new version of the scope that supersedes the old one. Refuses a parent that is the scope itself or one of its children. Moving to the parent it already has changes nothing. Home shows top-level scopes as its columns, so making a scope top-level gives it a column.',
+  input: z.object({
+    slug: ScopeSlugSchema,
+    parent: ScopeSlugSchema.nullable(),
+  }),
+  output: ScopeViewSchema.extend({ moved: z.boolean() }),
+});
+
 export const scopeOps = {
   'scopes.list': scopesList,
   'scopes.add': scopesAdd,
+  'scopes.move': scopesMove,
 } as const;

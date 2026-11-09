@@ -1,7 +1,7 @@
-import { depositsWrite, scopesAdd, scopesList, vaultGet, vaultSupersede } from '@bousleh/contracts';
+import { depositsWrite, scopesAdd, scopesList, scopesMove, vaultGet, vaultSupersede } from '@bousleh/contracts';
 import { defineHandler, OpError } from './handler.js';
 
-/* Handlers for the core object ops: deposits.write, vault.get, vault.supersede, scopes.list, scopes.add. */
+/* Handlers for the core object ops: deposits.write, vault.get, vault.supersede, scopes.list, scopes.add, scopes.move. */
 
 export const depositsWriteHandler = defineHandler(depositsWrite, (input, h) => h.store.createObject(input));
 
@@ -19,3 +19,5 @@ export const vaultSupersedeHandler = defineHandler(vaultSupersede, (input, h) =>
 export const scopesListHandler = defineHandler(scopesList, (_input, h) => ({ scopes: h.store.listScopes() }));
 
 export const scopesAddHandler = defineHandler(scopesAdd, (input, h) => h.store.addScope(input));
+
+export const scopesMoveHandler = defineHandler(scopesMove, (input, h) => h.store.moveScope(input));
