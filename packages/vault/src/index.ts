@@ -3,6 +3,7 @@
 import { assetsAddHandler, assetsListHandler } from './assets.js';
 import { vaultBackupHandler } from './backup.js';
 import type { OpHandler } from './handler.js';
+import { vaultActivityHandler } from './activity.js';
 import { vaultHealthHandler } from './health.js';
 import { vaultLinkHandler, vaultSearchHandler, vaultUnlinkHandler } from './links.js';
 import {
@@ -16,6 +17,7 @@ import {
 } from './objects.js';
 import { commitmentsCloseHandler, commitmentsListHandler, peopleGetHandler, peopleListHandler } from './people.js';
 
+export { ACTIVITY_WINDOW_DAYS, vaultActivityHandler } from './activity.js';
 export { assetsAddHandler, assetsListHandler, normalizeAssetUrl, toAssetView } from './assets.js';
 export { backupDir, latestSnapshotTime, listSnapshots, snapshotName, takeSnapshot, vaultBackupHandler } from './backup.js';
 export { addDays, dayOf, daysBetween, instantOf, isDateOnly, localDay, startOfDay, windowEnd, windowStart } from './days.js';
@@ -62,6 +64,7 @@ export const handlers: readonly OpHandler[] = [
   scopesAddHandler,
   scopesMoveHandler,
   scopesRenameHandler,
+  vaultActivityHandler,
   commitmentsListHandler,
   commitmentsCloseHandler,
   peopleGetHandler,

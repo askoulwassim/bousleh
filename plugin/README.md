@@ -1,6 +1,6 @@
 # Bousleh plugin
 
-The eight Bousleh modes, plus Drop for phone captures, as Claude skills in one plugin named `bousleh`.
+The nine Bousleh modes, plus Drop for phone captures, as Claude skills in one plugin named `bousleh`.
 
 | Skill | Job | Surface |
 | --- | --- | --- |
@@ -12,11 +12,12 @@ The eight Bousleh modes, plus Drop for phone captures, as Claude skills in one p
 | Communicate | One truth rendered per audience | Docs, Slides |
 | Coach | Coaching the PMs he leads; growth notes | Conversation, Docs |
 | Horizon | The outside view: digest, watch lists, the reading queue, the Weekly Horizon scan and the watch list changes it proposes | Home, Docs |
+| Tune | The Friday tune-up: reviews the week's activity, fixes safe noise, queues judgment calls, opens a pull request for repeated corrections | Queue, pull requests |
 | Drop | Phone dictation saved verbatim to the Drive folder "Bousleh Inbox" for Capture | Google Drive |
 
 ## Requirements
 
-The eight modes expect the Bousleh MCP server, registered locally as `bousleh` on the Mac. Drop needs only the Google Drive connector, so it works on the phone. Pulse and Counsel also read the Google Calendar connector when the account has it (read-only: they never create, change or answer events); without it they work from Bousleh alone and say the calendar wasn't read. `scripts/setup-mac.sh` sets all of it up (see SETUP.md at the repo root).
+The nine modes expect the Bousleh MCP server, registered locally as `bousleh` on the Mac. Drop needs only the Google Drive connector, so it works on the phone. Pulse and Counsel also read the Google Calendar connector when the account has it (read-only: they never create, change or answer events); without it they work from Bousleh alone and say the calendar wasn't read. `scripts/setup-mac.sh` sets all of it up (see SETUP.md at the repo root).
 
 Skills name tools as the server exposes them, with underscores (`inbox_drop`), and the dotted op name alongside (`inbox.drop`). Claude Code shows them as `mcp__bousleh__inbox_drop`.
 
