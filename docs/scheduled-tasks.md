@@ -106,7 +106,7 @@ Never change the watch lists file yourself: the Mac applies your proposals. End 
 - **Schedule:** every hour from 07:20 to 21:20, Monday to Friday, local time: twenty minutes ahead of the Hourly inbox sweep, which files what it copies.
 - **Needs:** the Google Drive connector, with no access to the Mac. The other connectors on the account stay attached but unused.
 - **Permissions:** runs on its own.
-- **What it does:** Google Meet saves Gemini's notes (with the transcript, when one was recorded) as a Google Doc, and puts a shortcut to it in a subfolder of the Drive folder "Google Meet", one subfolder per meeting (a recurring meeting keeps one subfolder). This task copies each new notes doc, as plain text, into "Bousleh Inbox"; Capture files it on the Mac, skips meetings with nothing for Wassim, and moves a planned meeting to held.
+- **What it does:** Google Meet saves Gemini's notes (with the transcript, when one was recorded) as a Google Doc in a subfolder of the Drive folder "Google Meet", one subfolder per meeting (a recurring meeting keeps one subfolder). For a meeting Wassim owns the doc itself sits there; for others' meetings, a shortcut to it. This task copies each new notes doc, as plain text, into "Bousleh Inbox"; Capture files it on the Mac, skips meetings with nothing for Wassim, and moves a planned meeting to held.
 - **The ledger:** `Bousleh Meet Ledger.md` in the Drive folder `Bousleh` lists every notes doc already copied, so each is copied once even though the originals stay put. Applying this file seeds it (step 1). Format:
 
 ```markdown
@@ -130,10 +130,11 @@ Bousleh: Hourly Meet notes mirror. You are running in the cloud, unattended, so 
 
 1. Read the ledger. Find the folder titled exactly "Bousleh" at the top of My Drive, and in it the file titled exactly "Bousleh Meet Ledger.md" (not trashed). Download its exact content (download_file_content, then decode the base64; never read_file_content). It starts with the frontmatter `bousleh: meet-ledger`; each line after the header row is `doc_id | meeting folder | doc title | mirrored_at`.
    If the folder or the ledger is missing, or it isn't a ledger, write nothing and end with one line: "No Meet ledger in Drive (Bousleh/Bousleh Meet Ledger.md); on the Mac, apply docs/scheduled-tasks.md to seed it."
-2. Find the new notes docs. Find the folder titled exactly "Google Meet" at the top of My Drive (if there's none, end with "No Google Meet folder yet"). List its subfolders, newest first, and the files in each (and any files directly in "Google Meet").
-   - A file that is a shortcut stands for its target: use shortcutDetails.targetFileId as the doc id. Keep only Google Docs whose title contains "Notes by Gemini" or "Transcript".
-   - Skip every doc id already in the ledger. Only look at subfolders modified in the last 14 days and files created in the last 14 days; older ones were handled or seeded.
-   - If there's nothing new, end at once with one line: "No new Meet notes." Don't write a summary.
+2. Find the new notes docs. Find the folder titled exactly "Google Meet" at the top of My Drive (if there's none, end with "No Google Meet folder yet"), and list all its subfolders (every page), for their ids and names.
+   - Then search for Gemini notes created in the last 14 days, in one or two searches: Google Docs, and shortcuts, whose title contains "Notes by Gemini" or "Transcript" and whose createdTime is within 14 days. Keep only those whose parent is "Google Meet" or one of its subfolders.
+   - When Wassim owns the meeting, the notes are a Google Doc in the subfolder; otherwise they're a shortcut to someone else's doc. A shortcut stands for its target: use shortcutDetails.targetFileId as the doc id.
+   - Don't go by a subfolder's modified time: a recurring meeting's subfolder keeps the date it was first made, even as new notes land in it.
+   - Skip every doc id already in the ledger. If there's nothing new, end at once with one line: "No new Meet notes." Don't write a summary.
 3. For each new doc, oldest first:
    - Download it exported as text/plain (download_file_content with exportMimeType "text/plain", then decode the base64). If you can't read it, leave it out of the ledger, so the next run tries again, and mention it.
    - The meeting title and start come from the subfolder name, which reads "<title> - YYYY/MM/DD HH:MM <zone>" (a recurring meeting's subfolder has no date: take them from the doc title, which has the same pattern). Convert the start to an ISO date-time with its offset (EST is -05:00, EDT -04:00).
