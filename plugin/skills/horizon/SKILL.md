@@ -81,7 +81,7 @@ The cloud scan can't reach the Mac, so it reads the watch lists from a file in G
    ```
 
 3. With the Google Drive connector, find the folder titled exactly `Bousleh` at the top of My Drive (create it if it doesn't exist). Never use `Bousleh Inbox`: that folder is swept and its files trashed.
-4. In it, find the file titled exactly `Bousleh Watch Lists.md` (not trashed). If it exists, replace its content with the new text. If it doesn't, create it there: content type `text/markdown`, conversion to a Google Doc turned off. Never leave two copies.
+4. In it, find the file titled exactly `Bousleh Watch Lists.md` (not trashed). The Drive connector can't rewrite a file's content, so replacing it means: create the new file there first, then move the old one to the trash. If it doesn't exist yet, just create it there: content type `text/markdown`, conversion to a Google Doc turned off. Never leave two copies.
 5. If the connector isn't available, say the scan will run on the old lists until the file is written.
 
 ## Flow: filing a scan file (from Capture)

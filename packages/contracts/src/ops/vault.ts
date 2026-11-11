@@ -143,6 +143,39 @@ export const vaultUnlink = defineOp({
   }),
 });
 
+const activityDateTime = z.iso.datetime({ offset: true });
+const activityWhen = z.union([z.iso.date(), activityDateTime]);
+
+export const vaultActivity = defineOp({
+  name: 'vault.activity',
+  description:
+    "What changed in your data over a window: the audit trail of write ops, oldest first. Each entry gives when, the op, who ran it (agent, human or schedule), whether it succeeded (result is ok, or the error code), and the op's input as sent, including any reason or note (an unlink's reason, a commitment's closing note, a queue item's resolve note). Use it to review a week: what was filed, and what was corrected afterwards (supersedes, unlinks, dropped commitments, discarded queue items), which shows where filing went wrong. since and until are dates (whole days on this machine's clock) or date-times; the default window is the last 7 days. ops narrows to some op names; failed_only keeps failures. counts tallies the whole window by op, even past limit.",
+  input: z.object({
+    since: activityWhen.optional().describe('Start of the window. Default: 7 days before until.'),
+    until: activityWhen.optional().describe('End of the window (a date includes that whole day). Default: now.'),
+    ops: z.array(z.string().min(1)).min(1).optional().describe('Only these op names, e.g. ["vault.unlink", "commitments.close"].'),
+    failed_only: z.boolean().default(false),
+    limit: z.number().int().min(1).max(1000).default(300),
+  }),
+  output: z.object({
+    since: activityDateTime,
+    until: activityDateTime,
+    entries: z.array(
+      z.object({
+        id: z.number().int(),
+        at: activityDateTime,
+        op: z.string(),
+        actor: z.enum(['human', 'agent', 'schedule']),
+        result: z.string().describe('ok, or the error code of a failed op'),
+        input: z.unknown(),
+      }),
+    ),
+    more: z.number().int().describe('Entries in the window past limit.'),
+    counts: z.record(z.string(), z.object({ ok: z.number().int(), failed: z.number().int() })),
+  }),
+  readOnly: true,
+});
+
 export const vaultOps = {
   'vault.health': vaultHealth,
   'vault.get': vaultGet,
@@ -151,4 +184,5 @@ export const vaultOps = {
   'vault.link': vaultLink,
   'vault.unlink': vaultUnlink,
   'vault.backup': vaultBackup,
+  'vault.activity': vaultActivity,
 } as const;

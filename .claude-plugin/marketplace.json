@@ -8,7 +8,7 @@
     {
       "name": "bousleh",
       "source": "./plugin",
-      "description": "The Bousleh modes (Capture, Pulse, Counsel, Shape, Workshop, Communicate, Coach, Horizon) and Drop, over the local Bousleh MCP server."
+      "description": "The Bousleh modes (Capture, Pulse, Counsel, Shape, Workshop, Communicate, Coach, Horizon, Tune) and Drop, over the local Bousleh MCP server."
     }
   ]
 }
