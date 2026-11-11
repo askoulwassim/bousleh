@@ -152,6 +152,7 @@ export function mergeMeetings(filed: Pulse['meetings'], calendar: CalendarEvent[
     if (same) {
       same.title = meeting.title;
       same.planned = meeting.status === 'planned';
+      same.held = meeting.status === 'held';
       continue;
     }
     out.push({
@@ -159,6 +160,7 @@ export function mergeMeetings(filed: Pulse['meetings'], calendar: CalendarEvent[
       at: meeting.held_at,
       when: whenLabel(meeting.held_at, now),
       planned: meeting.status === 'planned',
+      held: meeting.status === 'held',
       key: at?.getTime() ?? null,
     });
   }
@@ -604,9 +606,14 @@ function titleCase(s: string): string {
     .join(' ');
 }
 
-/** The next meeting worth prepping: the rest of today's, else the soonest planned meeting filed in Bousleh. */
+/**
+ * The next meeting worth prepping: the rest of today's, else the soonest planned meeting filed in Bousleh.
+ * A meeting already held (filed with its notes) is never offered: there's nothing left to prep, even when
+ * it was filed with a date only and so has no time to compare with now.
+ */
 function nextMeeting(today: MeetingVM[], objects: StrataObj[], now: Date): MeetingVM | null {
   const later = today.find((m) => {
+    if (m.held) return false;
     const at = parseWhen(m.at);
     return at !== null && (isDateOnly(m.at) || at.getTime() >= now.getTime());
   });

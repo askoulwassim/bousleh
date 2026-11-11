@@ -150,6 +150,8 @@ export interface MeetingVM {
   /** Sort key: a date-time or a date. */
   at: string;
   planned: boolean;
+  /** Already happened and filed with its notes (status held): nothing left to prep. */
+  held?: boolean;
 }
 
 export interface StoryVM {

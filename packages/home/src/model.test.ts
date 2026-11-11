@@ -211,10 +211,10 @@ describe('small pieces', () => {
       ],
       NOW,
     );
-    expect(merged.map((m) => [m.title, m.planned])).toEqual([
-      ['Focus', false],
-      ['Dana 1:1', true],
-      ['Design review', false],
+    expect(merged.map((m) => [m.title, m.planned, m.held ?? false])).toEqual([
+      ['Focus', false, false],
+      ['Dana 1:1', true, false],
+      ['Design review', false, true],
     ]);
   });
 });
@@ -256,6 +256,22 @@ describe('buildViewModel', () => {
     // The planned Lantern Weekly is the next meeting worth prepping.
     expect(vm.secondary?.label).toBe('Prep Weekly');
     expect(vm.prompts[vm.secondary?.prompt ?? '']).toMatch(/^Counsel: prep me for "Lantern Weekly"/);
+  });
+
+  it("never offers to prep a meeting that's already held, even one filed with a date only", () => {
+    const held = {
+      id: 'mtg_01JBX000000000000000000009',
+      title: 'Hannah sync: data quality',
+      held_at: '2026-10-25',
+      status: 'held' as const,
+      altitude: 10000 as const,
+      scopes: ['lantern'],
+      attendees: [],
+    };
+    const vm = buildViewModel({ ...sources(), pulse: pulse({ meetings: [held] }) }, NOW);
+    // The held call is today's only filed meeting, but the suggestion skips it for the planned Lantern Weekly.
+    expect(vm.secondary?.label).toBe('Prep Weekly');
+    expect(Object.values(vm.prompts).some((p) => p.includes('Hannah sync'))).toBe(false);
   });
 
   it('draws each cell in its variant, and every button resolves to a prompt', () => {
