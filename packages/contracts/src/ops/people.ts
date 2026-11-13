@@ -108,7 +108,7 @@ export const peopleList = defineOp({
   name: 'people.list',
   description: [
     'List people, by name, each with role, org, email addresses (to match calendar attendees), who they report to, the open commitments they owe and are owed, and last_touchpoint: the later of the newest held meeting they attended and the newest object linked about them (a growth note, an observation, a signal…). Use it for "how are my PMs doing?" (role pm), to see who has gone quiet, or to map who reports to whom; then people.get on one id for everything about them.',
-    'role is one role or a list (stakeholder, pm, engineer, analyst, other). org matches the org exactly, ignoring case. scopes (slugs) includes child scopes: a person is in a scope when they belong to it, or, for people with no scope of their own, when something linked to them is in it.',
+    'role is one role or a list (stakeholder, pm, engineer, analyst, other). org matches the org exactly, ignoring case. scopes (slugs) includes child scopes: a person is in a scope when they belong to it, or, for people with no scope of their own, when something linked to them is in it. A person merged into another (another person supersedes them) is left out: the one they were merged into speaks for them.',
   ].join(' '),
   input: z.object({
     role: z.union([PersonRoleSchema, z.array(PersonRoleSchema).min(1)]).optional(),

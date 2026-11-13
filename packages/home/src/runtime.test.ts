@@ -133,9 +133,13 @@ describe('rendering', () => {
     expect(html).not.toContain('javascript:');
   });
 
-  it('draws the focus strip above the grid, and nothing when there is no focus', () => {
+  it('draws the focus strip above the grid, says so when it is empty, and nothing without Pulse', () => {
     const vm = buildViewModel({}, NOW);
     expect(renderPage(vm, ui())).not.toContain('class="focus"');
+    vm.focus = { items: [], more: 0, snoozed: null, morePrompt: 'p2' };
+    const empty = renderPage(vm, ui());
+    expect(empty).toContain('class="focus"');
+    expect(empty).toContain('Nothing pressing today.');
     vm.focus = {
       items: [
         {

@@ -181,6 +181,8 @@ export function listPeople(store: Store, filter: PeopleFilter): PeopleList {
   for (const { id } of ids) {
     const person = store.getObject(id);
     if (!person) continue;
+    // Merged into another person (a live supersedes link points here): the other record speaks for them.
+    if (person.links.in.some((l) => l.kind === 'supersedes')) continue;
     const attrs = person.version.attrs as { role?: Role; org?: string; is_user?: true };
     if (roles && (attrs.role === undefined || !roles.has(attrs.role))) continue;
     if (org !== undefined && attrs.org?.trim().toLowerCase() !== org) continue;
