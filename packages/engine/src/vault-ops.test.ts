@@ -6,7 +6,7 @@ import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type Engine, openEngine } from './engine.js';
 
-/* End to end through runOp: vault.search, vault.link, vault.unlink, commitments.list, commitments.close and people.get. */
+/* End to end through runOp: vault.search, vault.link, vault.unlink, commitments.list, commitments.close, commitments.snooze and people.get. */
 
 let clock = Date.parse('2026-10-25T09:00:00.000Z');
 const tick = () => {
@@ -240,6 +240,7 @@ describe('commitments', () => {
       status: 'open',
       altitude: 100,
       due: '2026-10-28',
+      surface_on: null,
       scopes: ['bousleh'],
       owed_by: [{ id: wassim, name: 'Wassim' }],
       owed_to: [{ id: peter, name: 'Peter' }],
@@ -305,6 +306,65 @@ describe('commitments', () => {
     expect(failed(await run('commitments.close', { id: problem, status: 'done' })).code).toBe('invalid_input');
     expect(failed(await run('commitments.close', { id: 'cmt_01JBX0000000000000000000AB', status: 'done' })).code).toBe('not_found');
     expect(query<{ n: number }>(`SELECT count(*) AS n FROM versions WHERE object_id = '${problem}'`)[0]?.n).toBe(1);
+  });
+});
+
+describe('commitments.snooze', () => {
+  // The clock reads 2026-10-25 (local) in this file.
+  const list = async (input: Record<string, unknown>) =>
+    ok(await run('commitments.list', input)).commitments.map((c: { id: string }) => c.id) as string[];
+
+  it('snoozes an open commitment until a day, with the note appended, and keeps its due date', async () => {
+    const id = await write({ kind: 'commitment', title: 'Follow up on Ian', body: 'Metering doc comments.', attrs: { due: '2026-11-20' } });
+    const snoozed = ok(await run('commitments.snooze', { id, until: '2026-11-01', note: "If Ian hasn't replied." }));
+    expect(snoozed).toMatchObject({
+      id,
+      kind: 'commitment',
+      surface_on: '2026-11-01',
+      version: { n: 2 },
+      supersedes: expect.stringMatching(/^ver_/),
+    });
+
+    const object = ok(await run('vault.get', { id }));
+    expect(object.version).toMatchObject({ status: 'open', attrs: { due: '2026-11-20', surface_on: '2026-11-01' } });
+    expect(object.version.body).toBe("Metering doc comments.\n\n**Snoozed on 2026-10-25 until 2026-11-01:** If Ian hasn't replied.");
+    expect(ok(await run('commitments.list', {})).commitments[0]).toMatchObject({ id, surface_on: '2026-11-01' });
+  });
+
+  it('wakes a snoozed commitment with until: null, and refuses what makes no sense', async () => {
+    const id = await write({ kind: 'commitment', title: 'Ping Lisa' });
+    expect(failed(await run('commitments.snooze', { id, until: null })).code).toBe('conflict');
+    expect(failed(await run('commitments.snooze', { id, until: '2026-10-24' })).code).toBe('invalid_input');
+    expect(failed(await run('commitments.snooze', { id, until: 'Monday' })).code).toBe('invalid_input');
+    ok(await run('commitments.snooze', { id, until: '2026-10-25' }));
+    expect(failed(await run('commitments.snooze', { id, until: '2026-10-25' })).code).toBe('conflict');
+    ok(await run('commitments.snooze', { id, until: null, note: 'Lisa wrote first.' }));
+    const object = ok(await run('vault.get', { id }));
+    expect(object.version.attrs).toEqual({});
+    expect(object.version.body).toBe('**Woken on 2026-10-25:** Lisa wrote first.');
+
+    ok(await run('commitments.close', { id, status: 'done' }));
+    expect(failed(await run('commitments.snooze', { id, until: '2026-11-01' })).code).toBe('conflict');
+    const problem = await write({ kind: 'problem', title: 'Not a commitment' });
+    expect(failed(await run('commitments.snooze', { id: problem, until: '2026-11-01' })).code).toBe('invalid_input');
+    expect(failed(await run('commitments.snooze', { id: 'cmt_01JBX0000000000000000000AB', until: '2026-11-01' })).code).toBe('not_found');
+  });
+
+  it('lists snoozed commitments, leaves them out, or lists only them, judged on as_of (default today)', async () => {
+    const awake = await write({ kind: 'commitment', title: 'Awake', attrs: { due: '2026-10-30' } });
+    const later = await write({ kind: 'commitment', title: 'Later', attrs: { surface_on: '2026-11-03' } });
+    const today = await write({ kind: 'commitment', title: 'Surfaces today', attrs: { surface_on: '2026-10-25' } });
+    await write({ kind: 'commitment', title: 'Closed', status: 'done', attrs: { surface_on: '2026-12-01' } });
+
+    // Soonest due first; no due date last, oldest filed first (surface_on doesn't reorder).
+    expect(await list({})).toEqual([awake, later, today]);
+    expect(await list({ snoozed: 'exclude' })).toEqual([awake, today]);
+    expect(await list({ snoozed: 'only' })).toEqual([later]);
+    expect(await list({ snoozed: 'only', as_of: '2026-10-24' })).toEqual([later, today]);
+    expect(await list({ snoozed: 'exclude', as_of: '2026-11-03' })).toEqual([awake, later, today]);
+    // A closed commitment is never snoozed.
+    expect(await list({ status: 'any', snoozed: 'only' })).toEqual([later]);
+    expect(failed(await run('commitments.list', { snoozed: 'maybe' })).code).toBe('invalid_input');
   });
 });
 

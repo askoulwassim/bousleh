@@ -442,7 +442,10 @@ describe('pulse.today', () => {
         due_today: { by_me: [], to_me: [], other: [] },
         no_due: { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 } },
         open: { by_me: 0, to_me: 0, other: 0 },
+        snoozed: { by_me: 0, to_me: 0, other: 0, next: null },
       },
+      focus: [],
+      focus_more: 0,
       meetings: [],
       inbox: { waiting: 0, oldest_arrived_at: null, queued: 0 },
       stale_metrics: [],
@@ -638,6 +641,148 @@ describe('pulse.today', () => {
     const planned = await deposit('meeting', '1:1 with Peter', { status: 'planned', altitude: 1000, attrs: { held_at: '2026-10-25' } });
     const result = await pulse({ date: '2026-10-25' });
     expect(result.meetings.map((m) => [m.id, m.status])).toEqual([[planned, 'planned']]);
+  });
+
+  it('keeps snoozed commitments out until their day, then shows them as due on it', async () => {
+    const wassim = await deposit('person', 'Wassim', { attrs: { is_user: true } });
+    const peter = await deposit('person', 'Peter');
+    const ian = await deposit('person', 'Ian');
+    const commit = (title: string, by: string, to: string, attrs: Record<string, unknown> = {}) =>
+      deposit('commitment', title, {
+        altitude: 1000,
+        attrs,
+        links: [
+          { kind: 'owed_by', to: by },
+          { kind: 'owed_to', to: to },
+        ],
+      });
+    // Ian's reply on the metering doc: Wassim wants to hear about it only on the 28th.
+    const followUp = await commit('Ian replies on the metering doc', ian, wassim, { surface_on: '2026-10-28' });
+    // Overdue, but snoozed: out of sight until the 27th, then overdue again.
+    const asleep = await commit('Send Peter the memo', wassim, peter, { due: '2026-10-22', surface_on: '2026-10-27' });
+    const wakesToday = await commit('Check the export numbers', wassim, peter, { surface_on: '2026-10-25' });
+    const wokeEarlier = await commit('Ian sends the schema', ian, wassim, { surface_on: '2026-10-23' });
+    const undated = await commit('Write up the roles', wassim, peter);
+
+    const result = await pulse({ date: '2026-10-25', scopes: ['alethea'] });
+    expect(result.commitments.overdue.by_me).toEqual([]);
+    expect(result.commitments.overdue.to_me.map((c) => [c.id, c.days_late])).toEqual([[wokeEarlier, 2]]);
+    expect(ids(result.commitments.due_today.by_me)).toEqual([wakesToday]);
+    expect(result.commitments.due_today.by_me[0]).toMatchObject({ due: null, surface_on: '2026-10-25', days_late: 0 });
+    expect(ids(result.commitments.no_due.by_me)).toEqual([undated]);
+    expect(result.commitments.no_due.to_me).toEqual([]);
+    expect(result.commitments.open).toEqual({ by_me: 2, to_me: 1, other: 0 });
+    expect(result.commitments.snoozed).toEqual({
+      by_me: 1,
+      to_me: 1,
+      other: 0,
+      next: { id: asleep, title: 'Send Peter the memo', surface_on: '2026-10-27' },
+    });
+    expect(ids(result.focus)).not.toContain(followUp);
+    expect(ids(result.focus)).not.toContain(asleep);
+
+    // On the 28th both are back: the memo overdue from its own due date, Ian's reply due that day.
+    const later = await pulse({ date: '2026-10-28', scopes: ['alethea'] });
+    expect(later.commitments.overdue.by_me.map((c) => [c.id, c.days_late])).toEqual([
+      [asleep, 6],
+      [wakesToday, 3],
+    ]);
+    expect(ids(later.commitments.due_today.to_me)).toEqual([followUp]);
+    expect(later.commitments.snoozed).toEqual({ by_me: 0, to_me: 0, other: 0, next: null });
+
+    // The strata leaves snoozed ones off the grid, and flags the ones back from a snooze, whichever way they're owed.
+    const strata = ok<OpOutput<'context.strata'>>(await run('context.strata', { date: '2026-10-25' }));
+    const shown = new Map(strata.cells.flatMap((c) => c.objects).map((o) => [o.id, o]));
+    expect(shown.has(followUp)).toBe(false);
+    expect(shown.has(asleep)).toBe(false);
+    expect(shown.get(wakesToday)).toMatchObject({ needs_you: true, surface_on: '2026-10-25', owed: 'by_me' });
+    expect(shown.get(wokeEarlier)).toMatchObject({ needs_you: true, surface_on: '2026-10-23', owed: 'to_me' });
+    expect(shown.get(undated)).toMatchObject({ needs_you: true });
+    expect(shown.get(undated)?.surface_on).toBeUndefined();
+  });
+
+  it('ranks a few things to do first: late, soon, who for, who I see today, bets, and planned meetings', async () => {
+    const peter = await deposit('person', 'Peter', { attrs: { role: 'stakeholder' } });
+    const wassim = await deposit('person', 'Wassim', { attrs: { role: 'pm', is_user: true }, links: [{ kind: 'reports_to', to: peter }] });
+    const lisa = await deposit('person', 'Lisa', { attrs: { role: 'stakeholder' } });
+    const jen = await deposit('person', 'Jen', { attrs: { role: 'pm' } });
+    const ian = await deposit('person', 'Ian', { attrs: { role: 'engineer' } });
+    const commit = (title: string, by: string, to: string, attrs: Record<string, unknown>, altitude = 1000) =>
+      deposit('commitment', title, {
+        altitude,
+        attrs,
+        links: [
+          { kind: 'owed_by', to: by },
+          { kind: 'owed_to', to: to },
+        ],
+      });
+    const late = await commit('Send Peter the one-pager', wassim, peter, { due: '2026-10-23' });
+    const today = await commit("Review Jen's spec", wassim, jen, { due: '2026-10-25' });
+    const soon = await commit('Draft the customer report', wassim, lisa, { due: '2026-10-27' }, 10000);
+    const followUp = await commit('Ian replies on the metering doc', ian, wassim, { surface_on: '2026-10-25' });
+    await commit('Jen owes Ian a review', jen, ian, { due: '2026-10-20' });
+    await deposit('idea', 'Customer learnings loop', { status: 'running', links: [{ kind: 'related', to: soon }] });
+    const sync = await deposit('meeting', 'Lisa sync', {
+      status: 'planned',
+      altitude: 1000,
+      attrs: { held_at: '2026-10-25' },
+      links: [
+        { kind: 'attended_by', to: lisa },
+        { kind: 'attended_by', to: wassim },
+      ],
+    });
+
+    const result = await pulse({ date: '2026-10-25', scopes: ['alethea'] });
+    expect(ids(result.focus)).toEqual([late, soon, sync]);
+    expect(result.focus_more).toBe(2);
+    expect(result.focus[0]).toMatchObject({
+      kind: 'commitment',
+      owed: 'by_me',
+      when: '2026-10-23',
+      people: [{ id: peter, name: 'Peter' }],
+      why: ['2 days late', 'owed to Peter, your manager'],
+    });
+    expect(result.focus[1]?.why).toEqual([
+      'due in 2 days',
+      'owed to Lisa, a stakeholder',
+      'you see Lisa today',
+      'part of the running idea "Customer learnings loop"',
+    ]);
+    expect(result.focus[2]).toMatchObject({
+      kind: 'meeting',
+      owed: null,
+      when: '2026-10-25',
+      people: [{ id: lisa, name: 'Lisa' }],
+      why: ['today', 'no prep yet', 'with Lisa, a stakeholder'],
+    });
+    // Scores are strictly ordered.
+    const scores = result.focus.map((f) => f.score);
+    expect([...scores].sort((a, b) => b - a)).toEqual(scores);
+
+    // With the meeting prepped and the first two closed, today's work and the follow-up come up.
+    ok(await run('vault.supersede', { id: sync, body: 'Ask Lisa which customers to interview first, and what she needs by Friday.' }));
+    ok(await run('commitments.close', { id: late, status: 'done' }));
+    ok(await run('commitments.close', { id: soon, status: 'done' }));
+    const next = await pulse({ date: '2026-10-25', scopes: ['alethea'] });
+    expect(ids(next.focus)).toEqual([today, sync, followUp]);
+    expect(next.focus[1]?.why).toEqual(['today', 'prep ready to review', 'with Lisa, a stakeholder']);
+    expect(next.focus[2]).toMatchObject({ owed: 'to_me', why: ['follow up with Ian', 'back from snooze today'] });
+    expect(next.focus_more).toBe(0);
+  });
+
+  it('brings an undated commitment I owe into focus once it has sat for over a week', async () => {
+    const wassim = await deposit('person', 'Wassim', { attrs: { is_user: true } });
+    const peter = await deposit('person', 'Peter');
+    const undated = await deposit('commitment', 'Write up the roles', {
+      altitude: 1000,
+      links: [
+        { kind: 'owed_by', to: wassim },
+        { kind: 'owed_to', to: peter },
+      ],
+    });
+    expect((await pulse({ date: '2026-10-27' })).focus).toEqual([]);
+    const later = await pulse({ date: '2026-11-05' });
+    expect(later.focus).toMatchObject([{ id: undated, owed: 'by_me', when: null, why: ['no due date for 16 days'] }]);
   });
 
   it('counts the inbox and the queue', async () => {

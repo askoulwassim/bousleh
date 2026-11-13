@@ -3,6 +3,7 @@ import {
   ALTITUDES,
   contextStrata,
   effectiveStatus,
+  isSnoozed,
   type Kind,
   LAYERS,
   type ObjectView,
@@ -109,6 +110,8 @@ export const contextStrataHandler = defineHandler(contextStrata, async (input, h
       closed.push({ object: summarise(object, status), scopes: placed });
       continue;
     }
+    // A commitment snoozed past the day stays off the grid until it surfaces.
+    if (object.kind === 'commitment' && status === 'open' && isSnoozed(attrs.surface_on, day)) continue;
     if (object.kind === 'meeting' && status === 'held') {
       const heldDay = typeof attrs.held_at === 'string' ? dayOf(attrs.held_at) : dayOf(object.version.created_at);
       if (heldDay !== null && daysBetween(heldDay, day) > STRATA_HELD_MEETING_DAYS) continue;
@@ -141,10 +144,14 @@ export const contextStrataHandler = defineHandler(contextStrata, async (input, h
         const due = typeof attrs.due === 'string' ? attrs.due : null;
         const by = object.links.out.filter((l) => l.kind === 'owed_by').map((l) => l.to);
         const to = object.links.out.filter((l) => l.kind === 'owed_to').map((l) => l.to);
+        const surfaceOn = typeof attrs.surface_on === 'string' ? attrs.surface_on : null;
         base.due = due;
         base.owed = me === null ? 'other' : by.includes(me.id) ? 'by_me' : to.includes(me.id) ? 'to_me' : 'other';
         const mine = me === null || base.owed === 'by_me';
-        base.needs_you = status === 'open' && mine && (due === null || daysBetween(due, day) >= 0);
+        // Back from a snooze: a follow-up he asked for, whichever way it is owed.
+        const surfaced = surfaceOn !== null && daysBetween(surfaceOn, day) >= 0;
+        if (surfaced) base.surface_on = surfaceOn;
+        base.needs_you = status === 'open' && ((mine && (due === null || daysBetween(due, day) >= 0)) || surfaced);
         break;
       }
       case 'meeting':

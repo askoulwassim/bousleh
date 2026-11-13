@@ -1,4 +1,4 @@
-import type { Altitude, CommitmentView, Kind } from '@bousleh/contracts';
+import { type Altitude, type CommitmentView, isSnoozed, type Kind } from '@bousleh/contracts';
 import { OpError } from '../handler.js';
 import type { Store } from './store.js';
 
@@ -14,6 +14,10 @@ export interface CommitmentFilter {
   scope?: string | undefined;
   /** Due on or before this date (YYYY-MM-DD); commitments without a due date are left out. */
   due_before?: string | undefined;
+  /** What to do with commitments snoozed past `as_of`: keep them (default), leave them out, or list only them. */
+  snoozed?: 'include' | 'exclude' | 'only' | undefined;
+  /** The day `snoozed` is judged on (YYYY-MM-DD). Needed unless snoozed is include. */
+  as_of?: string | undefined;
   limit?: number | undefined;
 }
 
@@ -23,6 +27,7 @@ interface CommitmentRow {
   status: CommitmentView['status'];
   altitude: Altitude;
   due: string | null;
+  surface_on: string | null;
 }
 
 /** Refuse an id that isn't an existing person, so a typo doesn't read as "nothing owed". */
@@ -57,7 +62,8 @@ export function listCommitments(store: Store, filter: CommitmentFilter): Commitm
 
   const rows = store.db
     .prepare(
-      `SELECT o.id, c.title, c.status, c.altitude, json_extract(c.attrs_json, '$.due') AS due
+      `SELECT o.id, c.title, c.status, c.altitude, json_extract(c.attrs_json, '$.due') AS due,
+              json_extract(c.attrs_json, '$.surface_on') AS surface_on
        FROM objects o JOIN current c ON c.object_id = o.id
        WHERE ${where.join(' AND ')}
        ORDER BY due IS NULL, due, o.created_at, o.id`,
@@ -67,6 +73,11 @@ export function listCommitments(store: Store, filter: CommitmentFilter): Commitm
   const views: CommitmentView[] = [];
   for (const row of rows) {
     if (filter.limit !== undefined && views.length >= filter.limit) break;
+    if (filter.snoozed !== undefined && filter.snoozed !== 'include') {
+      if (filter.as_of === undefined) throw new Error('listCommitments: as_of is needed to judge snoozed');
+      const snoozed = row.status === 'open' && isSnoozed(row.surface_on, filter.as_of);
+      if ((filter.snoozed === 'only') !== snoozed) continue;
+    }
     // Scope membership has its own history (adds and retractions); the store resolves it.
     const scopes = store.scopeSlugsOf(row.id);
     if (inScope !== undefined && !scopes.some((slug) => inScope.has(slug))) continue;

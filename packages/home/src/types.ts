@@ -154,6 +154,33 @@ export interface MeetingVM {
   held?: boolean;
 }
 
+/** One of the few things to do first, from pulse.today's focus. */
+export interface FocusItemVM {
+  kind: 'commitment' | 'meeting';
+  /** The first reason, as the eyebrow: "2 days late", "follow up with Ian", "today at 14:00". */
+  eyebrow: string;
+  title: string;
+  /** The other reasons, joined. */
+  detail: string;
+  scopeName: string;
+  altitude: Altitude;
+  /** needs: something owed (either way); moving: a meeting to prep. */
+  tone: 'needs' | 'moving';
+  /** Prompt key. */
+  prompt: string;
+  label: string;
+}
+
+export interface FocusVM {
+  items: FocusItemVM[];
+  /** Candidates past the few shown. */
+  more: number;
+  /** "3 snoozed · next Nov 20", or null when nothing is snoozed. */
+  snoozed: string | null;
+  /** Prompt key for the rest (Pulse). */
+  morePrompt: string;
+}
+
 export interface StoryVM {
   id: string;
   title: string;
@@ -205,6 +232,8 @@ export interface ViewModel {
   /** Row by row (50,000 first), one per column. */
   cells: CellVM[][];
   stats: { strategies: string; empty: number };
+  /** The few things to do first. Absent without pulse.today, and in snapshots taken before Nov 13. */
+  focus?: FocusVM;
   phone: { needs: NeedsVM | null; meeting: MeetingVM | null; bet: BetVM | null };
   horizon: HorizonVM;
   docs: { title: string; url: string; type: string }[];

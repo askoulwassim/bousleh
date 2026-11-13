@@ -27,6 +27,8 @@ import type {
   CalendarEvent,
   CellVM,
   ColumnVM,
+  FocusItemVM,
+  FocusVM,
   Glyph,
   GlyphState,
   HorizonVM,
@@ -59,7 +61,7 @@ const STRATEGY_STAGES = ['forming', 'contested', 'aligned', 'communicated'];
 const CELL_ROWS = 4;
 
 /** Ready prompts, each kept once, by key. */
-class PromptBook {
+export class PromptBook {
   readonly byKey: Record<string, string> = {};
   private readonly keys = new Map<string, string>();
   add(text: string): string {
@@ -339,8 +341,8 @@ export function betOf(bet: StrataObj, cell: StrataCell, scopeName: string, now: 
 function needsOf(o: StrataObj, scopeName: string, now: Date): NeedsVM {
   const due = o.due ? parseWhen(o.due) : null;
   const late = due ? daysBetween(due, now) : null;
-  const detail = late === null ? 'no date' : late > 0 ? `${late}d late` : 'due today';
-  const who = o.owed === 'by_me' ? 'You owe' : 'Owed';
+  const detail = late === null ? (o.surface_on ? 'back from snooze' : 'no date') : late > 0 ? `${late}d late` : 'due today';
+  const who = o.owed === 'by_me' ? 'You owe' : o.owed === 'to_me' ? 'Follow up' : 'Owed';
   return { eyebrow: `${who} · ${detail}`, title: o.title, scope: scopeName, altitude: o.altitude as Altitude };
 }
 
@@ -404,7 +406,11 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
   if (src.commitments) {
     const today = localDay(now);
     const next = src.commitments.commitments.find(
-      (c) => c.due !== null && c.due >= today && (meId === null || c.owed_by.some((p) => p.id === meId)),
+      (c) =>
+        c.due !== null &&
+        c.due >= today &&
+        !(c.surface_on && c.surface_on > today) &&
+        (meId === null || c.owed_by.some((p) => p.id === meId)),
     );
     const due = next?.due ? parseWhen(next.due) : null;
     readouts.push({ label: 'Next due', value: due ? monthDay(due) : 'None', tone: due ? 'fg' : 'zero', phone: true });
@@ -581,6 +587,7 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
     rows,
     cells,
     stats: { strategies: strategiesLine, empty: strata?.totals.empty_cells ?? 0 },
+    ...(pulse ? { focus: focusOf(pulse, now, book, nameOf) } : {}),
     phone: { needs: needsCell?.needs ?? null, meeting: upcoming, bet: betCell?.bet ?? null },
     horizon: horizonOf(src, columns, allObjects, now, book, nameOf),
     docs: (src.assets?.assets ?? [])
@@ -590,6 +597,39 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
     prompts: book.byKey,
     have: (Object.keys(src) as (keyof Sources)[]).filter((k) => src[k] !== undefined),
   };
+}
+
+/** The few things to do first (pulse.today's focus), each with a ready prompt, and the snoozed line. */
+export function focusOf(pulse: Pulse, now: Date, book: PromptBook, nameOf: (slug: string | null | undefined) => string): FocusVM {
+  // Snapshots and older engines may not carry focus or snoozed yet.
+  const ranked = pulse.focus ?? [];
+  const items: FocusItemVM[] = ranked.map((f) => {
+    const [first = '', ...rest] = f.why;
+    const scopeName = nameOf(f.scopes[0]);
+    const who = f.people.map((p) => firstName(p.name)).join(' and ');
+    const prompt =
+      f.kind === 'meeting'
+        ? prompts.counselMeeting(f.title, f.when ? whenLabel(f.when, now) : '')
+        : f.owed === 'to_me'
+          ? prompts.pulseFollowUp(f.title, who)
+          : prompts.pulseFocus(f.title);
+    return {
+      kind: f.kind,
+      eyebrow: first,
+      title: f.title,
+      detail: rest.join(' · '),
+      scopeName,
+      altitude: f.altitude as Altitude,
+      tone: f.kind === 'meeting' ? 'moving' : 'needs',
+      prompt: book.add(prompt),
+      label: `${f.title}: ${f.why.join(', ')}`,
+    };
+  });
+  const s = pulse.commitments.snoozed;
+  const total = s ? s.by_me + s.to_me + s.other : 0;
+  const next = s?.next ? parseWhen(s.next.surface_on) : null;
+  const snoozed = total === 0 ? null : `${total} snoozed${next ? ` · next ${monthDay(next)}` : ''}`;
+  return { items, more: pulse.focus_more ?? 0, snoozed, morePrompt: book.add(prompts.pulse()) };
 }
 
 function dedupe(objects: StrataObj[]): StrataObj[] {

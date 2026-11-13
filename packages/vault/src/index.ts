@@ -15,7 +15,13 @@ import {
   vaultGetHandler,
   vaultSupersedeHandler,
 } from './objects.js';
-import { commitmentsCloseHandler, commitmentsListHandler, peopleGetHandler, peopleListHandler } from './people.js';
+import {
+  commitmentsCloseHandler,
+  commitmentsListHandler,
+  commitmentsSnoozeHandler,
+  peopleGetHandler,
+  peopleListHandler,
+} from './people.js';
 
 export { ACTIVITY_WINDOW_DAYS, vaultActivityHandler } from './activity.js';
 export { assetsAddHandler, assetsListHandler, normalizeAssetUrl, toAssetView } from './assets.js';
@@ -34,7 +40,13 @@ export {
   vaultGetHandler,
   vaultSupersedeHandler,
 } from './objects.js';
-export { commitmentsCloseHandler, commitmentsListHandler, peopleGetHandler, peopleListHandler } from './people.js';
+export {
+  commitmentsCloseHandler,
+  commitmentsListHandler,
+  commitmentsSnoozeHandler,
+  peopleGetHandler,
+  peopleListHandler,
+} from './people.js';
 export { FileStager, OPEN_MARKER_PREFIX, STAGING_DIR, type StagerMark, safeDataPath } from './store/files.js';
 export { bodyOf, currentPath, renderMarkdown, versionPath } from './store/markdown.js';
 export { MIGRATIONS, type Migration, migrate } from './store/migrations.js';
@@ -67,6 +79,7 @@ export const handlers: readonly OpHandler[] = [
   vaultActivityHandler,
   commitmentsListHandler,
   commitmentsCloseHandler,
+  commitmentsSnoozeHandler,
   peopleGetHandler,
   peopleListHandler,
   assetsAddHandler,
