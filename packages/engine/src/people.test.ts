@@ -93,6 +93,17 @@ describe('people.list', () => {
     expect(failed(await run('people.list', { role: 'ceo' })).code).toBe('invalid_input');
   });
 
+  it('leaves out a person merged into another, so a duplicate never shows as a touchpoint due', async () => {
+    const lisa = await deposit('person', 'Lisa Kaplan', { attrs: { role: 'stakeholder' } });
+    const duplicate = await deposit('person', 'Lisa', { attrs: { role: 'stakeholder' } });
+    expect((await list()).people.map((p) => p.id).sort()).toEqual([lisa, duplicate].sort());
+    ok(await run('vault.link', { from: lisa, kind: 'supersedes', to: duplicate }));
+    expect((await list()).people.map((p) => p.id)).toEqual([lisa]);
+    expect((await list({ role: 'stakeholder' })).people.map((p) => p.id)).toEqual([lisa]);
+    const pulse = ok<OpOutput<'pulse.today'>>(await run('pulse.today', {}));
+    expect(pulse.touchpoints_due.map((p) => p.id)).toEqual([lisa]);
+  });
+
   it('puts a person in a scope by their own scopes, or, with none, by what is linked to them', async () => {
     const own = await deposit('person', 'Owns a scope', { scopes: ['narratives'] });
     const elsewhere = await deposit('person', 'Elsewhere', { scopes: ['bousleh'] });

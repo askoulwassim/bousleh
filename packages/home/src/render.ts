@@ -107,9 +107,10 @@ function desktop(vm: ViewModel, ui: UiState): string {
   return `${head}${banner(ui)}${focusStrip(vm.focus)}${vm.columns.length ? strata(vm, ui) : emptyCard(ui)}${legend()}${horizon(vm, ui)}${footer(ui)}`;
 }
 
-/** The few things to do first, above the grid. Nothing when Pulse wasn't read. */
+/** The few things to do first, above the grid: always there once Pulse is read; nothing when it wasn't. */
 function focusStrip(focus: FocusVM | undefined): string {
-  if (!focus || (focus.items.length === 0 && !focus.snoozed)) return '';
+  // Shown whenever Pulse was read, empty or not, so "nothing pressing" never looks like "not working".
+  if (!focus) return '';
   const cards = focus.items
     .map(
       (f, i) =>
@@ -123,7 +124,7 @@ function focusStrip(focus: FocusVM | undefined): string {
 }
 
 function phoneFocus(focus: FocusVM | undefined): string {
-  if (!focus || (focus.items.length === 0 && !focus.snoozed)) return '';
+  if (!focus) return '';
   const rows = focus.items
     .map(
       (f, i) =>
