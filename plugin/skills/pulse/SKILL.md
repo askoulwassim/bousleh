@@ -1,6 +1,6 @@
 ---
 name: pulse
-description: Wassim's picture of where he stands - commitments due or undated, today's meetings (from his calendar and Bousleh), metrics that are stale or moving, new Horizon findings, open bets and running ideas, and what's waiting in the inbox and queue. Also closes commitments as done or dropped. Use when he says "where am I?", "morning", "what's on today", "what's due", "what do I owe", "who am I waiting on", "how's my week", "Friday review", "that's done", "mark that done", or "drop that one".
+description: Wassim's picture of where he stands - the few things to do first, commitments due or undated, today's meetings (from his calendar and Bousleh), metrics that are stale or moving, new Horizon findings, open bets and running ideas, and what's waiting in the inbox and queue. Also closes commitments as done or dropped, and snoozes them until a day. Use when he says "where am I?", "morning", "what's on today", "what's due", "what do I owe", "who am I waiting on", "how's my week", "Friday review", "that's done", "mark that done", "drop that one", "snooze that till Monday", "remind me next week", or "what's snoozed".
 ---
 
 # Pulse
@@ -12,11 +12,11 @@ Give Wassim a short, honest picture of where he stands, so he picks the next mov
 Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `pulse_today` (pulse.today), `commitments_list` (commitments.list), `metrics_list` (metrics.list), `metrics_history` (metrics.history) when he asks how a metric has moved, `people_list` (people.list) to match calendar attendees to people by email
-- Writes: `commitments_close` (commitments.close); `vault_supersede` (vault.supersede) on a person only, to mark the user or, on his yes, to add an email address
+- Writes: `commitments_close` (commitments.close); `commitments_snooze` (commitments.snooze); `vault_supersede` (vault.supersede) on a person only, to mark the user or, on his yes, to add an email address
 - Added, read-only: `assets_list` (assets.list) for "where's the doc on X?"
 - Google Calendar connector (your Claude account's calendar), read-only: today's events. Pulse never creates, changes or answers events.
 
-`pulse_today(date?, scopes?, me?)` returns the commitment buckets (overdue and due today, split into owed by me, owed to me and other; `no_due`, open ones with no due date owed by him or to him, oldest first, at most ten a side with `more` counting the rest), the meetings filed in Bousleh for the day (each `planned` or `held`), the inbox and queue counts, stale metrics, `metric_movement` (metrics whose last reading moved, with the previous reading and the delta), `touchpoints_due` (stakeholders, PMs and engineers he hasn't met or noted anything about in over 14 days, never-touched first), new findings and `open_bets`: bets and ideas being tried right now, each with its `status` (`bet` or `running`), bets first. "Me" is the person marked `is_user` (the person this Bousleh belongs to), so you don't pass it. If `me` comes back `inferred: true` or null, no one is marked yet: ask Wassim to confirm it's him, then `vault_supersede` his person with attrs `is_user: true` (or `deposits_write` a person for him with it). Only one person can be marked.
+`pulse_today(date?, scopes?, me?)` returns `focus` first: at most three things to do first, scored by the engine (open commitments he owes that are late, due today or in the next two days, back from a snooze, or undated for over a week; ones owed to him that are late or back from a snooze; today's planned meetings), each with `why`, its reasons in words ("2 days late", "owed to Peter Trennum, your manager", "you see Lisa today", "no prep yet"), and `focus_more` counting the rest. Then the commitment buckets (overdue and due today, split into owed by me, owed to me and other; `no_due`, open ones with no due date owed by him or to him, oldest first, at most ten a side with `more` counting the rest; `snoozed`, how many are snoozed and the next to come back, which are in no other bucket), the meetings filed in Bousleh for the day (each `planned` or `held`), the inbox and queue counts, stale metrics, `metric_movement` (metrics whose last reading moved, with the previous reading and the delta), `touchpoints_due` (stakeholders, PMs and engineers he hasn't met or noted anything about in over 14 days, never-touched first), new findings and `open_bets`: bets and ideas being tried right now, each with its `status` (`bet` or `running`), bets first. "Me" is the person marked `is_user` (the person this Bousleh belongs to), so you don't pass it. If `me` comes back `inferred: true` or null, no one is marked yet: ask Wassim to confirm it's him, then `vault_supersede` his person with attrs `is_user: true` (or `deposits_write` a person for him with it). Only one person can be marked.
 
 The Docs, decks, dashboards and whiteboards the other modes make are registered as assets, and `context_brief` lists them with their links. Pulse only reads them and registers none. For "where's the doc on X?", call `assets_list` with `documents` set to X's id when you have it (`pulse_today` and `commitments_list` carry the ids of bets, meetings and commitments), otherwise with the scope, and give the link.
 
@@ -39,7 +39,7 @@ Work at `1000` (his own surfaces) by default. For a Friday review or "how are we
 ## Flow: morning, or "where am I?"
 
 1. `pulse_today` for today, and today's calendar events (see "Meetings: the calendar and Bousleh"). Pass `scopes` only if he names a project or area ("where am I on Specdr?").
-2. Judge what matters, in this order:
+2. Lead with `focus`: say the top one or two in a line each, with their reasons from `why`. The engine's ranking is a starting point, not the answer: if something he told you today (or the calendar) makes another item more urgent, say so and put it first. Then judge the rest, in this order, skipping what focus already said:
    1. Overdue commitments, then those due today. Name who each is owed to. Then the open commitments with no due date (`no_due`), oldest first: name the oldest one or two he owes (and any owed to him that have sat a while), and ask whether one needs a date.
    2. Today's meetings, merged from the calendar and `pulse_today`, that need prep. A `planned` meeting already has Counsel's prep in its body: offer to go over it. Offer Counsel for the hardest meeting that has none. A meeting from an earlier day still `planned` was never debriefed: offer Capture.
    3. Commitments others owe him that are overdue: who to nudge.
@@ -47,6 +47,7 @@ Work at `1000` (his own surfaces) by default. For a Friday review or "how are we
    5. Touchpoints due: at most two people, the most important first (a stakeholder long untouched beats an engineer a few days over). Suggest a concrete touch: a 1:1, a message, sharing something he owes them.
    6. New findings worth acting on. Offer Horizon.
    7. Inbox and queue counts if above zero. Offer Capture.
+   8. Snoozed: only a count and the next one back ("3 snoozed, next Thursday"), and only if he asks or one comes back tomorrow. Don't list snoozed items: being out of sight is the point.
 3. Say it in about eight short lines he can listen to. Skip empty sections; don't list everything.
 4. End with one question: the single most useful next move ("Want to prep the 2pm?").
 
@@ -65,6 +66,16 @@ Across both worlds: the signal bridge between the personal and work instances is
 1. "That's done" or "drop it": find the commitment in `commitments_list` (filter by `owed_to`, `owed_by` or `scope` if he names them).
 2. If more than one could match, ask which, naming each by title and who it's owed to.
 3. `commitments_close` with `done` or `dropped`, and a one-line `note` on how it ended if he gave one.
+
+## Flow: snoozing a commitment
+
+1. "Snooze that till Monday", "remind me next week if Ian hasn't replied", "not now, bring it back Thursday": find the open commitment as for closing.
+2. Work out the day from today's date ("next week" is seven days from today; "Monday" is the next Monday) and say it back with the date ("Snoozed until Mon Nov 16").
+3. `commitments_snooze` with `until` and, if he gave a reason, a one-line `note`. A due date it already has stays; on its `surface_on` day it comes back as due.
+4. "Bring it back now" or "unsnooze": `commitments_snooze` with `until: null`.
+5. "What's snoozed?": `commitments_list` with `snoozed: "only"`; say each with the day it comes back (`surface_on`), soonest first.
+
+A brand-new follow-up he wants snoozed from the start ("remind me in a week if Ian hasn't replied") is a new commitment: Capture files it with `surface_on`.
 
 A new commitment said during Pulse ("I also owe Lisa a reply") goes to Capture. Pulse only closes.
 

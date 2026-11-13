@@ -4,7 +4,7 @@ import { glyphSvg, stateColor } from './glyph.js';
 import { icons, logoFull, logoSmall, modeIcon } from './icons.js';
 import { SHORT_ALT } from './model.js';
 import { tokens } from './tokens.js';
-import type { BetVM, CellVM, ItemVM, Launcher, MeetingVM, NeedsVM, Readout, StoryVM, Tone, ViewModel } from './types.js';
+import type { BetVM, CellVM, FocusVM, ItemVM, Launcher, MeetingVM, NeedsVM, Readout, StoryVM, Tone, ViewModel } from './types.js';
 
 /*
  * View model → markup. One string for the whole page: the desktop layout (rail, header, strata,
@@ -104,7 +104,34 @@ function promptBtn(cls: string, key: string | undefined, label: string, extra = 
 function desktop(vm: ViewModel, ui: UiState): string {
   const head = `<header class="hdr" id="top"><div class="hdr-l"><span class="eb">${esc(vm.dateLabel)} · ${esc(vm.instance)} · ${esc(modeWord(ui))}</span><h1 class="disp hero">${hero(vm, ui)}</h1></div>
 <div class="hdr-r"><div class="ros">${vm.readouts.map(readout).join('')}</div>${vm.secondary ? promptBtn('btn2', vm.secondary.prompt, vm.secondary.label) : ''}${vm.primary ? promptBtn('btn', vm.primary.prompt, vm.primary.label) : ''}</div></header>`;
-  return `${head}${banner(ui)}${vm.columns.length ? strata(vm, ui) : emptyCard(ui)}${legend()}${horizon(vm, ui)}${footer(ui)}`;
+  return `${head}${banner(ui)}${focusStrip(vm.focus)}${vm.columns.length ? strata(vm, ui) : emptyCard(ui)}${legend()}${horizon(vm, ui)}${footer(ui)}`;
+}
+
+/** The few things to do first, above the grid. Nothing when Pulse wasn't read. */
+function focusStrip(focus: FocusVM | undefined): string {
+  if (!focus || (focus.items.length === 0 && !focus.snoozed)) return '';
+  const cards = focus.items
+    .map(
+      (f, i) =>
+        `<button class="fc ${f.tone}" type="button" data-prompt="${esc(f.prompt)}" aria-label="${esc(f.label)}"><span class="fc-h"><span class="disp fc-n ${toneClass(f.tone)}">${i + 1}</span><span class="eb xs ${toneClass(f.tone)} trunc">${esc(f.eyebrow)}</span></span><span class="fc-t">${esc(f.title)}</span>${f.detail ? `<span class="fc-d">${esc(f.detail)}</span>` : ''}<span class="eb sm fc-s trunc">${esc(altShort(f.altitude))} · ${esc(f.scopeName)}</span></button>`,
+    )
+    .join('');
+  const empty = focus.items.length === 0 ? '<span class="muted-note">Nothing pressing today.</span>' : '';
+  const more = focus.more > 0 ? promptBtn('chip', focus.morePrompt, `+${focus.more} more`) : '';
+  const snoozed = focus.snoozed ? `<span class="mono fc-z">${esc(focus.snoozed)}</span>` : '';
+  return `<section class="focus" aria-label="First"><div class="focus-h"><span class="eb">First</span><span class="focus-r">${snoozed}${more}</span></div><div class="focus-g">${cards}${empty}</div></section>`;
+}
+
+function phoneFocus(focus: FocusVM | undefined): string {
+  if (!focus || (focus.items.length === 0 && !focus.snoozed)) return '';
+  const rows = focus.items
+    .map(
+      (f, i) =>
+        `<div class="pf-row"><span class="disp fc-n ${toneClass(f.tone)}">${i + 1}</span><span class="pb"><span class="eb xs ${toneClass(f.tone)}">${esc(f.eyebrow)}</span><span class="pc-m">${esc(f.title)}</span></span></div>`,
+    )
+    .join('');
+  const foot = [focus.more > 0 ? `+${focus.more} more` : '', focus.snoozed ?? ''].filter(Boolean).join(' · ');
+  return `<div class="card pc pf"><span class="eb">First</span>${rows || '<span class="muted-note">Nothing pressing today.</span>'}${foot ? `<span class="mono fc-z">${esc(foot)}</span>` : ''}</div>`;
 }
 
 function banner(ui: UiState): string {
@@ -344,7 +371,7 @@ function footer(ui: UiState): string {
 // ---------------------------------------------------------------- phone
 
 function needsCard(n: NeedsVM): string {
-  return `<div class="card pc needs-card">${'<span class="it">'}${glyphSvg({ layer: 'moments', state: 'needs' }, 14)}<span class="eb t-needs">${esc(altShort(n.altitude))} · ${esc(n.scope)} · ${esc(n.eyebrow.replace(/^You owe · |^Owed · /, ''))}</span></span><span class="pc-t">${esc(n.title)}</span></div>`;
+  return `<div class="card pc needs-card">${'<span class="it">'}${glyphSvg({ layer: 'moments', state: 'needs' }, 14)}<span class="eb t-needs">${esc(altShort(n.altitude))} · ${esc(n.scope)} · ${esc(n.eyebrow.replace(/^You owe · |^Follow up · |^Owed · /, ''))}</span></span><span class="pc-t">${esc(n.title)}</span></div>`;
 }
 
 function meetingCard(m: MeetingVM): string {
@@ -403,7 +430,7 @@ function phone(vm: ViewModel, ui: UiState): string {
     )
     .join('');
   const body = vm.columns.length
-    ? `${strataMini(vm)}${vm.phone.needs ? needsCard(vm.phone.needs) : ''}${vm.phone.meeting ? meetingCard(vm.phone.meeting) : ''}${vm.phone.bet ? phoneBet(vm.phone.bet) : ''}`
+    ? `${phoneFocus(vm.focus)}${strataMini(vm)}${vm.phone.needs && !vm.focus?.items.length ? needsCard(vm.phone.needs) : ''}${vm.phone.meeting ? meetingCard(vm.phone.meeting) : ''}${vm.phone.bet ? phoneBet(vm.phone.bet) : ''}`
     : `<div class="card pc"><span class="eb">${ui.mode === 'connecting' ? 'Reading your data' : 'No snapshot yet'}</span>${ui.mode === 'connecting' ? '' : '<p class="hz-sum">Open Home once in the Claude desktop app with Bousleh connected; the phone then shows its last snapshot.</p>'}</div>`;
   return `<div class="ph"><div class="ph-top"><span class="ph-brand">${logoSmall(28)}<span class="disp ph-word">bousleh</span></span>${stamp}</div>
 <div class="ph-hd"><span class="eb">${esc(vm.dateLabel)} · ${esc(vm.instance)}</span><h1 class="disp ph-hero">${hero(vm, ui)}</h1></div>

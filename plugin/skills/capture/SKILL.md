@@ -31,6 +31,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 | "What if we...", a possible move | `idea` (status `open`) |
 | "We decided...", "we're going with..." | `decision` (attrs `decided_at`, `reversible`) |
 | "I owe...", "X owes me...", "I'll send..." | `commitment` (attrs `due`), links `owed_by`, `owed_to` |
+| "Remind me in a week if X hasn't...", "check back on this Monday", "don't show me this until..." | `commitment` with attrs `surface_on` (the day to bring it back; see "Snoozed follow-ups"), links `owed_by`, `owed_to` |
 | Feedback he gave one of his PMs, or their growth | `growth_note`, link `about` the person |
 | A fact about a stakeholder (what they care about, how they decide) | `observation`, link `about` the person |
 | Someone new | `person` (attrs `role`, `org`, `emails` when an address is known); people may have no scope. The person this Bousleh belongs to is marked `is_user: true`, once |
@@ -64,6 +65,8 @@ Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a 
 
 **Duplicates.** Before writing a problem, idea, person, term or decision, `vault_search` for it. If it exists, link the new evidence to it instead of writing a second one. If you aren't sure it's the same thing, queue it with the existing ids as candidates.
 
+**Snoozed follow-ups.** When Wassim wants something kept out of sight until a day ("remind me next Thursday if Ian hasn't replied on the metering doc"), deposit the commitment with `surface_on` set to that day (YYYY-MM-DD). Until then it stays out of Pulse, Home's needs-you count and the strata; on that day it shows up as due. Set `due` only if he also names a real deadline. Work out the day from today's date ("in a week" is seven days from today; "Monday" is the next Monday) and say the date in the read-back. Snoozing a commitment that already exists is Pulse's (`commitments_snooze`): say "for Pulse" in the read-back.
+
 ## When to queue
 
 Call `queue_add` rather than guess when the kind, altitude or scope is unclear, when it might duplicate an existing object, when a name could be two people, or when the dump hints that a bet ended but not which one. Give the draft as far as you know it, the reason in one sentence, candidate ids, and `source_sha256` when it came from an inbox file.
@@ -74,7 +77,7 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 - New ideas are written `open`, or `running` when he says it is already being tried (an experiment under way, a build in progress); never `running` on a guess.
 - Statuses are `open`, `running`, `bet`, `parked`, `dropped`, `concluded`. There is no won or lost.
 - A bet ends only through a `decision`: deposit the decision with a `concludes` link to the idea (or `vault_link` decision → idea if the decision exists). The engine moves the idea to `concluded`. Never set `concluded` yourself. Only a `bet` or a `running` idea can be concluded; if it is neither, queue the decision.
-- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", a person's email, under "People's emails", and a person's full name, under "People's full names"). A request to park, drop, start or reword an idea, a problem said to be solved or no longer worth solving, or a commitment to close, goes in your read-back as "for Shape" or "for Pulse" (starting an existing idea and marking a problem solved or dropped are Shape's). In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
+- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", a person's email, under "People's emails", and a person's full name, under "People's full names"). A request to park, drop, start or reword an idea, a problem said to be solved or no longer worth solving, or a commitment to close or snooze, goes in your read-back as "for Shape" or "for Pulse" (starting an existing idea and marking a problem solved or dropped are Shape's). In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
 
 ## Meetings
 

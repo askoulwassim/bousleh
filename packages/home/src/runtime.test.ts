@@ -133,6 +133,35 @@ describe('rendering', () => {
     expect(html).not.toContain('javascript:');
   });
 
+  it('draws the focus strip above the grid, and nothing when there is no focus', () => {
+    const vm = buildViewModel({}, NOW);
+    expect(renderPage(vm, ui())).not.toContain('class="focus"');
+    vm.focus = {
+      items: [
+        {
+          kind: 'commitment',
+          eyebrow: '2 days late',
+          title: '<i>Send the one-pager</i>',
+          detail: 'owed to Peter, your manager',
+          scopeName: 'Lantern',
+          altitude: 1000,
+          tone: 'needs',
+          prompt: 'p1',
+          label: 'Send the one-pager',
+        },
+      ],
+      more: 2,
+      snoozed: '3 snoozed · next Nov 20',
+      morePrompt: 'p2',
+    };
+    const html = renderPage(vm, ui());
+    expect(html).toContain('class="focus"');
+    expect(html).toContain('&lt;i&gt;Send the one-pager&lt;/i&gt;');
+    expect(html).toContain('3 snoozed · next Nov 20');
+    expect(html).toContain('+2 more');
+    expect(html.indexOf('class="focus"')).toBeLessThan(html.indexOf('aria-label="Strata"'));
+  });
+
   it('shows Save and Skip only when live, and the stamp for each mode', () => {
     const vm = buildViewModel({}, NOW);
     vm.horizon.lead = {

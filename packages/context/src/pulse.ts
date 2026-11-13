@@ -1,5 +1,15 @@
-import { type CommitmentView, effectiveStatus, NO_DUE_LIMIT, type OpOutput, pulseToday, TOUCHPOINT_DUE_DAYS } from '@bousleh/contracts';
+import {
+  type CommitmentView,
+  effectiveDue,
+  effectiveStatus,
+  isSnoozed,
+  NO_DUE_LIMIT,
+  type OpOutput,
+  pulseToday,
+  TOUCHPOINT_DUE_DAYS,
+} from '@bousleh/contracts';
 import { defineHandler, instantOf, OpError } from '@bousleh/vault';
+import { rankFocus } from './focus.js';
 import { addDays, call, coverScopes, dayOf, daysBetween, inCover, localDay, Objects, shorten, startOfDay } from './shared.js';
 
 /* pulse.today: the daily picture. Built from commitments.list, metrics.list, people.list, watch.digest, inbox.list and queue.list. */
@@ -61,21 +71,36 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
   // ------------------------------------------------------------ commitments
   const allOpen = (await call(h, 'commitments.list', { status: 'open', limit: 200 })).commitments;
   const me = resolveMe(objects, input.me, h.store.userPerson(), allOpen);
-  const open = allOpen.filter((c) => inCover(cover, c.scopes));
+  const inScope = allOpen.filter((c) => inCover(cover, c.scopes));
+  // Snoozed ones (surface_on after the day) stay out of every bucket; they are only counted.
+  const open = inScope.filter((c) => !isSnoozed(c.surface_on, day));
+  const asleep = inScope.filter((c) => isSnoozed(c.surface_on, day));
+  const snoozed: Output['commitments']['snoozed'] = { by_me: 0, to_me: 0, other: 0, next: null };
+  for (const commitment of asleep) {
+    snoozed[direction(commitment, me)] += 1;
+    const surfaceOn = commitment.surface_on as string;
+    if (snoozed.next === null || surfaceOn < snoozed.next.surface_on) {
+      snoozed.next = { id: commitment.id, title: commitment.title, surface_on: surfaceOn };
+    }
+  }
   const group = () => ({ by_me: [], to_me: [], other: [] }) as Output['commitments']['overdue'];
   const overdue = group();
   const dueToday = group();
   const counts = { by_me: 0, to_me: 0, other: 0 };
   const undated: Record<'by_me' | 'to_me', Output['commitments']['no_due']['by_me']> = { by_me: [], to_me: [] };
+  const sided: { commitment: CommitmentView; side: Direction }[] = [];
   for (const commitment of open) {
     const side = direction(commitment, me);
+    sided.push({ commitment, side });
     counts[side] += 1;
-    if (commitment.due === null) {
+    // Back from a snooze with no due date: it counts as due on the day it surfaced.
+    const due = effectiveDue(commitment.due, commitment.surface_on);
+    if (due === null) {
       const filedAt = objects.get(commitment.id)?.created_at;
       if (side !== 'other' && filedAt) undated[side].push({ ...commitment, filed_at: filedAt });
       continue;
     }
-    const late = daysBetween(commitment.due, day);
+    const late = daysBetween(due, day);
     if (late > 0) overdue[side].push({ ...commitment, days_late: late });
     else if (late === 0) dueToday[side].push({ ...commitment, days_late: 0 });
   }
@@ -227,11 +252,16 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
     }))
     .sort((a, b) => BET_ORDER.indexOf(a.status) - BET_ORDER.indexOf(b.status) || b.altitude - a.altitude || a.title.localeCompare(b.title));
 
+  // ------------------------------------------------------------ focus: the few things to do first
+  const ranked = rankFocus({ day, me, commitments: sided, meetings, objects });
+
   return {
     date: day,
     scopes: cover.slugs ? [...cover.slugs].sort() : [],
     me,
-    commitments: { overdue, due_today: dueToday, no_due: noDue, open: counts },
+    focus: ranked.focus,
+    focus_more: ranked.more,
+    commitments: { overdue, due_today: dueToday, no_due: noDue, open: counts, snoozed },
     meetings,
     inbox: { waiting: inbox.files.length, oldest_arrived_at: inbox.files[0]?.arrived_at ?? null, queued: queue.items.length },
     stale_metrics: staleMetrics,

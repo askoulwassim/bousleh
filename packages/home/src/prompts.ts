@@ -26,6 +26,9 @@ export const prompts = {
   pulse: () => 'Pulse: where am I?',
   pulseNeeds: (n: number) => `Pulse: what do I owe? Help me close or date the ${n === 1 ? 'one thing' : `${n} things`} that need me.`,
   pulseClose: (title: string) => `Pulse: help me close ${quote(title)}, or give it a date.`,
+  pulseFocus: (title: string) => `Pulse: ${quote(title)} is first today. Help me get it done, give it a new date, or snooze it.`,
+  pulseFollowUp: (title: string, who: string) =>
+    `Pulse: time to follow up on ${quote(title)}${who ? ` with ${who}` : ''}. Help me nudge, close it, or snooze it again.`,
   coach: (name: string) => `Coach: how is ${name} doing? Prep the next nudge.`,
   counselMeeting: (title: string, when: string) => `Counsel: prep me for ${quote(title)}${when ? ` (${when})` : ''}.`,
   counselTalk: () => 'Counsel: I have a hard conversation coming up. Help me prep.',

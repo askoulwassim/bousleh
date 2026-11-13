@@ -114,6 +114,34 @@ export async function seed(now = new Date()) {
       ],
     });
 
+    // Focus and snooze (Nov 13): one late, a follow-up back from a snooze today, one still snoozed, and a meeting today with no prep.
+    await put('commitment', 'Send Dana the pricing notes', 1000, ['lantern'], {
+      attrs: { due: date(day(-1)) },
+      links: [
+        { kind: 'owed_by', to: me },
+        { kind: 'owed_to', to: dana },
+      ],
+    });
+    await put('commitment', 'Milo confirms the staging fix', 100, ['lantern'], {
+      attrs: { surface_on: date(now) },
+      links: [
+        { kind: 'owed_by', to: milo },
+        { kind: 'owed_to', to: me },
+      ],
+    });
+    await put('commitment', 'Chase the legal review', 1000, ['quill'], {
+      attrs: { surface_on: date(day(6)) },
+      links: [{ kind: 'owed_by', to: me }],
+    });
+    await put('meeting', 'Dana 1:1', 10000, ['kestrel'], {
+      status: 'planned',
+      attrs: { held_at: iso(day(0, 14, 0)) },
+      links: [
+        { kind: 'attended_by', to: dana },
+        { kind: 'attended_by', to: me },
+      ],
+    });
+
     // Watch lists and findings.
     const lanternList = await run('watchlists.set', {
       scope: 'lantern',

@@ -46,6 +46,22 @@ export const CONCLUDABLE_IDEA_STATUSES = ['bet', 'running'] as const;
 /** Oct 25 (statuses): problems written before this have no status; they read as `open`. */
 export const PROBLEM_STATUSES = ['open', 'solved', 'dropped'] as const;
 export const COMMITMENT_STATUSES = ['open', 'done', 'dropped'] as const;
+
+/**
+ * Nov 13: a commitment whose `surface_on` is after the day is snoozed, and stays out of Pulse,
+ * Home's needs-you count and the strata until that day. Days are YYYY-MM-DD, so they compare as text.
+ */
+export function isSnoozed(surfaceOn: unknown, day: string): boolean {
+  return typeof surfaceOn === 'string' && surfaceOn > day;
+}
+
+/**
+ * The day a commitment counts as due: its due date, else the day it surfaces from a snooze
+ * (a follow-up), else none.
+ */
+export function effectiveDue(due: string | null | undefined, surfaceOn: string | null | undefined): string | null {
+  return due ?? surfaceOn ?? null;
+}
 /** Oct 25: initiatives written before this have no status; they read as `active`. */
 export const INITIATIVE_STATUSES = ['proposed', 'active', 'paused', 'done', 'dropped'] as const;
 /** Horizon's reading queue. Findings filed before this have no status; they read as `new`. */
@@ -275,11 +291,14 @@ export const KINDS = {
   commitment: {
     layer: 'moments',
     prefix: 'cmt',
-    description: 'Something owed: who owes it and to whom are `owed_by` and `owed_to` links to people.',
+    description:
+      'Something owed: who owes it and to whom are `owed_by` and `owed_to` links to people. due is when it is due; surface_on snoozes it: it stays out of Pulse, Home and the strata until that day, then shows as due (on its due date if it has one, else on surface_on).',
     statuses: COMMITMENT_STATUSES,
     defaultStatus: 'open',
     attrs: z.strictObject({
       due: date.optional(),
+      /** Nov 13: snoozed until this day. Before it, the commitment is hidden from Pulse, Home and the strata. */
+      surface_on: date.optional(),
     }),
     scopeRequired: true,
   },

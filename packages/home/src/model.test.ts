@@ -108,7 +108,10 @@ function pulse(over: Partial<Pulse> = {}): Pulse {
       due_today: group(),
       no_due: { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 } },
       open: { by_me: 2, to_me: 1, other: 0 },
+      snoozed: { by_me: 0, to_me: 0, other: 0, next: null },
     },
+    focus: [],
+    focus_more: 0,
     meetings: [],
     inbox: { waiting: 0, oldest_arrived_at: null, queued: 3 },
     stale_metrics: [],
@@ -151,6 +154,7 @@ describe('small pieces', () => {
       title: 'Late',
       status: 'open',
       altitude: 100,
+      surface_on: null,
       due: '2026-10-20',
       scopes: ['quill'],
       owed_by: [],
@@ -231,6 +235,7 @@ describe('buildViewModel', () => {
           status: 'open',
           altitude: 1000,
           due: '2026-11-06',
+          surface_on: null,
           scopes: ['lantern'],
           owed_by: [{ id: 'per_01JBX000000000000000000ME1', name: 'Rowan Vale' }],
           owed_to: [],
@@ -311,6 +316,102 @@ describe('buildViewModel', () => {
     expect(launch.Coach).toEqual({ mode: 'Coach', label: 'No PMs yet' });
     expect(launch.Counsel?.label).toBe('Prep Weekly');
     expect(vm.prompts[launch.Capture?.prompt ?? '']).toBe('Capture this: ');
+  });
+
+  it('leads with the few things to do first, each with its prompt, and says what is snoozed', () => {
+    const peter = { id: 'per_01JBX000000000000000000P01', name: 'Peter Trennum' };
+    const ian = { id: 'per_01JBX000000000000000000I01', name: 'Ian Holt' };
+    const p = pulse({
+      focus: [
+        {
+          kind: 'commitment',
+          id: 'cmt_01JBX000000000000000000F01',
+          title: 'Send Peter the one-pager',
+          altitude: 1000,
+          scopes: ['lantern'],
+          score: 83,
+          why: ['2 days late', 'owed to Peter Trennum, your manager'],
+          owed: 'by_me',
+          people: [peter],
+          when: '2026-10-23',
+        },
+        {
+          kind: 'meeting',
+          id: 'mtg_01JBX000000000000000000F02',
+          title: 'Lisa sync',
+          altitude: 10000,
+          scopes: ['quill'],
+          score: 63,
+          why: ['today at 14:00', 'no prep yet'],
+          owed: null,
+          people: [],
+          when: '2026-10-25T14:00:00',
+        },
+        {
+          kind: 'commitment',
+          id: 'cmt_01JBX000000000000000000F03',
+          title: 'Ian replies on the metering doc',
+          altitude: 1000,
+          scopes: ['lantern'],
+          score: 40,
+          why: ['follow up with Ian Holt', 'back from snooze today'],
+          owed: 'to_me',
+          people: [ian],
+          when: '2026-10-25',
+        },
+      ],
+      focus_more: 2,
+    });
+    p.commitments.snoozed = {
+      by_me: 2,
+      to_me: 1,
+      other: 0,
+      next: { id: 'cmt_01JBX000000000000000000F04', title: 'Later', surface_on: '2026-11-20' },
+    };
+    const vm = buildViewModel({ ...sources(), pulse: p }, NOW);
+    expect(vm.focus?.items.map((f) => [f.eyebrow, f.title, f.detail, f.scopeName, f.tone])).toEqual([
+      ['2 days late', 'Send Peter the one-pager', 'owed to Peter Trennum, your manager', 'Lantern', 'needs'],
+      ['today at 14:00', 'Lisa sync', 'no prep yet', 'Quill', 'moving'],
+      ['follow up with Ian Holt', 'Ian replies on the metering doc', 'back from snooze today', 'Lantern', 'needs'],
+    ]);
+    const prompt = (i: number) => vm.prompts[vm.focus?.items[i]?.prompt ?? ''];
+    expect(prompt(0)).toBe('Pulse: "Send Peter the one-pager" is first today. Help me get it done, give it a new date, or snooze it.');
+    expect(prompt(1)).toBe('Counsel: prep me for "Lisa sync" (Today 14:00).');
+    expect(prompt(2)).toBe(
+      'Pulse: time to follow up on "Ian replies on the metering doc" with Ian. Help me nudge, close it, or snooze it again.',
+    );
+    expect(vm.focus?.more).toBe(2);
+    expect(vm.focus?.snoozed).toBe('3 snoozed · next Nov 20');
+    expect(vm.prompts[vm.focus?.morePrompt ?? '']).toBe('Pulse: where am I?');
+
+    // Nothing snoozed, nothing ranked: an empty focus, which the page leaves out.
+    expect(buildViewModel(sources(), NOW).focus).toEqual({ items: [], more: 0, snoozed: null, morePrompt: expect.any(String) });
+    // Without Pulse there is no focus at all.
+    expect(buildViewModel({ strata: sources().strata }, NOW).focus).toBeUndefined();
+  });
+
+  it('skips snoozed commitments for Next due, and says when a needs-you item is back from a snooze', () => {
+    const src = sources();
+    const meId = 'per_01JBX000000000000000000ME1';
+    const view = (id: string, title: string, due: string, surface_on: string | null) => ({
+      id,
+      title,
+      status: 'open' as const,
+      altitude: 100 as const,
+      due,
+      surface_on,
+      scopes: ['quill'],
+      owed_by: [{ id: meId, name: 'Rowan Vale' }],
+      owed_to: [],
+    });
+    src.commitments = {
+      commitments: [
+        view('cmt_01JBX000000000000000000S01', 'Snoozed past its due', '2026-10-28', '2026-11-02'),
+        view('cmt_01JBX000000000000000000S02', 'Awake', '2026-11-04', null),
+      ],
+    };
+    const vm = buildViewModel(src, NOW);
+    expect(vm.readouts.find((r) => r.label === 'Next due')?.value).toBe('Nov 4');
   });
 
   it('says nothing it does not know when there is no data', () => {
