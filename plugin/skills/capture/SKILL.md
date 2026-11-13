@@ -14,7 +14,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Reads: `inbox_list` (inbox.list), `inbox_take` (inbox.take), `vault_search` (vault.search), `signals_patterns` (signals.patterns) for the signal tags already in use
 - Writes: `deposits_write` (deposits.write), `queue_add` (queue.add), `queue_resolve` (queue.resolve), `vault_link` (vault.link), `inbox_settle` (inbox.settle), `assets_add` (assets.add) for links to artifacts
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs, `queue_list` (queue.list) to clear the queue, `vault_get` (vault.get) to check a candidate
-- Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox; `vault_supersede` (vault.supersede) for two things only: moving a planned meeting to `held` once it has happened (see "Meetings"), and adding an email address to a person who exists (see "People's emails").
+- Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox; `vault_supersede` (vault.supersede) for three things only: moving a planned meeting to `held` once it has happened (see "Meetings"), adding an email address to a person who exists (see "People's emails"), and giving a person filed by first name their full name (see "People's full names").
 - Google Drive connector (your Claude account's Drive): search the folder, read each file, and trash it after `inbox_drop` succeeds.
 
 ## What to judge
@@ -60,6 +60,8 @@ Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a 
 
 **People's emails.** A person's `emails` attr (lower-cased, each once, at most five) lets Pulse and Counsel match calendar attendees to people. When you create a person and their email is known (a transcript's attendee list, an email signature, a calendar invite in the dump), set `emails`. When a person already exists and the input gives an email they don't have, `vault_supersede` them with `attrs: { emails: [...] }`: the whole list, their current addresses plus the new one, since a new version replaces the key. Never guess an address from a name and a domain.
 
+**People's full names.** People are often filed by first name only ("Peter", "Stefan"), then a Meet notes attendee list or a calendar invite gives the full name ("Peter Trennum", "Stefan McCabe"). Never write a second person for that full name. When exactly one person has that first name as their title, and nothing in the input says it's someone else, `vault_supersede` them with the full name as `title` (keep the body; add the email in the same version if the input gives one). Take full names only from an attendee list or an invite, which spell names as the account does, never from a dictation or a transcript body, which mis-hear them. Queue it instead, with the person as a candidate, when two people share the first name, when the record has a short form of it ("Brad" for "Bradley Moulder"), or when the person already has a different surname.
+
 **Duplicates.** Before writing a problem, idea, person, term or decision, `vault_search` for it. If it exists, link the new evidence to it instead of writing a second one. If you aren't sure it's the same thing, queue it with the existing ids as candidates.
 
 ## When to queue
@@ -72,7 +74,7 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 - New ideas are written `open`, or `running` when he says it is already being tried (an experiment under way, a build in progress); never `running` on a guess.
 - Statuses are `open`, `running`, `bet`, `parked`, `dropped`, `concluded`. There is no won or lost.
 - A bet ends only through a `decision`: deposit the decision with a `concludes` link to the idea (or `vault_link` decision → idea if the decision exists). The engine moves the idea to `concluded`. Never set `concluded` yourself. Only a `bet` or a `running` idea can be concluded; if it is neither, queue the decision.
-- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", and a person's email, under "People's emails"). A request to park, drop, start or reword an idea, a problem said to be solved or no longer worth solving, or a commitment to close, goes in your read-back as "for Shape" or "for Pulse" (starting an existing idea and marking a problem solved or dropped are Shape's). In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
+- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", a person's email, under "People's emails", and a person's full name, under "People's full names"). A request to park, drop, start or reword an idea, a problem said to be solved or no longer worth solving, or a commitment to close, goes in your read-back as "for Shape" or "for Pulse" (starting an existing idea and marking a problem solved or dropped are Shape's). In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
 
 ## Meetings
 

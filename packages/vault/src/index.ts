@@ -1,9 +1,9 @@
 /* @bousleh/vault: storage, migrations, history and typed objects in ~/.bousleh. Owns vault.*, deposits.*, scopes.*, commitments.*, people.*, assets.* */
 
+import { vaultActivityHandler } from './activity.js';
 import { assetsAddHandler, assetsListHandler } from './assets.js';
 import { vaultBackupHandler } from './backup.js';
 import type { OpHandler } from './handler.js';
-import { vaultActivityHandler } from './activity.js';
 import { vaultHealthHandler } from './health.js';
 import { vaultLinkHandler, vaultSearchHandler, vaultUnlinkHandler } from './links.js';
 import {

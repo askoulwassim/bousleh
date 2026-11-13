@@ -50,7 +50,7 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 
 | Skill | Reads | Writes | Hands off to |
 | --- | --- | --- | --- |
-| Capture | `inbox.list`, `inbox.take`, `vault.search`, `signals.patterns` (to reuse signal tags); the Google Drive connector for "Bousleh Inbox" (phone captures, Horizon scans, Meet notes) | `inbox.drop`, `inbox.settle`, `deposits.write`, `queue.add`, `queue.resolve`, `vault.link`, `assets.add` | nothing |
+| Capture | `inbox.list`, `inbox.take`, `vault.search`, `signals.patterns` (to reuse signal tags); the Google Drive connector for "Bousleh Inbox" (phone captures, Horizon scans, Meet notes) | `inbox.drop`, `inbox.settle`, `deposits.write`, `queue.add`, `queue.resolve`, `vault.link`, `assets.add`; `vault.supersede` only to mark a planned meeting held, add a person's email, or give a person filed by first name their full name | nothing |
 | Drop (phone) | nothing | a new `.md` file in "Bousleh Inbox", through the Google Drive connector | Capture |
 | Pulse | `pulse.today`, `commitments.list`, `metrics.list`, `metrics.history`; the Google Calendar connector for today's events | `commitments.close`; `vault.supersede` or `deposits.write` once, to mark the user; `vault.supersede` to add an email to a person, on Wassim's yes | Home |
 | Counsel | `context.brief`, `people.get`; the Google Calendar connector for the meeting's event | `deposits.write` | nothing |
