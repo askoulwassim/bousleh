@@ -405,7 +405,13 @@ export const contextBriefHandler = defineHandler(contextBrief, async (input, h) 
     })),
     commitments: commitmentEntries.map((entry) => {
       const commitment = commitments.get(entry.object.id) as CommitmentView;
-      return { ...ref(entry, 'commitments'), due: commitment.due, owed_by: commitment.owed_by, owed_to: commitment.owed_to };
+      return {
+        ...ref(entry, 'commitments'),
+        due: commitment.due,
+        size: commitment.size,
+        owed_by: commitment.owed_by,
+        owed_to: commitment.owed_to,
+      };
     }),
     evidence: evidence.map((entry) => ({
       ...ref(entry, 'evidence'),

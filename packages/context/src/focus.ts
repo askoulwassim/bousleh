@@ -5,7 +5,7 @@ import { dayOf, daysBetween, type Objects } from './shared.js';
  * pulse.today's focus: the few things to do first, so Pulse and Home lead with them instead of
  * listing every bucket. The engine scores; Claude still says it out loud and judges the rest.
  * Candidates are open commitments owed by me or to me (snoozed ones never reach here) and today's
- * planned meetings. The weights are a first version (Nov 13): tune them here, with the tests.
+ * planned meetings. Minor commitments (small follow-ups) score lower, and never as undated. The weights are a first version (Nov 13): tune them here, with the tests.
  */
 
 type Output = OpOutput<'pulse.today'>;
@@ -45,6 +45,8 @@ export const FOCUS_WEIGHTS = {
   /** Linked to a bet or a running idea. */
   onBet: 10,
   altitude: { 50000: 8, 10000: 4, 1000: 0, 100: -4 } as Record<Altitude, number>,
+  /** Nov 20: a minor commitment (a small follow-up) ranks below an equally late major one. Undated minor ones are never candidates. */
+  minor: -25,
 } as const;
 
 const W = FOCUS_WEIGHTS;
@@ -141,7 +143,7 @@ export function rankFocus(input: FocusInput): { focus: FocusItem[]; more: number
           base = W.dueSoonByMe;
           why.push(late === -1 ? 'due tomorrow' : `due in ${plural(-late, 'day')}`);
         }
-      } else {
+      } else if (c.size === 'major') {
         const filedAt = objects.get(c.id)?.created_at;
         const filedDay = filedAt ? dayOf(filedAt) : null;
         const age = filedDay ? daysBetween(filedDay, day) : 0;
@@ -165,9 +167,11 @@ export function rankFocus(input: FocusInput): { focus: FocusItem[]; more: number
 
     const boost = peopleBoost(counterpart, side);
     const bet = betOf(c.id);
-    const score = base + boost.score + (bet ? W.onBet : 0) + W.altitude[c.altitude];
+    const minor = c.size === 'minor';
+    const score = base + boost.score + (bet ? W.onBet : 0) + W.altitude[c.altitude] + (minor ? W.minor : 0);
     why.push(...boost.why);
     if (bet) why.push(`part of ${bet.status === 'bet' ? 'the bet' : 'the running idea'} "${bet.title}"`);
+    if (minor) why.push('small follow-up');
     candidates.push({
       kind: 'commitment',
       id: c.id,
@@ -177,6 +181,7 @@ export function rankFocus(input: FocusInput): { focus: FocusItem[]; more: number
       score,
       why,
       owed: side,
+      size: c.size,
       people: counterpart,
       when,
     });
@@ -208,6 +213,7 @@ export function rankFocus(input: FocusInput): { focus: FocusItem[]; more: number
       score,
       why,
       owed: null,
+      size: null,
       people: others,
       when: meeting.held_at,
     });

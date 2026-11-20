@@ -1,6 +1,7 @@
 import {
   ALTITUDE_LABELS,
   ALTITUDES,
+  commitmentSize,
   contextStrata,
   effectiveStatus,
   isSnoozed,
@@ -145,13 +146,17 @@ export const contextStrataHandler = defineHandler(contextStrata, async (input, h
         const by = object.links.out.filter((l) => l.kind === 'owed_by').map((l) => l.to);
         const to = object.links.out.filter((l) => l.kind === 'owed_to').map((l) => l.to);
         const surfaceOn = typeof attrs.surface_on === 'string' ? attrs.surface_on : null;
+        const size = commitmentSize(attrs.size);
         base.due = due;
+        base.size = size;
         base.owed = me === null ? 'other' : by.includes(me.id) ? 'by_me' : to.includes(me.id) ? 'to_me' : 'other';
         const mine = me === null || base.owed === 'by_me';
         // Back from a snooze: a follow-up he asked for, whichever way it is owed.
         const surfaced = surfaceOn !== null && daysBetween(surfaceOn, day) >= 0;
         if (surfaced) base.surface_on = surfaceOn;
-        base.needs_you = status === 'open' && ((mine && (due === null || daysBetween(due, day) >= 0)) || surfaced);
+        // Undated, a major one needs me; a minor one (a small follow-up) only once it is dated and due, or back from a snooze.
+        const dueNow = due === null ? size === 'major' : daysBetween(due, day) >= 0;
+        base.needs_you = status === 'open' && ((mine && dueNow) || surfaced);
         break;
       }
       case 'meeting':

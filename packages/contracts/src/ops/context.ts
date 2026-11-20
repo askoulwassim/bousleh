@@ -12,7 +12,7 @@ import {
 } from '../model/kinds.js';
 import { AltitudeSchema, LAYERS, type Layer, LayerSchema } from '../model/layers.js';
 import { AssetTypeSchema } from './assets.js';
-import { CommitmentViewSchema, PersonRefSchema } from './commitments.js';
+import { CommitmentSizeSchema, CommitmentViewSchema, PersonRefSchema } from './commitments.js';
 import { defineOp } from './define.js';
 import { MetricCadenceSchema } from './metrics.js';
 import { PersonRoleSchema, TouchpointSchema } from './people.js';
@@ -86,6 +86,8 @@ export const BriefPersonSchema = BriefRefSchema.extend({
 });
 export const BriefCommitmentSchema = BriefRefSchema.extend({
   due: z.iso.date().nullable(),
+  /** major (a deliverable) or minor (a small follow-up). */
+  size: CommitmentSizeSchema,
   owed_by: z.array(PersonRefSchema),
   owed_to: z.array(PersonRefSchema),
 });
@@ -126,7 +128,7 @@ export const contextBrief = defineOp({
     'What to know before advising at a given altitude, in one call. Call it before giving advice, shaping a problem or idea, running a workshop, drafting a message or coaching someone, then use vault.get or people.get on any id for the full object.',
     'Centre it with focus (the question or topic in plain words; its best search matches become the centre) and/or ids (objects to centre on, such as a problem, an idea or a person). Everything linked one hop out from the centre is included, with why. With neither, or when focus matches nothing, the brief covers the scopes as a whole: initiatives not done or dropped, open problems (solved and dropped ones only show in the centre or one hop out), open, running and bet ideas, recent decisions, metrics and open commitments.',
     'scopes (slugs) narrows it, and includes their child scopes. altitude is the level you are advising at (50000 company, 10000 cross-team, the default, 1000 own surfaces, 100 one engineer or requirement): items one level above and below are shown too, and anchors (strategies and principles) from every level above, including those of parent scopes.',
-    'Sections: anchors; initiatives in the centre or one hop out (or, with no centre, those in the scopes), each with its status (proposed, active, paused, done, dropped), started_at, target_date and owner; problems, each with its status (open, solved, dropped), open first; ideas (bets first, with hypothesis and kill criteria, then running ones, being tried right now, then the rest, each status by rank); decisions (newest first); metrics with their latest reading; people involved (owners, attendees, who owes and is owed what), each with who they report to; open commitments; recent evidence and findings linked to the rest; assets (Docs, decks, dashboards, whiteboards, designs, pages, repos) with their url and type: those that document anything in the brief, or with no centre every asset in the scopes, at any altitude. Objects replaced by another (supersedes) are left out. limit caps each section; more says how many were cut.',
+    'Sections: anchors; initiatives in the centre or one hop out (or, with no centre, those in the scopes), each with its status (proposed, active, paused, done, dropped), started_at, target_date and owner; problems, each with its status (open, solved, dropped), open first; ideas (bets first, with hypothesis and kill criteria, then running ones, being tried right now, then the rest, each status by rank); decisions (newest first); metrics with their latest reading; people involved (owners, attendees, who owes and is owed what), each with who they report to; open commitments, each with its size (major or minor); recent evidence and findings linked to the rest; assets (Docs, decks, dashboards, whiteboards, designs, pages, repos) with their url and type: those that document anything in the brief, or with no centre every asset in the scopes, at any altitude. Objects replaced by another (supersedes) are left out. limit caps each section; more says how many were cut.',
   ].join(' '),
   input: z.object({
     focus: z.string().trim().min(1).max(500).optional().describe('The question or topic, in plain words. Searched like vault.search.'),
@@ -207,6 +209,8 @@ export const FocusItemSchema = z.object({
   why: z.array(z.string()).min(1),
   /** A commitment's direction relative to me; null for a meeting. */
   owed: z.enum(['by_me', 'to_me']).nullable(),
+  /** A commitment's size (major or minor); null for a meeting. */
+  size: CommitmentSizeSchema.nullable(),
   /** The other side of a commitment (who it is owed to, or who owes it), or a meeting's attendees other than me. */
   people: z.array(PersonRefSchema),
   /** A commitment's effective due day (due, else surface_on); a meeting's held_at. Null for an undated commitment. */
@@ -217,8 +221,8 @@ export const pulseToday = defineOp({
   name: 'pulse.today',
   description: [
     "The daily picture for Pulse and Home, for one day (date, default today on this machine's clock).",
-    `focus: at most ${FOCUS_LIMIT} things to do first, ranked by the engine: open commitments owed by me (overdue, due today, due in the next two days, back from a snooze, or undated for over a week) and owed to me (overdue, or back from a snooze: a follow-up), and today's planned meetings. The score weighs how late, how soon, how senior the other person is (my manager, a stakeholder), whether I see them today, whether it is part of a bet or running idea, and the altitude; why gives the reasons in words. focus_more counts the candidates past the limit.`,
-    `commitments: open ones overdue and due that day, each split into owed by me, owed to me and other; open ones with no due date (no_due), owed by me and owed to me, oldest filed first, at most ${NO_DUE_LIMIT} a side with more counting the rest; plus counts of every open commitment by direction. Snoozed commitments (surface_on after the date) are left out of all of these and only counted under snoozed, with the next one to surface; once surface_on comes, a commitment counts as due on its due date, else on surface_on. me is the person marked is_user (the person this Bousleh belongs to); pass me to override. With neither, the person on the most open commitments is taken as me, and me.inferred says so.`,
+    `focus: at most ${FOCUS_LIMIT} things to do first, ranked by the engine: open commitments owed by me (overdue, due today, due in the next two days, back from a snooze, or undated for over a week) and owed to me (overdue, or back from a snooze: a follow-up), and today's planned meetings. The score weighs how late, how soon, how senior the other person is (my manager, a stakeholder), whether I see them today, whether it is part of a bet or running idea, and the altitude, and puts a minor commitment (a small follow-up) below an equally late major one; an undated minor commitment is never a candidate. why gives the reasons in words. focus_more counts the candidates past the limit.`,
+    `commitments: open ones overdue and due that day, each split into owed by me, owed to me and other; open major ones with no due date (no_due), owed by me and owed to me, oldest filed first, at most ${NO_DUE_LIMIT} a side with more counting the rest, and no_due.minor counting the undated minor ones (small follow-ups) a side; every commitment carries its size (major or minor), and overdue and due_today list both sizes; plus counts of every open commitment by direction. Snoozed commitments (surface_on after the date) are left out of all of these and only counted under snoozed, with the next one to surface; once surface_on comes, a commitment counts as due on its due date, else on surface_on. me is the person marked is_user (the person this Bousleh belongs to); pass me to override. With neither, the person on the most open commitments is taken as me, and me.inferred says so.`,
     'meetings: meetings filed in Bousleh on that day (by their held_at), planned or held, with attendees. Bousleh keeps only meetings with prep or notes, not the schedule: read the calendar for the rest of the day and merge. inbox: files waiting for Capture and open items in the ambiguity queue. stale_metrics: metrics in use (instrumented, measured or reviewed) with no reading within their cadence (daily 1 day, weekly 7, monthly 31, quarterly 92; 30 days when they have no cadence). new_findings: Horizon findings filed since the start of the day before. open_bets: ideas that are bets or running (being tried right now: an experiment under way, a build in progress), each with its status, bets first, with hypothesis and kill criteria (a running idea may have neither).',
     'metric_movement: metrics with at least two readings whose last change is not zero, with the latest and previous readings and the delta, most recently read first.',
     `touchpoints_due: the stakeholders, PMs and engineers (not me) whose last touchpoint (the newest held meeting they attended, or the newest object linked about them) is more than ${TOUCHPOINT_DUE_DAYS} days before the date, or who have none; never touched first, then the longest ago.`,
@@ -240,12 +244,14 @@ export const pulseToday = defineOp({
       overdue: PulseCommitmentGroupSchema,
       /** Open and due on the date. */
       due_today: PulseCommitmentGroupSchema,
-      /** Open with no due date, owed by me or to me (not between other people), oldest filed first. */
+      /** Major, open, with no due date, owed by me or to me (not between other people), oldest filed first. */
       no_due: z.object({
         by_me: z.array(PulseUndatedCommitmentSchema),
         to_me: z.array(PulseUndatedCommitmentSchema),
-        /** How many more each side had beyond the ones listed. */
+        /** How many more major ones each side had beyond the ones listed. */
         more: z.object({ by_me: z.number().int().min(0), to_me: z.number().int().min(0) }),
+        /** Nov 20: undated minor commitments (small follow-ups), only counted: "plus 4 small follow-ups". */
+        minor: z.object({ by_me: z.number().int().min(0), to_me: z.number().int().min(0) }),
       }),
       /** Every open commitment in scope that is not snoozed, counted by direction. */
       open: z.object({ by_me: z.number().int().min(0), to_me: z.number().int().min(0), other: z.number().int().min(0) }),
@@ -376,7 +382,7 @@ export const StrataObjectSchema = z.object({
   status: z.string().nullable(),
   altitude: AltitudeSchema,
   scopes: z.array(ScopeSlugSchema),
-  /** True when it needs Wassim now: an open commitment he owes that is overdue, due on the date or has no due date, or any commitment back from a snooze (a follow-up). */
+  /** True when it needs Wassim now: an open commitment he owes that is overdue, due on the date or (a major one only) has no due date, or any commitment back from a snooze (a follow-up). An undated minor commitment never needs him. */
   needs_you: z.boolean(),
   /** When it is updated: its current version's time. */
   updated_at: isoDateTime,
@@ -386,6 +392,8 @@ export const StrataObjectSchema = z.object({
   due: z.iso.date().nullable().optional(),
   /** A commitment back from a snooze: the day it surfaced. Snoozed commitments are not in the strata at all. */
   surface_on: z.iso.date().optional(),
+  /** A commitment's size: major (a deliverable) or minor (a small follow-up). */
+  size: CommitmentSizeSchema.optional(),
   /** A commitment's direction relative to me: owed by me, owed to me, or other. */
   owed: z.enum(['by_me', 'to_me', 'other']).optional(),
   /** A meeting's held_at, as stored (a date or a date-time). */
@@ -413,7 +421,7 @@ const layerCounts = z.object(Object.fromEntries(LAYERS.map((layer) => [layer, z.
 export const contextStrata = defineOp({
   name: 'context.strata',
   description: [
-    'The whole cross-section in one call, for Home: altitude as rows (50000, 10000, 1000, 100) and scopes as columns. Each cell holds the live objects of that scope (child scopes included) at that altitude (commitments snoozed past the date are left out), needs-you first (open commitments owed by me that are overdue, due on the date or undated, and any commitment back from a snooze on or after its surface_on day), then bets, then what is moving (running ideas, active initiatives, planned meetings), then the newest.',
+    'The whole cross-section in one call, for Home: altitude as rows (50000, 10000, 1000, 100) and scopes as columns. Each cell holds the live objects of that scope (child scopes included) at that altitude (commitments snoozed past the date are left out), needs-you first (open commitments owed by me that are overdue, due on the date or, for a major one, undated, and any commitment back from a snooze on or after its surface_on day; an undated minor commitment, a small follow-up, never needs you; each commitment carries its size), then bets, then what is moving (running ideas, active initiatives, planned meetings), then the newest.',
     'Left out, and counted as closed in each cell: done and dropped initiatives, solved and dropped problems, concluded and dropped ideas, done and dropped commitments, dismissed findings. Also left out: objects another object replaces, glossary terms, assets (counted per column instead), dumps, daily notes, growth notes, and meetings held more than 14 days before the date. An object in several scopes appears in each column. A person with no scope of their own is placed in the columns of the objects linked to them, as people.list does.',
     'scopes (slugs) picks the columns in that order; default: every top-level scope, oldest first. per_cell caps each cell (count and more say how many there are). date (default today) decides what is overdue. Read-only.',
   ].join(' '),
@@ -429,7 +437,7 @@ export const contextStrata = defineOp({
   }),
   output: z.object({
     date: z.iso.date(),
-    /** The person marked is_user; null when nobody is, and then needs_you counts any open commitment overdue, due or undated. */
+    /** The person marked is_user; null when nobody is, and then needs_you counts any open commitment overdue, due or (major) undated. */
     me: PersonRefSchema.nullable(),
     columns: z.array(
       z.object({

@@ -35,6 +35,7 @@ import type {
   ItemVM,
   Launcher,
   MeetingVM,
+  MinorVM,
   NeedsVM,
   Pulse,
   Readout,
@@ -76,7 +77,7 @@ export class PromptBook {
 
 // ---------------------------------------------------------------- small pure pieces (tested)
 
-/** How many things need you: the strata's count, else Pulse's commitments owed by me that are late, due or undated. */
+/** How many things need you: the strata's count, else Pulse's commitments owed by me that are late, due or undated (major ones only: undated minor ones never need you). */
 export function needsYouCount(src: Pick<Sources, 'strata' | 'pulse'>): number {
   if (src.strata) return src.strata.totals.needs_you;
   const c = src.pulse?.commitments;
@@ -346,6 +347,11 @@ function needsOf(o: StrataObj, scopeName: string, now: Date): NeedsVM {
   return { eyebrow: `${who} · ${detail}`, title: o.title, scope: scopeName, altitude: o.altitude as Altitude };
 }
 
+/** A minor commitment: a small follow-up, drawn in the cell's folded group. Commitments without a size (older engines) are major. */
+export function isMinor(o: StrataObj): boolean {
+  return o.kind === 'commitment' && o.size === 'minor';
+}
+
 function heatOf(count: number): CellVM['heat'] {
   if (count === 0) return 0;
   if (count <= 2) return 1;
@@ -466,8 +472,16 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
         label: `${label}: nothing yet`,
       };
     }
-    const objs = cell.objects;
-    const firstNeeds = objs.find((o) => o.needs_you);
+    // Minor commitments (small follow-ups) go after everything else, in a folded group; a major one leads when both need you.
+    const minorObjs = cell.objects.filter(isMinor);
+    const objs = cell.objects.filter((o) => !isMinor(o));
+    const firstNeeds = objs.find((o) => o.needs_you) ?? minorObjs.find((o) => o.needs_you);
+    const folded = minorObjs.filter((o) => o !== firstNeeds);
+    const minor: MinorVM | undefined =
+      folded.length === 0 ? undefined : { items: folded.map((o) => itemOf(o, now)), needs: folded.some((o) => o.needs_you) };
+    const fold = minor ? { minor } : {};
+    /** Objects not drawn as rows: the folded follow-ups. */
+    const away = folded.length;
     const strategy = altitude === 50000 && column.strategy ? objs.find((o) => o.id === column.strategy?.id) : undefined;
     const bet = objs.find((o) => o.kind === 'idea' && o.status === 'bet');
     const hasNeeds = firstNeeds !== undefined;
@@ -480,11 +494,12 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
       );
       return {
         ...base,
+        ...fold,
         variant: 'needs',
         hasNeeds,
         needs: needsOf(firstNeeds, column.name, now),
         items: rest.items,
-        more: Math.max(0, cell.count - 1 - rest.drawn),
+        more: Math.max(0, cell.count - 1 - away - rest.drawn),
         prompt: book.add(prompts.pulseClose(firstNeeds.title)),
         label: `${label}: ${firstNeeds.title}`,
       };
@@ -499,6 +514,7 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
       );
       return {
         ...base,
+        ...fold,
         variant: 'strategy',
         hasNeeds,
         strategy: {
@@ -508,7 +524,7 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
           strong: columnVMs.find((c) => c.slug === column.slug)?.tone !== 'muted',
         },
         items: rest.items,
-        more: Math.max(0, cell.count - 1 - rest.drawn),
+        more: Math.max(0, cell.count - 1 - away - rest.drawn),
         prompt: book.add(prompts.shapeStrategy(column.name, strategy.title, strategy.status ?? 'forming')),
         label: `${label}: strategy ${strategy.title}`,
       };
@@ -516,6 +532,7 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
     if (bet) {
       return {
         ...base,
+        ...fold,
         variant: 'bet',
         hasNeeds,
         bet: betOf(bet, cell, column.name, now),
@@ -526,10 +543,11 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
     const rows = itemsOf(objs, cell, now, CELL_ROWS);
     return {
       ...base,
+      ...fold,
       variant: 'filled',
       hasNeeds,
       items: rows.items,
-      more: Math.max(0, cell.count - rows.drawn),
+      more: Math.max(0, cell.count - away - rows.drawn),
       prompt: book.add(prompts.brief(column.name, altitude)),
       label: `${label}: ${cell.count} ${cell.count === 1 ? 'thing' : 'things'}`,
     };

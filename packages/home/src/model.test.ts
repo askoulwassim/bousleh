@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { glyphState } from './glyph.js';
 import { abbreviate, buildViewModel, clockDays, mergeMeetings, needsAltitude, needsYouCount, shortTitle } from './model.js';
+import { renderPage } from './render.js';
 import type { Pulse, Sources, Strata, StrataCell, StrataObj } from './types.js';
 
 /* The pure view model: op outputs in, what Home draws out. Data here is invented for the test. */
@@ -106,7 +107,7 @@ function pulse(over: Partial<Pulse> = {}): Pulse {
     commitments: {
       overdue: group(),
       due_today: group(),
-      no_due: { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 } },
+      no_due: { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 }, minor: { by_me: 0, to_me: 0 } },
       open: { by_me: 2, to_me: 1, other: 0 },
       snoozed: { by_me: 0, to_me: 0, other: 0, next: null },
     },
@@ -155,6 +156,7 @@ describe('small pieces', () => {
       status: 'open',
       altitude: 100,
       surface_on: null,
+      size: 'major',
       due: '2026-10-20',
       scopes: ['quill'],
       owed_by: [],
@@ -236,6 +238,7 @@ describe('buildViewModel', () => {
           altitude: 1000,
           due: '2026-11-06',
           surface_on: null,
+          size: 'major',
           scopes: ['lantern'],
           owed_by: [{ id: 'per_01JBX000000000000000000ME1', name: 'Rowan Vale' }],
           owed_to: [],
@@ -303,6 +306,44 @@ describe('buildViewModel', () => {
     for (const key of keys) expect(vm.prompts[key], key).toBeTruthy();
   });
 
+  it('folds minor commitments into a closed "Small follow-ups" group after the rest, with a major one leading', () => {
+    const src = sources();
+    const s = src.strata as Strata;
+    const minor = (title: string, more: Partial<StrataObj> = {}) =>
+      obj('commitment', title, { altitude: 100, status: 'open', size: 'minor', owed: 'by_me', due: null, scopes: ['quill'], ...more });
+    const ask = minor('Ask Pat about the export');
+    const late = minor('Send Jen the link', { due: '2026-10-22', needs_you: true });
+    const quill100 = s.cells.find((c) => c.scope === 'quill' && c.altitude === 100) as StrataCell;
+    const major = quill100.objects[0] as StrataObj;
+    Object.assign(quill100, cell('quill', 100, [major, late, ask]));
+    s.totals.needs_you = 2;
+    const vm = buildViewModel(src, NOW);
+    const drawn = vm.cells[3]?.[1];
+    // The major commitment leads; both minor ones fold away, and the group says one of them needs you.
+    expect(drawn?.variant).toBe('needs');
+    expect(drawn?.needs?.title).toBe('Answer the seeding questions');
+    expect(drawn?.items).toEqual([]);
+    expect(drawn?.more).toBe(0);
+    expect(drawn?.minor?.items.map((i) => [i.title, i.meta])).toEqual([
+      ['Send Jen the link', 'DUE 22 OCT'],
+      ['Ask Pat about the export', 'NO DATE'],
+    ]);
+    expect(drawn?.minor?.needs).toBe(true);
+    // The needs-you count stays the strata's.
+    expect(vm.hero.needs).toBe(2);
+    const html = renderPage(vm, { mode: 'live', stamp: '09:30', filter: 'all', docsOpen: false, errors: {}, approval: false, done: {} });
+    expect(html).toContain('<details class="minor"><summary class="eb sm t-needs">Small follow-ups (2)</summary>');
+    expect(html).not.toContain('<details class="minor" open');
+
+    // Only minor ones: a late one may lead the cell; the quiet one stays folded.
+    Object.assign(quill100, cell('quill', 100, [late, ask]));
+    const only = buildViewModel(src, NOW).cells[3]?.[1];
+    expect(only?.needs?.title).toBe('Send Jen the link');
+    expect(only?.minor).toEqual({ items: [expect.objectContaining({ title: 'Ask Pat about the export' })], needs: false });
+    // No minor ones: no group.
+    expect(buildViewModel(sources(), NOW).cells[3]?.[1]?.minor).toBeUndefined();
+  });
+
   it('builds launch prompts from the data in view', () => {
     const vm = buildViewModel(sources(), NOW);
     const launch = Object.fromEntries(vm.rows.flatMap((r) => r.launchers).map((l) => [l.mode, l]));
@@ -332,6 +373,7 @@ describe('buildViewModel', () => {
           score: 83,
           why: ['2 days late', 'owed to Peter Trennum, your manager'],
           owed: 'by_me',
+          size: 'major',
           people: [peter],
           when: '2026-10-23',
         },
@@ -344,6 +386,7 @@ describe('buildViewModel', () => {
           score: 63,
           why: ['today at 14:00', 'no prep yet'],
           owed: null,
+          size: null,
           people: [],
           when: '2026-10-25T14:00:00',
         },
@@ -356,6 +399,7 @@ describe('buildViewModel', () => {
           score: 40,
           why: ['follow up with Ian Holt', 'back from snooze today'],
           owed: 'to_me',
+          size: 'major',
           people: [ian],
           when: '2026-10-25',
         },
@@ -400,6 +444,7 @@ describe('buildViewModel', () => {
       altitude: 100 as const,
       due,
       surface_on,
+      size: 'major' as const,
       scopes: ['quill'],
       owed_by: [{ id: meId, name: 'Rowan Vale' }],
       owed_to: [],

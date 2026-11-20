@@ -192,7 +192,16 @@ function moreRow(n: number): string {
   return n > 0 ? `<span class="mono more">+${n} more</span>` : '';
 }
 
+/** A cell, with its small follow-ups folded away beneath it when it has any. */
 function cellHtml(cell: CellVM): string {
+  const button = cellButton(cell);
+  if (!cell.minor) return button;
+  const m = cell.minor;
+  const label = `Small follow-ups (${m.items.length})`;
+  return `<div class="cellw">${button}<details class="minor"><summary class="eb sm${m.needs ? ' t-needs' : ''}">${esc(label)}</summary><span class="minor-l">${m.items.map(item).join('')}</span></details></div>`;
+}
+
+function cellButton(cell: CellVM): string {
   const attrs = `type="button" data-prompt="${esc(cell.prompt)}" aria-label="${esc(cell.label)}"`;
   if (cell.variant === 'void') return `<button class="void" ${attrs}>·</button>`;
   const items = cell.items.map(item).join('') + moreRow(cell.more);

@@ -190,6 +190,7 @@ describe('context.brief', () => {
       expect.objectContaining({
         id: commitment,
         due: '2026-10-28',
+        size: 'major',
         owed_by: [{ id: wassim, name: 'Wassim' }],
         owed_to: [{ id: peter, name: 'Peter' }],
       }),
@@ -440,7 +441,7 @@ describe('pulse.today', () => {
       commitments: {
         overdue: { by_me: [], to_me: [], other: [] },
         due_today: { by_me: [], to_me: [], other: [] },
-        no_due: { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 } },
+        no_due: { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 }, minor: { by_me: 0, to_me: 0 } },
         open: { by_me: 0, to_me: 0, other: 0 },
         snoozed: { by_me: 0, to_me: 0, other: 0, next: null },
       },
@@ -783,6 +784,46 @@ describe('pulse.today', () => {
     expect((await pulse({ date: '2026-10-27' })).focus).toEqual([]);
     const later = await pulse({ date: '2026-11-05' });
     expect(later.focus).toMatchObject([{ id: undated, owed: 'by_me', when: null, why: ['no due date for 16 days'] }]);
+  });
+
+  it('ranks a minor commitment below an equally late major one, and never brings an undated minor one into focus', async () => {
+    const wassim = await deposit('person', 'Wassim', { attrs: { is_user: true } });
+    const peter = await deposit('person', 'Peter');
+    const commit = (title: string, attrs: Record<string, unknown>) =>
+      deposit('commitment', title, {
+        altitude: 1000,
+        attrs,
+        links: [
+          { kind: 'owed_by', to: wassim },
+          { kind: 'owed_to', to: peter },
+        ],
+      });
+    const ask = await commit('Ask Peter about the offsite', { due: '2026-10-23', size: 'minor' });
+    const roadmap = await commit('Finalize the Q1 roadmap', { due: '2026-10-23', size: 'major' });
+    const share = await commit('Share the deck with Jen', { size: 'minor' });
+    const plan = await commit('Write the launch plan', {});
+
+    // Two weeks on, both undated ones have sat long enough, but only the major one is a candidate.
+    const result = await pulse({ date: '2026-11-04' });
+    expect(ids(result.focus)).toEqual([roadmap, ask, plan]);
+    expect(result.focus_more).toBe(0);
+    expect(ids(result.focus)).not.toContain(share);
+    const [major, minor] = result.focus;
+    expect(major).toMatchObject({ size: 'major', why: ['12 days late'] });
+    expect(minor).toMatchObject({ size: 'minor', why: ['12 days late', 'small follow-up'] });
+    expect((major?.score ?? 0) - (minor?.score ?? 0)).toBe(25);
+    // A commitment filed without a size reads as major.
+    expect(result.focus[2]).toMatchObject({ id: plan, size: 'major' });
+
+    // Undated: only the major one is listed; the minor one is counted.
+    expect(ids(result.commitments.no_due.by_me)).toEqual([plan]);
+    expect(result.commitments.no_due.minor).toEqual({ by_me: 1, to_me: 0 });
+    // Overdue lists both sizes, each tagged.
+    expect(result.commitments.overdue.by_me.map((c) => [c.id, c.size])).toEqual([
+      [ask, 'minor'],
+      [roadmap, 'major'],
+    ]);
+    expect(result.commitments.open).toEqual({ by_me: 4, to_me: 0, other: 0 });
   });
 
   it('counts the inbox and the queue', async () => {

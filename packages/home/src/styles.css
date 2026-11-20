@@ -515,6 +515,35 @@ p {
   color: var(--bsl-fg);
   transition: border-color var(--bsl-motion-fast);
 }
+/* A cell with small follow-ups: the cell, then its folded group of minor commitments. */
+.cellw {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.cellw > .cell {
+  flex: 1;
+}
+.minor {
+  border: 1px dashed var(--bsl-line);
+  border-radius: var(--bsl-radius-cell);
+  padding: 6px 12px;
+  min-width: 0;
+}
+.minor > summary {
+  cursor: pointer;
+  color: var(--bsl-dim);
+}
+.minor > summary.t-needs {
+  color: var(--bsl-needs);
+}
+.minor-l {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+}
 .cell.needs {
   border-color: rgba(227, 182, 92, 0.5);
   background: var(--bsl-tint-needs);

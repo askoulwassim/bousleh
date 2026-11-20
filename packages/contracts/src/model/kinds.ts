@@ -46,6 +46,19 @@ export const CONCLUDABLE_IDEA_STATUSES = ['bet', 'running'] as const;
 /** Oct 25 (statuses): problems written before this have no status; they read as `open`. */
 export const PROBLEM_STATUSES = ['open', 'solved', 'dropped'] as const;
 export const COMMITMENT_STATUSES = ['open', 'done', 'dropped'] as const;
+/**
+ * Nov 20: how big a commitment is. major: a real deliverable (ship a release, write or finalize a
+ * doc, a plan, a roadmap, requirements, a report, OKRs). minor: a small follow-up from a call (talk
+ * to, ask, send, share, schedule, read, add someone to a channel). Minor ones get less visibility
+ * in Pulse and Home. Commitments with no size read as major.
+ */
+export const COMMITMENT_SIZES = ['major', 'minor'] as const;
+export type CommitmentSize = (typeof COMMITMENT_SIZES)[number];
+
+/** The size a commitment reads as: its size attr, else major (commitments filed before Nov 20 have none). */
+export function commitmentSize(size: unknown): CommitmentSize {
+  return size === 'minor' ? 'minor' : 'major';
+}
 
 /**
  * Nov 13: a commitment whose `surface_on` is after the day is snoozed, and stays out of Pulse,
@@ -292,13 +305,15 @@ export const KINDS = {
     layer: 'moments',
     prefix: 'cmt',
     description:
-      'Something owed: who owes it and to whom are `owed_by` and `owed_to` links to people. due is when it is due; surface_on snoozes it: it stays out of Pulse, Home and the strata until that day, then shows as due (on its due date if it has one, else on surface_on).',
+      'Something owed: who owes it and to whom are `owed_by` and `owed_to` links to people. due is when it is due; surface_on snoozes it: it stays out of Pulse, Home and the strata until that day, then shows as due (on its due date if it has one, else on surface_on). size is major (a real deliverable: ship a release, write or finalize a doc, plan, roadmap, requirements, report, OKRs; the default) or minor (a small follow-up from a call: talk to, ask, send, share, schedule, read, add someone to a channel); minor ones get less visibility in Pulse and Home.',
     statuses: COMMITMENT_STATUSES,
     defaultStatus: 'open',
     attrs: z.strictObject({
       due: date.optional(),
       /** Nov 13: snoozed until this day. Before it, the commitment is hidden from Pulse, Home and the strata. */
       surface_on: date.optional(),
+      /** Nov 20: major (a deliverable) or minor (a small follow-up). Commitments without it read as major. */
+      size: z.enum(COMMITMENT_SIZES).optional(),
     }),
     scopeRequired: true,
   },

@@ -1,4 +1,4 @@
-import { type Altitude, type CommitmentView, isSnoozed, type Kind } from '@bousleh/contracts';
+import { type Altitude, type CommitmentSize, type CommitmentView, commitmentSize, isSnoozed, type Kind } from '@bousleh/contracts';
 import { OpError } from '../handler.js';
 import type { Store } from './store.js';
 
@@ -14,6 +14,8 @@ export interface CommitmentFilter {
   scope?: string | undefined;
   /** Due on or before this date (YYYY-MM-DD); commitments without a due date are left out. */
   due_before?: string | undefined;
+  /** Only major or only minor ones; a commitment with no size counts as major. */
+  size?: CommitmentSize | undefined;
   /** What to do with commitments snoozed past `as_of`: keep them (default), leave them out, or list only them. */
   snoozed?: 'include' | 'exclude' | 'only' | undefined;
   /** The day `snoozed` is judged on (YYYY-MM-DD). Needed unless snoozed is include. */
@@ -28,6 +30,7 @@ interface CommitmentRow {
   altitude: Altitude;
   due: string | null;
   surface_on: string | null;
+  size: string | null;
 }
 
 /** Refuse an id that isn't an existing person, so a typo doesn't read as "nothing owed". */
@@ -53,6 +56,10 @@ export function listCommitments(store: Store, filter: CommitmentFilter): Commitm
     where.push("json_extract(c.attrs_json, '$.due') IS NOT NULL AND json_extract(c.attrs_json, '$.due') <= ?");
     params.push(filter.due_before);
   }
+  if (filter.size !== undefined) {
+    where.push("COALESCE(json_extract(c.attrs_json, '$.size'), 'major') = ?");
+    params.push(filter.size);
+  }
   for (const kind of ['owed_by', 'owed_to'] as const) {
     const person = filter[kind];
     if (person === undefined) continue;
@@ -63,7 +70,8 @@ export function listCommitments(store: Store, filter: CommitmentFilter): Commitm
   const rows = store.db
     .prepare(
       `SELECT o.id, c.title, c.status, c.altitude, json_extract(c.attrs_json, '$.due') AS due,
-              json_extract(c.attrs_json, '$.surface_on') AS surface_on
+              json_extract(c.attrs_json, '$.surface_on') AS surface_on,
+              json_extract(c.attrs_json, '$.size') AS size
        FROM objects o JOIN current c ON c.object_id = o.id
        WHERE ${where.join(' AND ')}
        ORDER BY due IS NULL, due, o.created_at, o.id`,
@@ -81,7 +89,7 @@ export function listCommitments(store: Store, filter: CommitmentFilter): Commitm
     // Scope membership has its own history (adds and retractions); the store resolves it.
     const scopes = store.scopeSlugsOf(row.id);
     if (inScope !== undefined && !scopes.some((slug) => inScope.has(slug))) continue;
-    views.push({ ...row, scopes, ...peopleOf(store, row.id) });
+    views.push({ ...row, size: commitmentSize(row.size), scopes, ...peopleOf(store, row.id) });
   }
   return views;
 }

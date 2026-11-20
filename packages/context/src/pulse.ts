@@ -88,6 +88,8 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
   const dueToday = group();
   const counts = { by_me: 0, to_me: 0, other: 0 };
   const undated: Record<'by_me' | 'to_me', Output['commitments']['no_due']['by_me']> = { by_me: [], to_me: [] };
+  // Undated minor commitments (small follow-ups) are only counted, so Pulse can say "plus 4 small follow-ups".
+  const undatedMinor = { by_me: 0, to_me: 0 };
   const sided: { commitment: CommitmentView; side: Direction }[] = [];
   for (const commitment of open) {
     const side = direction(commitment, me);
@@ -97,7 +99,9 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
     const due = effectiveDue(commitment.due, commitment.surface_on);
     if (due === null) {
       const filedAt = objects.get(commitment.id)?.created_at;
-      if (side !== 'other' && filedAt) undated[side].push({ ...commitment, filed_at: filedAt });
+      if (side === 'other') continue;
+      if (commitment.size === 'minor') undatedMinor[side] += 1;
+      else if (filedAt) undated[side].push({ ...commitment, filed_at: filedAt });
       continue;
     }
     const late = daysBetween(due, day);
@@ -106,7 +110,7 @@ export const pulseTodayHandler = defineHandler(pulseToday, async (input, h) => {
   }
   for (const side of ['by_me', 'to_me', 'other'] as const) overdue[side].sort((a, b) => b.days_late - a.days_late);
   // No due date: oldest filed first, capped per side.
-  const noDue: Output['commitments']['no_due'] = { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 } };
+  const noDue: Output['commitments']['no_due'] = { by_me: [], to_me: [], more: { by_me: 0, to_me: 0 }, minor: undatedMinor };
   for (const side of ['by_me', 'to_me'] as const) {
     const sorted = undated[side].sort((a, b) => a.filed_at.localeCompare(b.filed_at) || a.id.localeCompare(b.id));
     noDue[side] = sorted.slice(0, NO_DUE_LIMIT);

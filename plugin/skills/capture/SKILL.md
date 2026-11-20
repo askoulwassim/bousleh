@@ -24,7 +24,9 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 **Whose commitment.** A commitment is only something a named person said they will do. Never file as one: a team intent ("we should look at..."), Wassim thinking aloud, Gemini's suggested next steps with no owner, a follow-up another person owns that doesn't come back to Wassim, or a step everyone else in the room does but he doesn't (Nov 17: other PMs send their quarter's highlight and slides; he had just joined and owed neither). A passing remark worth keeping is an `observation`; otherwise leave it out. If you can't tell whether Wassim really owes it, queue it with the reason "is this yours?" rather than filing it as his.
 
-**One piece of work, one commitment.** When several actions are steps toward one deliverable (connect to the bucket, move the flow into code, send the first report), file one commitment for the deliverable and list the steps in its body. Before writing any commitment, `commitments_list` with `owed_by` (and `owed_to`) set to the people on it: if an open one already covers the same work, from this meeting or an earlier one, `vault_link` the new moment to it (`related`) and don't write a second one. Not sure it's the same work: queue it with the existing one as a candidate.
+**Commitment size.** Every new commitment gets attrs `size`: `major` for a real deliverable, `minor` for a quick follow-up from a call. Major: "ship the 2.4 release", "finalize the Q1 roadmap", "write the metering requirements". Minor: "ask Ian about the Zitadel roles", "send Peter the deck link", "add Lisa to the #specdr channel". Pulse and Home give minor ones less room, so when unsure, pick `major`. Wassim can resize one later through Pulse.
+
+**One piece of work, one commitment.** This holds whatever the size: when several actions are steps toward one deliverable (connect to the bucket, move the flow into code, send the first report), file one `major` commitment for the deliverable and list the steps in its body, not a minor commitment per step. Before writing any commitment, `commitments_list` with `owed_by` (and `owed_to`) set to the people on it: if an open one already covers the same work, from this meeting or an earlier one, `vault_link` the new moment to it (`related`) and don't write a second one. Not sure it's the same work: queue it with the existing one as a candidate.
 
 **Kind.** One atom, one object:
 
@@ -35,7 +37,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 | A pain or gap, stated as a problem | `problem` (status `open`, the default) |
 | "What if we...", a possible move | `idea` (status `open`) |
 | "We decided...", "we're going with..." | `decision` (attrs `decided_at`, `reversible`) |
-| "I owe...", "X owes me...", "I'll send..." | `commitment` (attrs `due`), links `owed_by`, `owed_to` |
+| "I owe...", "X owes me...", "I'll send..." | `commitment` (attrs `due`, `size` major or minor; see "Commitment size"), links `owed_by`, `owed_to` |
 | "Remind me in a week if X hasn't...", "check back on this Monday", "don't show me this until..." | `commitment` with attrs `surface_on` (the day to bring it back; see "Snoozed follow-ups"), links `owed_by`, `owed_to` |
 | Feedback he gave one of his PMs, or their growth | `growth_note`, link `about` the person |
 | A fact about a stakeholder (what they care about, how they decide) | `observation`, link `about` the person |

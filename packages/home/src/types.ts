@@ -110,6 +110,13 @@ export interface NeedsVM {
   altitude: Altitude;
 }
 
+/** A cell's small follow-ups: minor commitments, folded away under "Small follow-ups (n)". */
+export interface MinorVM {
+  items: ItemVM[];
+  /** One of them needs you (dated and due, or back from a snooze). */
+  needs: boolean;
+}
+
 export interface BetGroup {
   label: string;
   glyphs: Glyph[];
@@ -140,6 +147,8 @@ export interface CellVM {
   needs?: NeedsVM;
   bet?: BetVM;
   items: ItemVM[];
+  /** Minor commitments (small follow-ups) in the cell, drawn after the rest in a collapsed group. Absent when there are none. */
+  minor?: MinorVM;
   prompt: string;
   label: string;
 }
