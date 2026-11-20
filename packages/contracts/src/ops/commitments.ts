@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { IdSchema, ScopeSlugSchema } from '../model/ids.js';
-import { COMMITMENT_STATUSES } from '../model/kinds.js';
+import { COMMITMENT_SIZES, COMMITMENT_STATUSES } from '../model/kinds.js';
 import { AltitudeSchema } from '../model/layers.js';
 import { defineOp } from './define.js';
 import { WrittenSchema } from './shapes.js';
@@ -13,6 +13,9 @@ export const PersonRefSchema = z.object({
   name: z.string(),
 });
 
+/** major: a real deliverable; minor: a small follow-up. */
+export const CommitmentSizeSchema = z.enum(COMMITMENT_SIZES);
+
 /** One commitment as commitments.list and people.get show it. */
 export const CommitmentViewSchema = z.object({
   id: IdSchema,
@@ -22,6 +25,8 @@ export const CommitmentViewSchema = z.object({
   due: z.iso.date().nullable(),
   /** Snoozed until this day (YYYY-MM-DD): before it, Pulse, Home and the strata leave the commitment out. Null when not snoozed. */
   surface_on: z.iso.date().nullable(),
+  /** major (a deliverable) or minor (a small follow-up). A commitment filed without a size reads as major. */
+  size: CommitmentSizeSchema,
   scopes: z.array(ScopeSlugSchema),
   owed_by: z.array(PersonRefSchema),
   owed_to: z.array(PersonRefSchema),
@@ -31,7 +36,7 @@ export type CommitmentView = z.output<typeof CommitmentViewSchema>;
 export const commitmentsList = defineOp({
   name: 'commitments.list',
   description:
-    'List commitments: things someone owes someone. Defaults to open ones; pass status done, dropped or any for the others. Filter by who owes it (owed_by, a person id), who it is owed to (owed_to, a person id), a scope slug (scopes below it count too), and due_before (a date, YYYY-MM-DD: keeps commitments due on or before that date and leaves out those with no due date). snoozed decides what happens to commitments snoozed past as_of (default today): include them (the default), exclude them, or list only them. Soonest due first; commitments with no due date come last. Each one names who owes it and to whom, and surface_on when it is snoozed.',
+    'List commitments: things someone owes someone. Defaults to open ones; pass status done, dropped or any for the others. Filter by who owes it (owed_by, a person id), who it is owed to (owed_to, a person id), a scope slug (scopes below it count too), and due_before (a date, YYYY-MM-DD: keeps commitments due on or before that date and leaves out those with no due date). snoozed decides what happens to commitments snoozed past as_of (default today): include them (the default), exclude them, or list only them. Soonest due first; commitments with no due date come last. size keeps only major ones (real deliverables) or only minor ones (small follow-ups); a commitment filed without a size counts as major. Each one names who owes it and to whom, its size, and surface_on when it is snoozed.',
   input: z.object({
     status: z.enum([...COMMITMENT_STATUSES, 'any']).default('open'),
     owed_by: IdSchema.optional(),
@@ -39,6 +44,7 @@ export const commitmentsList = defineOp({
     scope: ScopeSlugSchema.optional(),
     due_before: z.iso.date().optional(),
     snoozed: z.enum(['include', 'exclude', 'only']).default('include'),
+    size: CommitmentSizeSchema.optional().describe('Only major (deliverables) or only minor (small follow-ups). Default: both.'),
     as_of: z.iso.date().optional().describe("The day snoozed is judged on, YYYY-MM-DD. Default: today on this machine's clock."),
     limit: z.number().int().min(1).max(200).default(50),
   }),

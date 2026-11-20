@@ -183,6 +183,40 @@ describe('context.strata', () => {
     expect(cell(wide, 'garden', 1000).count).toBe(0);
   });
 
+  it('counts a minor commitment as needing me only once it is dated and due, or back from a snooze', async () => {
+    const me = await deposit('person', 'Me', { attrs: { is_user: true } });
+    const pat = await deposit('person', 'Pat');
+    const mine = (title: string, attrs: Record<string, unknown>) =>
+      deposit('commitment', title, {
+        attrs,
+        links: [
+          { kind: 'owed_by', to: me },
+          { kind: 'owed_to', to: pat },
+        ],
+      });
+    const undatedMinor = await mine('Ask Pat about the export', { size: 'minor' });
+    const lateMinor = await mine('Send Pat the link', { size: 'minor', due: '2026-10-24' });
+    const todayMinor = await mine('Schedule the review', { size: 'minor', due: '2026-10-25' });
+    const laterMinor = await mine('Read the RFC', { size: 'minor', due: '2026-10-30' });
+    const surfacedMinor = await mine('Add Pat to the channel', { size: 'minor', surface_on: '2026-10-25' });
+    const undatedMajor = await mine('Write the requirements', { size: 'major' });
+    const unsized = await mine('Finalize the OKRs', {});
+
+    const result = await strata({ per_cell: 50 });
+    const byId = new Map(cell(result, 'acme', 1000).objects.map((o) => [o.id, o]));
+    expect(byId.get(undatedMinor)).toMatchObject({ size: 'minor', needs_you: false });
+    expect(byId.get(lateMinor)).toMatchObject({ size: 'minor', needs_you: true });
+    expect(byId.get(todayMinor)).toMatchObject({ size: 'minor', needs_you: true });
+    expect(byId.get(laterMinor)).toMatchObject({ size: 'minor', needs_you: false });
+    expect(byId.get(surfacedMinor)).toMatchObject({ size: 'minor', needs_you: true, surface_on: '2026-10-25' });
+    expect(byId.get(undatedMajor)).toMatchObject({ size: 'major', needs_you: true });
+    // Filed without a size: major.
+    expect(byId.get(unsized)).toMatchObject({ size: 'major', needs_you: true });
+    expect(result.totals.needs_you).toBe(5);
+    // Only commitments carry a size.
+    expect(byId.get(pat)?.size).toBeUndefined();
+  });
+
   it('leaves out closed, replaced and old objects, counting the closed ones', async () => {
     await deposit('initiative', 'Done initiative', { status: 'done' });
     await deposit('problem', 'Solved problem', { status: 'solved' });

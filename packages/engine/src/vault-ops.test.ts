@@ -241,6 +241,7 @@ describe('commitments', () => {
       altitude: 100,
       due: '2026-10-28',
       surface_on: null,
+      size: 'major',
       scopes: ['bousleh'],
       owed_by: [{ id: wassim, name: 'Wassim' }],
       owed_to: [{ id: peter, name: 'Peter' }],
@@ -261,6 +262,50 @@ describe('commitments', () => {
     expect(await list({ due_before: '2026-10-27' })).toEqual([]);
     expect(await list({ status: 'any', due_before: '2026-10-31' })).toEqual([old, deck]);
     expect(await list({ limit: 1 })).toEqual([deck]);
+  });
+
+  it('gives each commitment a size, major by default, and filters by it', async () => {
+    const { wassim, peter, deck, intro, spec } = await setup();
+    const ask = await write({
+      kind: 'commitment',
+      title: 'Ask Peter about the offsite',
+      altitude: 100,
+      attrs: { size: 'minor', due: '2026-10-30' },
+      links: [
+        { kind: 'owed_by', to: wassim },
+        { kind: 'owed_to', to: peter },
+      ],
+    });
+    const roadmap = await write({ kind: 'commitment', title: 'Finalize the roadmap', altitude: 100, attrs: { size: 'major' } });
+    const listed = ok(await run('commitments.list', {}));
+    expect(listed.commitments.map((c: { id: string; size: string }) => [c.id, c.size])).toEqual([
+      [deck, 'major'],
+      [ask, 'minor'],
+      [spec, 'major'],
+      [intro, 'major'],
+      [roadmap, 'major'],
+    ]);
+    const list = async (input: Record<string, unknown>) => ids(ok(await run('commitments.list', input)));
+    expect(await list({ size: 'minor' })).toEqual([ask]);
+    expect(await list({ size: 'major' })).toEqual([deck, spec, intro, roadmap]);
+    expect(await list({ size: 'minor', owed_by: wassim })).toEqual([ask]);
+    expect(failed(await run('commitments.list', { size: 'huge' })).code).toBe('invalid_input');
+
+    // The size is checked on write, and can be changed with a new version.
+    const huge = await run('deposits.write', {
+      kind: 'commitment',
+      title: 'Too big',
+      altitude: 100,
+      scopes: ['bousleh'],
+      attrs: { size: 'huge' },
+    });
+    expect(huge).toMatchObject({ status: 'error', code: 'invalid_input', issues: [expect.objectContaining({ path: 'attrs.size' })] });
+    expect(failed(await run('vault.supersede', { id: deck, attrs: { size: 'huge' } })).code).toBe('invalid_input');
+    ok(await run('vault.supersede', { id: deck, attrs: { size: 'minor' } }));
+    expect(await list({ size: 'minor' })).toEqual([deck, ask]);
+    // people.get shows the size too.
+    const profile = ok(await run('people.get', { id: wassim }));
+    expect(profile.commitments.owes.find((c: { id: string }) => c.id === deck)).toMatchObject({ size: 'minor' });
   });
 
   it('follows retracted links', async () => {
