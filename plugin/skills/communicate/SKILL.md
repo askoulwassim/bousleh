@@ -13,7 +13,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `context_brief` (context.brief)
 - Writes: `assets_add` (assets.add) to register every Doc, deck or page you produce
-- Added, read-only: `vault_search` (vault.search) to find the object or person the message is about; `assets_list` (assets.list) to find the doc or deck that already exists for it; `scopes_list` (scopes.list) for scope slugs
+- Added, read-only: `vault_search` (vault.search) to find the object or person the message is about; `vault_get` (vault.get) to read a decision in full (the Product Weekly rules); `assets_list` (assets.list) to find the doc or deck that already exists for it; `scopes_list` (scopes.list) for scope slugs
 
 `context_brief(focus?, scopes?, altitude?, ids?)` returns anchors, problems, ideas, decisions, metrics, people, commitments, evidence and assets (the Docs, decks, whiteboards and other artifacts that document them, with their urls) around a focus at an altitude.
 
@@ -44,6 +44,15 @@ If one message goes to a mixed room, pitch it at the highest altitude present an
 5. Produce it, then read back the headline and the one ask in a sentence each.
 
 If Wassim makes a new decision or commitment while drafting, hand it to Capture. Once a strategy has been shared, Shape moves it to `communicated`.
+
+## The Product Weekly
+
+Wassim's weekly email to Lisa, Peter, the exec team, the other PMs, David and Yi. Its format and rules came from his pushbacks on issue #1 (Nov 20), and he asked never to repeat them. Before drafting an issue:
+
+1. Load the rules: `vault_search` "Product Weekly" with `kinds: [decision]` and read the newest decision with `vault_get`; also read the playbook `claude/product-weekly-playbook.md` in the Bousleh Claude Project when the Projects tool is available. The playbook holds issue #1 as approved (use it as the template) and the carry-over items for the next issue. If neither can be read, say so before drafting.
+2. Draft only from what Wassim lists, plus the playbook's carry-over. Offer anything else once, as a suggestion, outside the draft.
+3. Before showing the draft, check it line by line against every rule in the decision and the playbook, and fix what fails. The ones missed on issue #1: pitched below the most senior reader (versions, internal jargon), a current-state gap that reads as alarming, an overclaim ("fully aligned") or a date he didn't give, items he didn't ask for, a sign-off that doesn't match the calendar, and a missing thank-you (ask him who helped).
+4. When he pushes back on a new point, add it to the playbook so the next issue starts from it, and hand the new rule to Capture to file against the decision.
 
 ## Rules
 
