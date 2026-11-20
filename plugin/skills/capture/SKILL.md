@@ -13,13 +13,18 @@ Tools on the Bousleh MCP server (op names in brackets):
 
 - Reads: `inbox_list` (inbox.list), `inbox_take` (inbox.take), `vault_search` (vault.search), `signals_patterns` (signals.patterns) for the signal tags already in use
 - Writes: `deposits_write` (deposits.write), `queue_add` (queue.add), `queue_resolve` (queue.resolve), `vault_link` (vault.link), `inbox_settle` (inbox.settle), `assets_add` (assets.add) for links to artifacts
-- Added, read-only: `scopes_list` (scopes.list) for scope slugs, `queue_list` (queue.list) to clear the queue, `vault_get` (vault.get) to check a candidate
+- Added, read-only: `scopes_list` (scopes.list) for scope slugs, `queue_list` (queue.list) to clear the queue, `vault_get` (vault.get) to check a candidate, `commitments_list` (commitments.list) to find open commitments a new one repeats or a meeting resolved
+- Added, write: `commitments_close` (commitments.close) with `done` only, for a commitment a filed meeting plainly shows was delivered (see "Commitments a meeting resolved")
 - Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox; `vault_supersede` (vault.supersede) for three things only: moving a planned meeting to `held` once it has happened (see "Meetings"), adding an email address to a person who exists (see "People's emails"), and giving a person filed by first name their full name (see "People's full names").
 - Google Drive connector (your Claude account's Drive): search the folder, read each file, and trash it after `inbox_drop` succeeds.
 
 ## What to judge
 
 **Relevance first.** File only what Wassim is involved in, directly or indirectly, or what affects his work. Skip the rest; it is noise on Home. A commitment between two other people (one colleague owes another a screenshot), an attendee who only appears because they were in the room, a team update on work none of his scopes touch: leave them out. When a meeting has nothing for him at all (an HR session, another team's standup), settle the file `skipped` and write nothing. When unsure whether something touches his work, file it; the Friday tune-up looks for noise.
+
+**Whose commitment.** A commitment is only something a named person said they will do. Never file as one: a team intent ("we should look at..."), Wassim thinking aloud, Gemini's suggested next steps with no owner, a follow-up another person owns that doesn't come back to Wassim, or a step everyone else in the room does but he doesn't (Nov 17: other PMs send their quarter's highlight and slides; he had just joined and owed neither). A passing remark worth keeping is an `observation`; otherwise leave it out. If you can't tell whether Wassim really owes it, queue it with the reason "is this yours?" rather than filing it as his.
+
+**One piece of work, one commitment.** When several actions are steps toward one deliverable (connect to the bucket, move the flow into code, send the first report), file one commitment for the deliverable and list the steps in its body. Before writing any commitment, `commitments_list` with `owed_by` (and `owed_to`) set to the people on it: if an open one already covers the same work, from this meeting or an earlier one, `vault_link` the new moment to it (`related`) and don't write a second one. Not sure it's the same work: queue it with the existing one as a candidate.
 
 **Kind.** One atom, one object:
 
@@ -34,7 +39,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 | "Remind me in a week if X hasn't...", "check back on this Monday", "don't show me this until..." | `commitment` with attrs `surface_on` (the day to bring it back; see "Snoozed follow-ups"), links `owed_by`, `owed_to` |
 | Feedback he gave one of his PMs, or their growth | `growth_note`, link `about` the person |
 | A fact about a stakeholder (what they care about, how they decide) | `observation`, link `about` the person |
-| Someone new | `person` (attrs `role`, `org`, `emails` when an address is known); people may have no scope. The person this Bousleh belongs to is marked `is_user: true`, once |
+| Someone new | `person` (attrs `role`, `org`, `emails` when an address is known); people may have no scope. `role` is exactly one of `stakeholder`, `pm`, `engineer`, `analyst`, `other`, lower-case, or left out: a job title ("CEO", "Analyst", "head of sales") is refused by the engine, so put it in the body. The person this Bousleh belongs to is marked `is_user: true`, once |
 | "X reports to Y", "Y is X's manager" | a `reports_to` link from X to Y (both people; deposit either one first if new) |
 | A company word or acronym and what it means | `term` (attrs `aliases`, `definition`), usually at `50000` in the company's scope |
 | A meeting coming up ("I'm seeing Peter Thursday about...") | `meeting` with status `planned`, `held_at` the day or time it will happen, `attended_by` links |
@@ -77,13 +82,22 @@ Call `queue_add` rather than guess when the kind, altitude or scope is unclear, 
 - New ideas are written `open`, or `running` when he says it is already being tried (an experiment under way, a build in progress); never `running` on a guess.
 - Statuses are `open`, `running`, `bet`, `parked`, `dropped`, `concluded`. There is no won or lost.
 - A bet ends only through a `decision`: deposit the decision with a `concludes` link to the idea (or `vault_link` decision → idea if the decision exists). The engine moves the idea to `concluded`. Never set `concluded` yourself. Only a `bet` or a `running` idea can be concluded; if it is neither, queue the decision.
-- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", a person's email, under "People's emails", and a person's full name, under "People's full names"). A request to park, drop, start or reword an idea, a problem said to be solved or no longer worth solving, or a commitment to close or snooze, goes in your read-back as "for Shape" or "for Pulse" (starting an existing idea and marking a problem solved or dropped are Shape's). In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
+- Capture doesn't change existing objects (the exceptions: a planned meeting that has happened, under "Meetings", a person's email, under "People's emails", a person's full name, under "People's full names", and a commitment a meeting plainly delivered, under "Commitments a meeting resolved"). A request to park, drop, start or reword an idea, a problem said to be solved or no longer worth solving, or a commitment to close or snooze, goes in your read-back as "for Shape" or "for Pulse" (starting an existing idea and marking a problem solved or dropped are Shape's). In an unattended run, deposit it as an `observation` linked `related` to the object so it isn't lost.
 
 ## Meetings
 
 - A meeting that happened: `meeting` (status `held`, the default), `held_at`, `attended_by` links.
 - A meeting mentioned ahead of time: `meeting` with status `planned` and `held_at` set to when it will be. Counsel keeps its prep in the body of the same planned meeting.
 - When a transcript or debrief arrives for a meeting that already exists as `planned` (`vault_search` with `kinds: [meeting]`, then check its status and `held_at`), don't write a second meeting: `vault_supersede` it with status `held` (and the real `held_at` if it moved), keeping the prep body, then file the atoms with `from_moment` → that meeting. If you aren't sure it's the same meeting, write a new one and queue the pair.
+
+### Commitments a meeting resolved
+
+After filing a held meeting, `commitments_list` (open) with `owed_by`, then `owed_to`, set to each attendee, Wassim included. For each one the notes resolve:
+
+- The notes say plainly it was done (asked and answered, sent, granted, delivered): `commitments_close` with `done` and a note starting "Closed by Capture:" that names the meeting and day and says what happened ("Closed by Capture: Ian added Wassim as a Zitadel org owner at their Nov 17 1:1.").
+- It only looks resolved, or the notes say it no longer applies: don't close it. Say it in the read-back "for Pulse"; in an unattended run, deposit an `observation` linked `related` to the commitment, titled "Looks resolved by <meeting>", so Pulse can close or drop it.
+
+Never close a commitment as `dropped`, and never close one the notes only mention.
 
 ## Flow: something said in this conversation
 

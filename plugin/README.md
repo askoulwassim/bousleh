@@ -44,6 +44,7 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 | Capture | `inbox.sweep` (write) | Only when Wassim asks for a fresh sweep in a session; the Hourly inbox sweep already runs it. |
 | Capture | `queue.list` (read) | Needed to clear the queue with `queue.resolve`. |
 | Capture | `vault.get` (read) | To check a candidate before linking or queueing. |
+| Capture | `commitments.list` (read), `commitments.close` (write, `done` only) | To find an open commitment a new one repeats, and to close one a filed meeting plainly shows was delivered (Nov 20). |
 | Capture, Counsel, Shape, Workshop, Communicate, Coach, Horizon | `scopes.list` (read) | Every deposit and asset needs scope slugs. |
 | Counsel, Shape, Workshop, Communicate, Coach | `vault.search` (read) | To find an id by name; `people.get` itself says to. |
 | Shape | `vault.get` (read) | To read the object being shaped and its history. |
@@ -60,7 +61,7 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 Ops or data a mode needs that don't exist yet. Not invented here.
 
 1. ~~Linking existing objects outside Capture.~~ Resolved Oct 25: Shape, Workshop and Horizon have `vault.link`.
-2. **Capture can't change existing objects.** No `vault.supersede` (except to move a planned meeting to held, or to add a person's email) or `commitments.close` / `commitments.snooze` in its row, so "park that idea", "that's done" or "snooze that" said in a dump is read back as "for Shape" or "for Pulse" (or deposited as a linked observation in unattended runs).
+2. **Capture can't change existing objects.** No `vault.supersede` (except to move a planned meeting to held, add a person's email or full name) or `commitments.snooze` in its row, and `commitments.close` only as `done` for a commitment a filed meeting plainly delivered (Nov 20), so "park that idea", "that's done" or "snooze that" said in a dump is read back as "for Shape" or "for Pulse" (or deposited as a linked observation in unattended runs).
 3. ~~Coach has no list of people by role.~~ Resolved Oct 25: `people.list` filters by role, scope and org, with each person's manager, open commitments and last touchpoint.
 4. ~~Pulse has no metric history.~~ Resolved Oct 25: `metrics.history` returns every effective reading; `metrics.list` gives each metric's last change, and `pulse.today` has `metric_movement` (and `touchpoints_due`).
 5. **Horizon scan files cross two skills.** Reading and settling inbox files are Capture's ops; filing findings (`watch.file`) is Horizon's. The skills hand off: Capture takes the file, Horizon files it, Capture settles.
