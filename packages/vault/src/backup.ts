@@ -1,10 +1,11 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { cpSync, existsSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, sep } from 'node:path';
 import { vaultBackup } from '@bousleh/contracts';
 import type Database from 'better-sqlite3';
 import { defineHandler } from './handler.js';
 import { VAULT_DB } from './home.js';
 import { STAGING_DIR } from './store/files.js';
+import { makePrivateDir, makePrivateTree, tightenDir } from './store/private.js';
 
 /*
  * Backups on the same disk: dated snapshot folders next to your data (~/.bousleh-backups). Not
@@ -12,7 +13,8 @@ import { STAGING_DIR } from './store/files.js';
  * written to `<stamp>.partial` and renamed when complete, so only whole snapshots count.
  * The database goes first (SQLite's online backup, consistent even while another process writes),
  * then the files: version files never change once written, so every file the database copy points
- * at is already on disk when the copy runs.
+ * at is already on disk when the copy runs. The backups folder and every snapshot are readable only
+ * by your account: folders 0700, files 0600, whatever the modes in your data home were.
  */
 
 const PARTIAL = '.partial';
@@ -72,12 +74,13 @@ export async function takeSnapshot(
   at: Date,
   keep: number,
 ): Promise<{ path: string; files: number; bytes: number; pruned: string[] }> {
-  mkdirSync(dir, { recursive: true });
+  makePrivateDir(dir);
+  tightenDir(dir);
   let name = snapshotName(at);
   for (let n = 2; existsSync(join(dir, name)); n++) name = `${snapshotName(at)}-${n}`;
   const partial = join(dir, `${name}${PARTIAL}`);
   rmSync(partial, { recursive: true, force: true });
-  mkdirSync(partial, { recursive: true });
+  makePrivateDir(partial);
   try {
     await db.backup(join(partial, VAULT_DB));
     cpSync(home, partial, {
@@ -88,6 +91,7 @@ export async function takeSnapshot(
         return !SKIP.has(rel.split(sep)[0] ?? '');
       },
     });
+    makePrivateTree(partial);
   } catch (e) {
     rmSync(partial, { recursive: true, force: true });
     throw e;
