@@ -4,7 +4,7 @@ The choices Bousleh is built on, and why. `AGENTS.md` has the rules that follow 
 
 | Area | Choice |
 | --- | --- |
-| Code | A TypeScript monorepo, `bousleh`, one package per module, AGENTS.md (no CLAUDE.md) |
+| Code | A TypeScript monorepo, `bousleh`, one package per module, AGENTS.md as the guide for agents, with a one-line CLAUDE.md that imports it |
 | Repo location | Anywhere. A clone inside a folder that syncs to iCloud (such as Documents) keeps the `.nosync` folder name, so node_modules and build output stay out of iCloud |
 | Toolchain | pnpm workspaces, TypeScript, Biome, Vitest, zod 4, better-sqlite3, `@modelcontextprotocol/sdk`, Node 22; esbuild bundles Home into one page |
 | Storage | SQLite for structure, markdown for long-form, linked by id |
