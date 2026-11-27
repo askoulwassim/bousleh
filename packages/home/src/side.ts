@@ -276,8 +276,12 @@ function dictate(): void {
     return;
   }
   app.dictTarget = 'ask';
+  app.dictRefused = null;
   d.start().catch((err: { code?: string }) => {
-    if (err?.code === 'not_granted' || err?.code === 'unavailable') app.caps.dictation = null;
+    if (err?.code === 'not_granted') {
+      app.dictRefused = 'not_granted';
+      app.caps.dictation = null;
+    } else app.dictRefused = 'unavailable';
     app.schedule();
   });
 }

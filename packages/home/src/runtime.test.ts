@@ -378,3 +378,20 @@ describe('Health, the run log and first launch', () => {
     expect(html).toContain('data-action="first-continue">Open Home<');
   });
 });
+
+describe('dictation note in Capture', async () => {
+  const { dictationNote } = await import('./app.js');
+  it('says what to do when the window offers no dictation', () => {
+    expect(dictationNote(false, null)).toContain("isn't offered in this window");
+    expect(dictationNote(false, null)).toContain('Globe (fn) key twice');
+  });
+  it('points at the macOS microphone setting after a no', () => {
+    expect(dictationNote(false, 'not_granted')).toContain('Privacy & Security → Microphone');
+  });
+  it('offers a retry when a start failed', () => {
+    expect(dictationNote(true, 'unavailable')).toContain('try again');
+  });
+  it('says nothing while dictation is available', () => {
+    expect(dictationNote(true, null)).toBe('');
+  });
+});

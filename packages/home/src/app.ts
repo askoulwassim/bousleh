@@ -29,9 +29,24 @@ export const app = {
   askOff: false,
   /** Where dictated words go while dictation runs: the Ask box or the Capture box. */
   dictTarget: null as 'ask' | 'capture' | null,
+  /** Why the last dictation start failed, if it did: shown in Capture with what to do. */
+  dictRefused: null as DictRefusal,
   schedule: (): void => {},
   toast: (_text: string): void => {},
 };
+
+/** A dictation start the window refused: the person said no (or macOS keeps the microphone off), or it couldn't start. */
+export type DictRefusal = 'not_granted' | 'unavailable' | null;
+
+/** What Capture says when it can't take dictation, and the way to talk anyway (macOS's own dictation works in any text box). */
+export function dictationNote(offered: boolean, refused: DictRefusal): string {
+  const mac = "or press the Globe (fn) key twice for your Mac's own dictation";
+  if (refused === 'not_granted')
+    return `The microphone is off for Bousleh Home: turn it on in System Settings → Privacy & Security → Microphone, then reopen Home. Meanwhile type it, ${mac}.`;
+  if (refused === 'unavailable') return `Dictation didn't start: press Dictate to try again, type it, ${mac}.`;
+  if (!offered) return `Dictation isn't offered in this window: type it, ${mac}.`;
+  return '';
+}
 
 /** Work out what this view can do from the facts, and the footer's note for the installed app. */
 export function refreshReach(): void {
