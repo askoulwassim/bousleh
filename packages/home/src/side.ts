@@ -22,7 +22,7 @@ import {
 import type { ChildProcess, SampleError, SampleTool } from './platform.js';
 import { prompts } from './prompts.js';
 import { whereTag } from './render.js';
-import { COMMANDS, elapsed, type RunKind, runSpec, SETUP_COMMAND, scriptLine, splitLines, tuneLines } from './runs.js';
+import { COMMANDS, elapsed, privacyHint, type RunKind, runSpec, SETUP_COMMAND, scriptLine, splitLines, tuneLines } from './runs.js';
 import { unwrapBousleh } from './sources.js';
 
 /*
@@ -338,6 +338,8 @@ export function startRun(kind: RunKind): void {
     if (r.status !== 'running') return;
     if (out.trim()) push(r, out, tune);
     if (err.trim()) push(r, err, false);
+    const hint = status === 'failed' && !r.stopping ? privacyHint(r.lines, repo) : null;
+    if (hint) r.lines.push({ t: stamp(), text: hint.text, tone: hint.tone });
     r.status = r.stopping ? 'stopped' : status;
     r.code = code;
     r.ended = Date.now();

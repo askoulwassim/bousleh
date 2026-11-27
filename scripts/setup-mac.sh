@@ -35,6 +35,18 @@ DESKTOP_CONFIG="${BOUSLEH_DESKTOP_CONFIG:-$HOME/Library/Application Support/Clau
 APP_JSON="${BOUSLEH_APP_JSON:-$HOME/.bousleh/app.json}"
 LEFT=()
 
+# The folder macOS guards per app that holds this repo (Documents, Desktop, Downloads, iCloud Drive), if any.
+# Home, installed as an app, is its own app to macOS: it can run Tune and the checks here only once that
+# folder is allowed for it.
+GUARDED=""
+case "$REPO/" in
+  "$HOME/Documents/"*) GUARDED="Documents" ;;
+  "$HOME/Desktop/"*) GUARDED="Desktop" ;;
+  "$HOME/Downloads/"*) GUARDED="Downloads" ;;
+  "$HOME/Library/Mobile Documents/"*) GUARDED="iCloud Drive" ;;
+esac
+GUARDED_NOTE="Home's Tune and Health run in this repo, and macOS guards your $GUARDED folder per app: allow Bousleh Home in System Settings > Privacy & Security > Files & Folders (or Full Disk Access), or keep the repo outside Documents, Desktop and Downloads."
+
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok() { printf '  ✓ %s\n' "$*"; }
 note() { printf '  ! %s\n' "$*"; }
@@ -71,6 +83,7 @@ if (( CHECK )); then
     echo "  Claude Code: the claude command isn't installed"
   fi
   if [[ -f "$REPO/packages/home/dist/home.html" ]]; then echo "  Home page: built (packages/home/dist/home.html); publish it with docs/home.md"; else echo "  Home page: not built yet (packages/home/dist/home.html is missing; run this script)"; fi
+  if [[ -n "$GUARDED" ]]; then echo "  ! $GUARDED_NOTE"; fi
   if [[ -f "$APP_JSON" ]]; then echo "  Home app: $APP_JSON points at $(node -p 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).repo' "$APP_JSON" 2>/dev/null || echo 'an unreadable path')"; else echo "  Home app: $APP_JSON not written yet (run this script without --check)"; fi
   if [[ -d "$DATA" ]]; then echo "  Data folder: $DATA ($(find "$DATA" -type f | wc -l | tr -d ' ') files, vault.db $([[ -f "$DATA/vault.db" ]] && echo present || echo absent))"; else echo "  Data folder: $DATA (not created yet)"; fi
   if [[ -d "$DATA-backups" ]]; then echo "  Backups: $(ls "$DATA-backups" | wc -l | tr -d ' ') snapshots in $DATA-backups"; else echo "  Backups: none yet"; fi
@@ -197,6 +210,7 @@ mkdir -p "$(dirname "$APP_JSON")"
   fs.writeFileSync(file, `${JSON.stringify({ repo, updated: new Date().toISOString() }, null, 2)}\n`);
 ' "$APP_JSON" "$REPO"
 ok "Home knows where this repo is: $APP_JSON"
+if [[ -n "$GUARDED" ]]; then note "$GUARDED_NOTE"; LEFT+=("$GUARDED_NOTE"); fi
 ok "daily backups go to ${DATA}-backups (the newest 14 are kept)"
 
 SERVER_JSON="$("$NODE" -e '

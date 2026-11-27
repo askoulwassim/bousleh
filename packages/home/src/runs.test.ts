@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { COMMANDS, elapsed, plainText, readAppJson, runSpec, scriptLine, splitLines, TUNE_COMMAND, tuneLines } from './runs.js';
+import {
+  COMMANDS,
+  elapsed,
+  plainText,
+  privacyHint,
+  protectedFolder,
+  readAppJson,
+  runSpec,
+  scriptLine,
+  splitLines,
+  TUNE_COMMAND,
+  tuneLines,
+} from './runs.js';
 
 /* The fixed runs on this Mac: the commands, where they run, and reading what they print. */
 
@@ -86,5 +98,36 @@ describe('streamed output', () => {
   it('says how long a run has gone on', () => {
     expect(elapsed(113_400)).toBe('1:53');
     expect(elapsed(-5)).toBe('0:00');
+  });
+});
+
+describe('macOS privacy refusals', () => {
+  const refused = [
+    { text: '$ scripts/setup-mac.sh --check' },
+    { text: 'shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted' },
+    { text: 'bash: scripts/setup-mac.sh: Operation not permitted' },
+  ];
+
+  it('names the guarded folder the repo sits in', () => {
+    expect(protectedFolder('/Users/alex/Documents/Claude/Projects/Bousleh/bousleh.nosync')).toBe('Documents');
+    expect(protectedFolder('/Users/alex/Desktop/bousleh')).toBe('Desktop');
+    expect(protectedFolder('/Users/alex/Downloads')).toBe('Downloads');
+    expect(protectedFolder('/Users/alex/Library/Mobile Documents/com~apple~CloudDocs/bousleh')).toBe('iCloud Drive');
+    expect(protectedFolder('/Users/alex/Code/bousleh')).toBeNull();
+    expect(protectedFolder('/Users/alex/DocumentsOld/bousleh')).toBeNull();
+    expect(protectedFolder(null)).toBeNull();
+  });
+
+  it('says what to allow when macOS refused the run', () => {
+    const hint = privacyHint(refused, '/Users/alex/Documents/bousleh');
+    expect(hint?.tone).toBe('needs');
+    expect(hint?.text).toContain('your Documents folder, where the repo is');
+    expect(hint?.text).toContain('turn on Documents Folder for Bousleh Home');
+    expect(hint?.text).toContain('Full Disk Access');
+    expect(privacyHint(refused, '/Users/alex/Code/bousleh')?.text).toContain('out of the repo folder');
+  });
+
+  it('stays quiet when nothing was refused', () => {
+    expect(privacyHint([{ text: 'bash: pnpm: command not found' }], '/Users/alex/Documents/bousleh')).toBeNull();
   });
 });
