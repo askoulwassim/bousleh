@@ -35,10 +35,10 @@ It's safe to rerun: it replaces its own Claude Desktop entry rather than adding 
 
 ## Then (about 3 minutes)
 
-1. The script opens Claude's Code tab on your clone with "Finish setting up Bousleh from docs/finish-setup.md." typed in. Press Enter. It publishes Home and creates or updates the four scheduled tasks from `docs/scheduled-tasks.md` (the Hourly inbox sweep and the Friday Bousleh tune-up on this Mac, the Weekly Horizon scan and the Hourly Meet notes mirror in the cloud), then lists what's left. Same steps every time: rerun the script after every `git pull` and it brings everything back in line. If Claude didn't open, open the Code tab on this folder and say it yourself.
+1. The script opens Claude's Code tab on your clone with "Finish setting up Bousleh from docs/finish-setup.md." typed in. Press Enter. On a new Mac it first asks who you are ("Bousleh: set me up"); then it publishes Home and creates or updates the four scheduled tasks from `docs/scheduled-tasks.md` (the Hourly inbox sweep and the Friday Bousleh tune-up on this Mac, the Weekly Horizon scan and the Hourly Meet notes mirror in the cloud), then lists what's left. Same steps every time: rerun the script after every `git pull` and it brings everything back in line. If Claude didn't open, open the Code tab on this folder and say it yourself.
 2. When it's done, quit Claude Desktop (Cmd-Q) and open it again.
 3. Once per Claude account, add the plugin from GitHub: in Claude Desktop, **Customize > Plugins > Add > Add marketplace > Add from a repository**, enter `askoulwassim/bousleh`, then add **Bousleh**. That brings the nine skills, Drop included, to Desktop chat and the web, and they update from GitHub. If that option is missing or the private repo can't be reached from this account, upload `dist/bousleh.plugin` there instead. Check on the phone that Drop is listed; if it isn't, add Drop on its own as a skill.
-4. In a Claude Desktop chat, say: "Bousleh: set me up." One question at a time, it files who you are (your name, role and work emails, so your calendar matches), your first two or three scopes with one line of strategy each, and a starter watch list per scope. It ends with what is left for you, such as the two Drive folders ("Bousleh Inbox" and "Bousleh", at the top of My Drive). Saying it again skips what is done.
+4. Already done by step 1 on a new Mac; to add more later, in a Claude Desktop chat, say: "Bousleh: set me up." One question at a time, it files who you are (your name, role and work emails, so your calendar matches), your first two or three scopes with one line of strategy each, and a starter watch list per scope. It ends with what is left for you, such as the two Drive folders ("Bousleh Inbox" and "Bousleh", at the top of My Drive). Saying it again skips what is done.
 5. Open Home once in Claude Desktop, so it saves its first snapshot for the phone. To make it an app, press Install as app in its footer, then allow what you want on its first screen (see docs/home.md).
 6. Phone test: in the Claude app, say "Drop this: test from my phone." Then, in Claude Desktop on the Mac: "Process my Bousleh inbox." The note should be filed (or skipped), and gone from Drive's "Bousleh Inbox".
 
@@ -49,3 +49,8 @@ The MCP server snapshots your data once a day to `~/.bousleh-backups/<date-time>
 ## The work Mac
 
 Same steps, with the work Claude account and the work Google Drive connected to it. Work captures go to that Drive's own "Bousleh Inbox" (Drop creates it on first use), and work data stays on the work Mac.
+
+Two things to know on a work Mac:
+
+- **Pull requests from the Friday tune-up are public** when your clone's remote is a public repo. Tune only opens one when it has a change to Bousleh itself, but its description is written from that week's activity, so it can mention work. On a work Mac, either leave `gh` signed out there (the tune-up then puts its proposals in its report instead of opening a pull request), or point the clone at a private fork.
+- **The plugin** on the work Claude account comes from GitHub, so that account needs to reach this repo: fine once the repo is public, or add it from your fork.
