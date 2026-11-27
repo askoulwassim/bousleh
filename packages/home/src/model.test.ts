@@ -67,7 +67,7 @@ function strata(): Strata {
   });
   return {
     date: '2026-10-25',
-    me: { id: 'per_01JBX000000000000000000ME1', name: 'Rowan Vale' },
+    me: { id: 'per_01JBX000000000000000000ME1', name: 'Alex Rivera' },
     columns: [
       {
         slug: 'lantern',
@@ -103,7 +103,7 @@ function pulse(over: Partial<Pulse> = {}): Pulse {
   return {
     date: '2026-10-25',
     scopes: [],
-    me: { id: 'per_01JBX000000000000000000ME1', name: 'Rowan Vale', inferred: false },
+    me: { id: 'per_01JBX000000000000000000ME1', name: 'Alex Rivera', inferred: false },
     commitments: {
       overdue: group(),
       due_today: group(),
@@ -182,7 +182,7 @@ describe('small pieces', () => {
   });
 
   it('abbreviates scopes and shortens meeting titles', () => {
-    expect(['specdr', 'perfect-placement', 'ai-anvil', 'bousleh', 'pandora'].map(abbreviate)).toEqual(['SPC', 'PLC', 'ANV', 'BSL', 'PND']);
+    expect(['harbor', 'atlas-mobile', 'platform', 'bousleh', 'hiring'].map(abbreviate)).toEqual(['HRB', 'MBL', 'PLT', 'BSL', 'HRN']);
     expect(shortTitle('Lantern Weekly', ['Lantern', 'Quill'])).toBe('Weekly');
     expect(shortTitle('Quarterly planning with the whole team', ['Lantern'], 16)).toBe('Quarterly…');
   });
@@ -210,7 +210,7 @@ describe('small pieces', () => {
         },
       ],
       [
-        { title: '1:1 Dana / Rowan', start: '2026-10-25T14:00:00Z', allDay: false },
+        { title: '1:1 Dana / Alex', start: '2026-10-25T14:00:00Z', allDay: false },
         { title: 'design review', start: '2026-10-25T16:00:00Z', allDay: false },
         { title: 'Offsite', start: '2026-10-25', allDay: true },
         { title: 'Focus', start: '2026-10-25T08:00:00Z', allDay: false },
@@ -240,7 +240,7 @@ describe('buildViewModel', () => {
           surface_on: null,
           size: 'major',
           scopes: ['lantern'],
-          owed_by: [{ id: 'per_01JBX000000000000000000ME1', name: 'Rowan Vale' }],
+          owed_by: [{ id: 'per_01JBX000000000000000000ME1', name: 'Alex Rivera' }],
           owed_to: [],
         },
       ],
@@ -360,27 +360,27 @@ describe('buildViewModel', () => {
   });
 
   it('leads with the few things to do first, each with its prompt, and says what is snoozed', () => {
-    const peter = { id: 'per_01JBX000000000000000000P01', name: 'Peter Trennum' };
+    const rowan = { id: 'per_01JBX000000000000000000P01', name: 'Rowan Vale' };
     const ian = { id: 'per_01JBX000000000000000000I01', name: 'Ian Holt' };
     const p = pulse({
       focus: [
         {
           kind: 'commitment',
           id: 'cmt_01JBX000000000000000000F01',
-          title: 'Send Peter the one-pager',
+          title: 'Send Rowan the one-pager',
           altitude: 1000,
           scopes: ['lantern'],
           score: 83,
-          why: ['2 days late', 'owed to Peter Trennum, your manager'],
+          why: ['2 days late', 'owed to Rowan Vale, your manager'],
           owed: 'by_me',
           size: 'major',
-          people: [peter],
+          people: [rowan],
           when: '2026-10-23',
         },
         {
           kind: 'meeting',
           id: 'mtg_01JBX000000000000000000F02',
-          title: 'Lisa sync',
+          title: 'Mira sync',
           altitude: 10000,
           scopes: ['quill'],
           score: 63,
@@ -414,13 +414,13 @@ describe('buildViewModel', () => {
     };
     const vm = buildViewModel({ ...sources(), pulse: p }, NOW);
     expect(vm.focus?.items.map((f) => [f.eyebrow, f.title, f.detail, f.scopeName, f.tone])).toEqual([
-      ['2 days late', 'Send Peter the one-pager', 'owed to Peter Trennum, your manager', 'Lantern', 'needs'],
-      ['today at 14:00', 'Lisa sync', 'no prep yet', 'Quill', 'moving'],
+      ['2 days late', 'Send Rowan the one-pager', 'owed to Rowan Vale, your manager', 'Lantern', 'needs'],
+      ['today at 14:00', 'Mira sync', 'no prep yet', 'Quill', 'moving'],
       ['follow up with Ian Holt', 'Ian replies on the metering doc', 'back from snooze today', 'Lantern', 'needs'],
     ]);
     const prompt = (i: number) => vm.prompts[vm.focus?.items[i]?.prompt ?? ''];
-    expect(prompt(0)).toBe('Pulse: "Send Peter the one-pager" is first today. Help me get it done, give it a new date, or snooze it.');
-    expect(prompt(1)).toBe('Counsel: prep me for "Lisa sync" (Today 14:00).');
+    expect(prompt(0)).toBe('Pulse: "Send Rowan the one-pager" is first today. Help me get it done, give it a new date, or snooze it.');
+    expect(prompt(1)).toBe('Counsel: prep me for "Mira sync" (Today 14:00).');
     expect(prompt(2)).toBe(
       'Pulse: time to follow up on "Ian replies on the metering doc" with Ian. Help me nudge, close it, or snooze it again.',
     );
@@ -446,7 +446,7 @@ describe('buildViewModel', () => {
       surface_on,
       size: 'major' as const,
       scopes: ['quill'],
-      owed_by: [{ id: meId, name: 'Rowan Vale' }],
+      owed_by: [{ id: meId, name: 'Alex Rivera' }],
       owed_to: [],
     });
     src.commitments = {
@@ -480,7 +480,7 @@ describe('buildViewModel', () => {
           altitude: 10000,
           scopes: ['lantern'],
           entries: [
-            { type: 'competitor', name: 'Gizmo Build', url: 'https://gizmo.example.com', added_by: 'wassim' },
+            { type: 'competitor', name: 'Gizmo Build', url: 'https://gizmo.example.com', added_by: 'user' },
             { type: 'topic', name: 'Brownfield agents', added_by: 'horizon', reason: 'Came up' },
           ],
           version: { id: 'ver_01JBX000000000000000000001', n: 1 },
@@ -517,7 +517,7 @@ describe('buildViewModel', () => {
         {
           id: 'que_01JBX000000000000000000001',
           draft: { title: 'Remove "Gizmo Build" from the lantern watch list?', kind: 'observation' },
-          reason: 'Horizon suggests removing an entry Wassim added; Wassim decides',
+          reason: 'Horizon suggests removing an entry Alex added; Alex decides',
           candidates: [{ id: listId, kind: 'watch_list', title: 'Lantern watch list' }],
           source: null,
           created_at: '2026-10-21T07:00:00.000Z',

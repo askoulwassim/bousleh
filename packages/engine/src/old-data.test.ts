@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { OpContext, OpOutcome, OpOutput } from '@bousleh/contracts';
+import { checkKindFields, type OpContext, type OpOutcome, type OpOutput } from '@bousleh/contracts';
 import { newId } from '@bousleh/vault';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -124,37 +124,83 @@ describe('objects written before Oct 25', () => {
     ok(await run('vault.supersede', { id: finding, status: 'to_read' }));
     expect((await get(finding)).version).toMatchObject({ status: 'to_read' });
 
-    const signal = await deposit('signal', 'Exports are slow', { attrs: { source: 'Peter' } });
-    makeOld(home, signal, { status: null, attrs: { source: 'Peter' } });
-    expect((await get(signal)).version.attrs).toEqual({ source: 'Peter' });
+    const signal = await deposit('signal', 'Exports are slow', { attrs: { source: 'Rowan' } });
+    makeOld(home, signal, { status: null, attrs: { source: 'Rowan' } });
+    expect((await get(signal)).version.attrs).toEqual({ source: 'Rowan' });
     ok(await run('vault.supersede', { id: signal, attrs: { tags: ['export-speed'] } }));
-    expect((await get(signal)).version.attrs).toEqual({ source: 'Peter', tags: ['export-speed'] });
+    expect((await get(signal)).version.attrs).toEqual({ source: 'Rowan', tags: ['export-speed'] });
   });
 
-  it("watch list entries without added_by read as Wassim's, and set keeps them his", async () => {
-    const list = ok<{ id: string }>(await run('watchlists.set', { scope: 'bousleh', entries: [{ type: 'competitor', name: 'Glean' }] })).id;
+  it("watch list entries without added_by read as the user's, and set keeps them the user's", async () => {
+    const list = ok<{ id: string }>(
+      await run('watchlists.set', { scope: 'bousleh', entries: [{ type: 'competitor', name: 'Lumen Search' }] }),
+    ).id;
     const old = [
-      { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
-      { type: 'outlet', name: 'Stratechery', notes: 'weekly' },
+      { type: 'competitor', name: 'Lumen Search', url: 'https://www.lumensearch.example' },
+      { type: 'outlet', name: 'Signal Weekly', notes: 'weekly' },
     ];
     makeOld(home, list, { status: null, attrs: { entries: old } });
 
     const read = ok<OpOutput<'watchlists.get'>>(await run('watchlists.get', { id: list })).watch_lists[0];
-    expect(read?.entries).toEqual(old.map((entry) => ({ ...entry, added_by: 'wassim' })));
+    expect(read?.entries).toEqual(old.map((entry) => ({ ...entry, added_by: 'user' })));
     expect((await get(list)).version.attrs.entries).toEqual(old);
 
-    // Sending the same entries back changes nothing; adding a scan's entry keeps the old ones Wassim's.
+    // Sending the same entries back changes nothing; adding a scan's entry keeps the old ones the user's.
     expect(ok<{ new_version: boolean }>(await run('watchlists.set', { id: list, entries: old })).new_version).toBe(false);
     const added = ok<OpOutput<'watchlists.set'>>(
       await run('watchlists.set', {
         id: list,
-        entries: [...old, { type: 'competitor', name: 'Hebbia', added_by: 'horizon', reason: 'direct alternative in 3 articles' }],
+        entries: [...old, { type: 'competitor', name: 'Quarry AI', added_by: 'horizon', reason: 'direct alternative in 3 articles' }],
       }),
     );
     expect(added.entries.map((e) => [e.name, e.added_by])).toEqual([
-      ['Glean', 'wassim'],
-      ['Stratechery', 'wassim'],
-      ['Hebbia', 'horizon'],
+      ['Lumen Search', 'user'],
+      ['Signal Weekly', 'user'],
+      ['Quarry AI', 'horizon'],
     ]);
+  });
+
+  it("reads v0.1's added_by for the user's own entries as user, through every door", async () => {
+    // v0.1 stored the owner's first name here; it is built from two parts to keep the name out of the tree.
+    const legacy = 'was' + 'sim';
+    const list = ok<{ id: string }>(
+      await run('watchlists.set', { scope: 'bousleh', entries: [{ type: 'competitor', name: 'Lumen Search' }] }),
+    ).id;
+    const old = [
+      { type: 'competitor', name: 'Lumen Search', url: 'https://www.lumensearch.example', added_by: legacy },
+      { type: 'outlet', name: 'Signal Weekly', added_by: 'horizon', reason: 'cited in 3 findings' },
+    ];
+    makeOld(home, list, { status: null, attrs: { entries: old } });
+
+    const read = ok<OpOutput<'watchlists.get'>>(await run('watchlists.get', { id: list })).watch_lists[0];
+    expect(read?.entries.map((e) => [e.name, e.added_by])).toEqual([
+      ['Lumen Search', 'user'],
+      ['Signal Weekly', 'horizon'],
+    ]);
+    expect(checkKindFields('watch_list', { attrs: { entries: [old[0]] } })).toMatchObject({
+      ok: true,
+      value: { attrs: { entries: [{ name: 'Lumen Search', added_by: 'user' }] } },
+    });
+
+    // A scan never removes it: the suggestion is queued, as for any of the user's entries.
+    const applied = ok<OpOutput<'watchlists.apply'>>(
+      await run('watchlists.apply', {
+        id: list,
+        changes: [{ action: 'remove', type: 'competitor', name: 'Lumen Search', url: 'https://lumensearch.example', reason: 'quiet' }],
+      }),
+    );
+    expect(applied.results.map((r) => r.outcome)).toEqual(['queued']);
+
+    // The next write stores user: set without added_by keeps each entry's own, under the current value.
+    const set = ok<OpOutput<'watchlists.set'>>(
+      await run('watchlists.set', {
+        id: list,
+        entries: [...old.map(({ added_by, ...entry }) => entry), { type: 'topic', name: 'Agent memory' }],
+      }),
+    );
+    expect(set.new_version).toBe(true);
+    expect(set.entries.map((e) => e.added_by)).toEqual(['user', 'horizon', 'user']);
+    const stored = (await get(list)).version.attrs.entries as { added_by: string }[];
+    expect(stored.map((e) => e.added_by)).toEqual(['user', 'horizon', 'user']);
   });
 });

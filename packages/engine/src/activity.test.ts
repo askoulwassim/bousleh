@@ -37,7 +37,7 @@ const activity = async (input: unknown = {}) => ok<Activity>(await run('vault.ac
 describe('vault.activity', () => {
   it('returns write ops oldest first, with their inputs and reasons, and leaves out reads', async () => {
     ok(await run('scopes.add', { slug: 'mcp', name: 'MCP', kind: 'product' }));
-    const { id } = ok<{ id: string }>(await run('deposits.write', { kind: 'person', title: 'Yi', altitude: 10000 }));
+    const { id } = ok<{ id: string }>(await run('deposits.write', { kind: 'person', title: 'Jo', altitude: 10000 }));
     const { id: problem } = ok<{ id: string }>(
       await run('deposits.write', { kind: 'problem', title: 'No shared answer', altitude: 10000, scopes: ['mcp'] }),
     );

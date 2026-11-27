@@ -71,7 +71,7 @@ export const PersonRoleSchema = z.enum(PERSON_ROLES);
 /** An open commitment as people.list shows it: enough to name it. */
 export const CommitmentRefSchema = z.object({ id: IdSchema, title: z.string(), due: z.iso.date().nullable() });
 
-/** The latest moment Wassim was in touch with someone, as far as the data shows. */
+/** The latest moment the user was in touch with someone, as far as the data shows. */
 export const TouchpointSchema = z.object({
   /** A held meeting's held_at as stored (a date or a date-time), or when the object about them was filed. */
   at: z.string(),

@@ -1,0 +1,32 @@
+# Bousleh decisions
+
+The choices Bousleh is built on, and why. `AGENTS.md` has the rules that follow from them; `docs/design/data-schema.md` has the data model's own decisions.
+
+| Area | Choice |
+| --- | --- |
+| Code | A TypeScript monorepo, `bousleh`, one package per module, AGENTS.md (no CLAUDE.md) |
+| Repo location | Anywhere. A clone inside a folder that syncs to iCloud (such as Documents) keeps the `.nosync` folder name, so node_modules and build output stay out of iCloud |
+| Toolchain | pnpm workspaces, TypeScript, Biome, Vitest, zod 4, better-sqlite3, `@modelcontextprotocol/sdk`, Node 22; esbuild bundles Home into one page |
+| Storage | SQLite for structure, markdown for long-form, linked by id |
+| History | "Supersedes" links; nothing is overwritten |
+| Data home | `~/.bousleh`, outside the code repo, never committed, local only, never pushed anywhere, no git |
+| Host | A Mac per instance. A second instance, such as a work Mac, runs the same build with its own data |
+| MCP transport | stdio, local only, no tunnel |
+| Actions | One ops registry (core rule 2). Op names are dotted (`inbox.sweep`); MCP tool names are the same with underscores (`inbox_sweep`) |
+| Packages | `contracts`, `vault`, `intake`, `context`, `metrics`, `watch`, `engine`, `mcp-server`, `home` (see the package table in AGENTS.md) |
+| Search v0 | SQLite full-text search plus links; no embeddings. Graphiti is the next step later, not vectors |
+| Modes | Nine skills in one Claude plugin: Capture, Pulse, Counsel, Shape, Workshop, Communicate, Coach, Horizon, Tune, plus Drop for the phone |
+| Phone capture | The Drop skill in the Claude app saves each dictation as a new `.md` file in the Google Drive folder "Bousleh Inbox" (one file per capture, never appended), through the Claude account's Google Drive connector. On the Mac, Capture reads the folder through the same connector, hands each file to `inbox.drop`, then trashes it in Drive (moved, not copied). No Google Drive desktop app and no Full Disk Access, since macOS blocks other apps from the synced Drive folder. The engine never calls Google itself |
+| Inbox processing | The Hourly inbox sweep (a scheduled task that runs Capture) plus on demand from any session; silent, in the background. Each file is logged by content hash in SQLite, skipped if already seen, then moved to `inbox/processed` |
+| Backups | Daily snapshot to `~/.bousleh-backups` on the same disk, newest 14 kept, taken by the MCP server; `vault.backup` on demand. Restore: quit Claude, move `~/.bousleh` aside, copy a snapshot folder into its place |
+| Setup | `scripts/setup-mac.sh` sets up a Mac end to end (see SETUP.md); a second Mac runs the same script |
+| Scheduled tasks | Defined only in `docs/scheduled-tasks.md` (each task's place, schedule, needs and exact prompt). In Claude Desktop's Code tab on the repo, "Set up the scheduled tasks in docs/scheduled-tasks.md" creates or updates them; nobody sets one up by hand. Claude Desktop keeps a task's schedule outside any file a script could write, and headless `claude -p` can't reach claude.ai connectors, so a script can't do this step. The Hourly inbox sweep needs the Mac and runs hourly from 07:00 to 22:00 (a run that can't reach the Mac ends at once; captures wait in Drive); the Weekly Horizon scan runs in the cloud on Mondays at 06:40; the Hourly Meet notes mirror runs in the cloud at 20 past each hour from 07:20 to 21:20 on weekdays; the Friday Bousleh tune-up needs the Mac and runs on Fridays at 16:47 |
+| Horizon scan | The Weekly Horizon scan, a Claude scheduled task in the cloud: web search over the last seven days, findings and proposed watch list changes written to the Drive inbox. Weekly, because a daily scan was too noisy. Watch lists reach it through `Bousleh Watch Lists.md` in the Drive folder "Bousleh", not its prompt. Podcasts: show notes, plus a transcript only when the show publishes one; no transcription |
+| Voice | Dictation in Claude, plus meeting transcripts handed to Capture. No separate voice app, no messaging gateway |
+| Meet notes | The Hourly Meet notes mirror, a cloud scheduled task, copies each new Gemini notes doc from the Drive folder "Google Meet" into "Bousleh Inbox" as plain text with `bousleh: meet-notes` frontmatter; `Bousleh Meet Ledger.md` in the Drive folder "Bousleh" records what was copied, so the originals stay put. Capture files them and skips meetings with nothing for the user |
+| Focus and snooze | A commitment can be snoozed until a day (`surface_on`, set by Capture at filing or by `commitments.snooze`): until then it stays out of Pulse, Home's needs-you count and the strata, then shows up as due. `pulse.today` ranks a short `focus` list (at most three: late, soon, who for, who the user sees today, bets, today's planned meetings) with reasons in words; Pulse and Home lead with it. The weights are `FOCUS_WEIGHTS` in `packages/context/src/focus.ts` |
+| Commitment size | A commitment is `major` (a real deliverable) or `minor` (a small follow-up from a call); none reads as major. Minor ones rank lower in focus, are only counted when undated (`no_due.minor`), never need the user while undated in the strata, and fold into "Small follow-ups" in Home |
+| Relevance | Bousleh keeps only what the user is involved in, directly or indirectly, or what affects their work. Capture applies it at filing; the Friday tune-up drops what slipped through |
+| Self-improvement | The Friday Bousleh tune-up runs the Tune skill on the Mac. It reads the week through `vault.activity`, makes only safe, reversible data fixes on its own, queues judgment calls, and opens a pull request on the user's own clone or fork for repeated corrections or manual steps. It never merges |
+| Home | A Claude page built from `packages/home` to the design in `docs/design/home.md` (the Strata grid plus the Horizon front page). Live engine data in the Claude desktop app through the local server (`host:bousleh`); elsewhere (phone, web) the last snapshot, which each live load saves when it changed. Published only by saying "Publish Home from docs/home.md" in Claude Desktop's Code tab; a second instance publishes its own |
+| Later | Graphiti, the signal bridge between accounts, live phone access |

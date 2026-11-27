@@ -205,7 +205,7 @@ export const FocusItemSchema = z.object({
   scopes: z.array(ScopeSlugSchema),
   /** Higher first. The weights are in @bousleh/context (FOCUS_WEIGHTS); the number is only for ordering. */
   score: z.number(),
-  /** Short reasons, most important first, ready to say out loud: "2 days late", "owed to Peter, your manager", "you see Peter today". */
+  /** Short reasons, most important first, ready to say out loud: "2 days late", "owed to Rowan, your manager", "you see Rowan today". */
   why: z.array(z.string()).min(1),
   /** A commitment's direction relative to me; null for a meeting. */
   owed: z.enum(['by_me', 'to_me']).nullable(),
@@ -382,7 +382,7 @@ export const StrataObjectSchema = z.object({
   status: z.string().nullable(),
   altitude: AltitudeSchema,
   scopes: z.array(ScopeSlugSchema),
-  /** True when it needs Wassim now: an open commitment he owes that is overdue, due on the date or (a major one only) has no due date, or any commitment back from a snooze (a follow-up). An undated minor commitment never needs him. */
+  /** True when it needs the user now: an open commitment they owe that is overdue, due on the date or (a major one only) has no due date, or any commitment back from a snooze (a follow-up). An undated minor commitment never needs them. */
   needs_you: z.boolean(),
   /** When it is updated: its current version's time. */
   updated_at: isoDateTime,

@@ -1,11 +1,11 @@
 ---
 name: horizon
-description: Wassim's outside view - competitors, industry news, topics, people and podcasts on a watch list per scope. Reads the digest of what changed, flags what's worth acting on, edits watch lists, and files scan findings. Also the instructions the "Weekly Horizon scan" scheduled task runs in the cloud, and how its proposed watch list changes are applied. Use when he says "morning digest", "what's new outside", "what's new with [competitor]", "anything from the scan", "watch [company]", "add [podcast] to the watch list", "stop watching...", "what's on my reading list", "set up the weekly scan", or when the Weekly Horizon scan runs.
+description: Your outside view - competitors, industry news, topics, people and podcasts on a watch list per scope. Reads the digest of what changed, flags what's worth acting on, edits watch lists, and files scan findings. Also the instructions the "Weekly Horizon scan" scheduled task runs in the cloud, and how its proposed watch list changes are applied. Use when you say "morning digest", "what's new outside", "what's new with [competitor]", "anything from the scan", "watch [company]", "add [podcast] to the watch list", "stop watching...", "what's on my reading list", "set up the weekly scan", or when the Weekly Horizon scan runs.
 ---
 
 # Horizon
 
-Watch the outside world for each scope Wassim works on and bring back what matters, tied to that scope, with links to read or listen. You judge relevance and what's worth acting on. The engine stores watch lists, dedupes findings by url, and builds the digest.
+Watch the outside world for each scope the user works on and bring back what matters, tied to that scope, with links to read or listen. You judge relevance and what's worth acting on. The engine stores watch lists, dedupes findings by url, and builds the digest.
 
 This skill runs in two settings. Check which one you're in first:
 
@@ -19,7 +19,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Reads: `watchlists_get` (watchlists.get), `watch_digest` (watch.digest)
 - Writes: `watchlists_set` (watchlists.set), `watchlists_apply` (watchlists.apply) for a scan's proposed changes, `watch_file` (watch.file), `vault_link` (vault.link) to link a filed finding `evidence_for` a problem or idea it bears on, `assets_add` (assets.add) to register every Doc or dashboard you write
 - Added, read-only: `scopes_list` (scopes.list) for scope slugs; `assets_list` (assets.list) to find the competitive brief that already exists for a scope
-- Added, write: `vault_supersede` (vault.supersede), only to move a finding through the reading queue; `queue_list` (queue.list) and `queue_resolve` (queue.resolve), only for the removals `watchlists_apply` queued for Wassim
+- Added, write: `vault_supersede` (vault.supersede), only to move a finding through the reading queue; `queue_list` (queue.list) and `queue_resolve` (queue.resolve), only for the removals `watchlists_apply` queued for the user
 - Google Drive connector: to write `Bousleh Watch Lists.md` in the Drive folder `Bousleh`, the copy of the watch lists the cloud scan reads
 
 ## Altitude
@@ -28,7 +28,7 @@ Watch lists default to `10000` (cross-team: the market around a product). Use `5
 
 ## Flow: the digest
 
-1. `watch_digest`, with `since` set to the last time he looked if he says ("since Friday"), else the default week. Pass `scope` if he names one.
+1. `watch_digest`, with `since` set to the last time they looked if they say ("since Friday"), else the default week. Pass `scope` if they name one.
 2. Judge each group: what changed, which scope it touches, and whether it matters. Drop noise.
 3. Say the top items in a few lines, each with its source. Flag up to three worth acting on:
    - "for Shape" when it bears on a strategy line or a problem,
@@ -37,22 +37,22 @@ Watch lists default to `10000` (cross-team: the market around a product). Use `5
 
 ## Flow: the reading and listening queue
 
-Every finding has a reading-queue status: `new` when filed (findings filed before Oct 25 read as `new` too), `to_read` when Wassim wants to read or listen to it later, `read` once he has, `dismissed` when it isn't worth it.
+Every finding has a reading-queue status: `new` when filed (findings filed before the reading queue existed read as `new` too), `to_read` when the user wants to read or listen to it later, `read` once they have, `dismissed` when it isn't worth it.
 
 - "Save that for later", "add it to my reading list": `vault_supersede` the finding with status `to_read`.
-- "Read it", "listened to it": status `read`. If it changed his mind about something, offer Capture or Shape for what he took from it.
-- "Not interested", "skip it": status `dismissed`. When he dismisses several from the same watch list entry, say so: it's a sign the entry is noise.
+- "Read it", "listened to it": status `read`. If it changed their mind about something, offer Capture or Shape for what they took from it.
+- "Not interested", "skip it": status `dismissed`. When they dismiss several from the same watch list entry, say so: it's a sign the entry is noise.
 - "What's on my reading list?": `watch_digest` with `status: [to_read]` (no `since`: the whole queue). Give titles, sources and links.
-- Use the digest's `status` to leave out what he already read or dismissed when you present a digest.
+- Use the digest's `status` to leave out what they already read or dismissed when you present a digest.
 
 ## Flow: editing a watch list
 
 1. `watchlists_get` for the scope.
-2. Make the change: each entry has a `type` (`competitor`, `topic`, `outlet`, `person`, `podcast`), a `name`, and optionally a `url` and `notes`. An entry Wassim asks for is his (`added_by: wassim`, the default).
+2. Make the change: each entry has a `type` (`competitor`, `topic`, `outlet`, `person`, `podcast`), a `name`, and optionally a `url` and `notes`. An entry the user asks for is theirs (`added_by: user`, the default).
 3. Say the change back in one line, then `watchlists_set` with the **complete** list. It replaces the old entries, so send every entry to keep. Entries you send without `added_by` keep the one they have (matched by url, or by type and name), so the scan's entries stay marked as the scan's.
 4. Refresh the watch lists file in Drive (below). Do it after every `watchlists_set` or `watchlists_apply`, in every flow.
 
-"Stop watching X" removes the entry whoever added it: Wassim decides. If he wants to keep a scan-added entry for good, set its `added_by` to `wassim`, so later scans can only suggest removing it.
+"Stop watching X" removes the entry whoever added it: the user decides. If they want to keep a scan-added entry for good, set its `added_by` to `user`, so later scans can only suggest removing it.
 
 ## Flow: the watch lists file in Drive
 
@@ -76,8 +76,8 @@ The cloud scan can't reach the Mac, so it reads the watch lists from a file in G
    - altitude: <altitude>
 
    type | name | url | notes | added_by
-   competitor | Glean | https://www.glean.com | | wassim
-   outlet | Stratechery | https://stratechery.com | weekly | horizon
+   competitor | Lumen Search | https://www.lumensearch.example | | user
+   outlet | Signal Weekly | https://signalweekly.example | weekly | horizon
    ```
 
 3. With the Google Drive connector, find the folder titled exactly `Bousleh` at the top of My Drive (create it if it doesn't exist). Never use `Bousleh Inbox`: that folder is swept and its files trashed.
@@ -98,18 +98,18 @@ Capture reads Weekly Horizon scan files from the inbox and hands them here. For 
 Each line under `## Watch list changes` is `add` or `remove`, then the watch list id, the entry type, its name, its url (`-` when none), and the scan's one-line reason. `none` means nothing to do. Ignore a line you can't read, and say so.
 
 1. Group the lines by watch list id (normally all the file's own), and call `watchlists_apply` once per list: `id`, `source` the scan file's name, and one change per line, `{ action, type, name, url, reason }` (no `url` when the line has `-`).
-2. The engine enforces the rules, so don't pre-check or filter: an add is stored as `added_by: horizon` unless a match is already there; a remove takes off only an entry Horizon added; a remove of an entry Wassim added (every entry from before Oct 25 reads as his) is **never applied**, and instead becomes an open queue item for him, once, however many scans repeat it. All of one list's changes land in one new version, so the list's history shows them.
-3. In the summary, one line per result: "added competitor Hebbia (horizon: direct alternative in 3 articles)", "removed outlet Y (horizon-added; off-topic for 4 weeks)", "suggested removing Z (Wassim's): queued", and say when one was already on the list or already queued.
+2. The engine enforces the rules, so don't pre-check or filter: an add is stored as `added_by: horizon` unless a match is already there; a remove takes off only an entry Horizon added; a remove of an entry the user added (every entry older than `added_by` reads as theirs) is **never applied**, and instead becomes an open queue item for them, once, however many scans repeat it. All of one list's changes land in one new version, so the list's history shows them.
+3. In the summary, one line per result: "added competitor Quarry AI (horizon: direct alternative in 3 articles)", "removed outlet Y (horizon-added; off-topic for 4 weeks)", "suggested removing Z (the user's): queued", and say when one was already on the list or already queued.
 
-When Wassim decides on a queued removal (`queue_list` shows them, titled `Remove "<name>" from the <scope> watch list?`), remove the entry with "Flow: editing a watch list" or keep it, then `queue_resolve` the item with `discard` and a note of what he chose. If he keeps it, a later scan may suggest it again; that's fine.
+When the user decides on a queued removal (`queue_list` shows them, titled `Remove "<name>" from the <scope> watch list?`), remove the entry with "Flow: editing a watch list" or keep it, then `queue_resolve` the item with `discard` and a note of what they chose. If they keep it, a later scan may suggest it again; that's fine.
 
 ## Flow: setting up the Weekly Horizon scan
 
-The scan is a Claude scheduled task in the cloud named "Weekly Horizon scan", every Monday at 06:40. It is defined in the repo, in `docs/scheduled-tasks.md`, and never set up by hand: to create it or change its schedule or prompt, tell Wassim to say, in Claude Desktop's Code tab on the repo, "Set up the scheduled tasks in docs/scheduled-tasks.md". Never write the task's prompt yourself.
+The scan is a Claude scheduled task in the cloud named "Weekly Horizon scan", every Monday at 06:40. It is defined in the repo, in `docs/scheduled-tasks.md`, and never set up by hand: to create it or change its schedule or prompt, tell the user to say, in Claude Desktop's Code tab on the repo, "Set up the scheduled tasks in docs/scheduled-tasks.md". Never write the task's prompt yourself.
 
 Its prompt carries no watch lists: the scan reads them from the Drive file. So after a watch list change, refresh the Drive file (above); there's no need to apply `docs/scheduled-tasks.md` again. "Set up the weekly scan" with no task change means: check the Drive file exists and is current.
 
-Work instance: Alethea's competitors and the narrative-intelligence space, from public sources only, set up in the work account.
+A work instance watches its company's competitors and market, from public sources only, set up in the work account.
 
 ## The Weekly Horizon scan
 
@@ -145,7 +145,7 @@ You're in the cloud. You can't reach the Mac or the Bousleh MCP server: don't tr
    <summary>
 
    ## Watch list changes
-   add | <wls_ id> | competitor | Hebbia | https://hebbia.ai | named as a direct alternative in 3 articles this week
+   add | <wls_ id> | competitor | Quarry AI | https://quarryai.example | named as a direct alternative in 3 articles this week
    remove | <wls_ id> | outlet | Some Blog | https://someblog.example | no posts on the scope's topics in 4 weeks; now covers crypto
    ```
 
@@ -158,4 +158,4 @@ Interactive only (the Weekly Horizon scan can't reach the engine). Right after y
 
 ## Output
 
-The digest stays in the conversation, and Home shows it daily (Home reads `watch_digest` itself). For a weekly competitive brief to share with his PMs or leadership, write a Claude Doc from the digest.
+The digest stays in the conversation, and Home shows it daily (Home reads `watch_digest` itself). For a weekly competitive brief to share with the user's PMs or leadership, write a Claude Doc from the digest.

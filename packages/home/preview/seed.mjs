@@ -40,7 +40,7 @@ export async function seed(now = new Date()) {
     ]) {
       await run('scopes.add', { slug, name, kind });
     }
-    const me = await put('person', 'Rowan Vale', 1000, [], { attrs: { role: 'pm', is_user: true } });
+    const me = await put('person', 'Alex Rivera', 1000, [], { attrs: { role: 'pm', is_user: true } });
     const dana = await put('person', 'Dana Reyes', 10000, [], { attrs: { role: 'stakeholder', org: 'Kestrel' } });
     const milo = await put('person', 'Milo Brandt', 100, [], { attrs: { role: 'engineer' } });
 
@@ -147,7 +147,7 @@ export async function seed(now = new Date()) {
       scope: 'lantern',
       entries: [
         { type: 'competitor', name: 'Gizmo Build', url: 'https://gizmo.example.com' },
-        { type: 'competitor', name: 'Northwind Studio', url: 'https://northwind.example.com' },
+        { type: 'competitor', name: 'Quarry AI', url: 'https://quarryai.example' },
         { type: 'competitor', name: 'Contoso Agents' },
         { type: 'competitor', name: 'Fabrikam Dev' },
         { type: 'topic', name: 'Spec-driven development' },
@@ -175,8 +175,8 @@ export async function seed(now = new Date()) {
             'Gizmo Build now seeds a prototype from an existing repository, the same brownfield loop the POC lane bets on. Teams on the beta report a first build in under an hour.',
         },
         {
-          title: 'Northwind Studio raises a Series B for agent workflows',
-          url: 'https://northwind.example.com/news/series-b',
+          title: 'Quarry AI raises a Series B for agent workflows',
+          url: 'https://quarryai.example/news/series-b',
           published_at: date(day(-3)),
           summary: 'The round funds team features and an enterprise tier.',
         },

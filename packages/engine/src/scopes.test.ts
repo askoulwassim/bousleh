@@ -21,9 +21,9 @@ let engine: Engine;
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-scopes-'));
   engine = openEngine({ home });
-  ok(await run('scopes.add', { slug: 'alethea', name: 'Alethea', kind: 'company' }));
-  ok(await run('scopes.add', { slug: 'zeus', name: 'Zeus', kind: 'product', parent: 'alethea' }));
-  ok(await run('scopes.add', { slug: 'mcp', name: 'MCP', kind: 'product', parent: 'alethea' }));
+  ok(await run('scopes.add', { slug: 'northwind', name: 'Northwind', kind: 'company' }));
+  ok(await run('scopes.add', { slug: 'zeus', name: 'Zeus', kind: 'product', parent: 'northwind' }));
+  ok(await run('scopes.add', { slug: 'mcp', name: 'MCP', kind: 'product', parent: 'northwind' }));
   ok(await run('scopes.add', { slug: 'mcp-auth', name: 'MCP auth', kind: 'team', parent: 'mcp' }));
 });
 afterEach(() => {
@@ -62,14 +62,14 @@ describe('scopes.move', () => {
     const problem = await deposit('Legacy Artemis does not fit analysts', 'zeus');
     type Strata = OpOutput<'context.strata'>;
     const before = ok<Strata>(await run('context.strata', {}));
-    expect(before.columns.map((c) => c.slug)).toEqual(['alethea']);
+    expect(before.columns.map((c) => c.slug)).toEqual(['northwind']);
 
     ok(await move('zeus', null));
     const after = ok<Strata>(await run('context.strata', {}));
-    expect(after.columns.map((c) => c.slug)).toEqual(['alethea', 'zeus']);
+    expect(after.columns.map((c) => c.slug)).toEqual(['northwind', 'zeus']);
     const inColumn = (scope: string) => after.cells.filter((c) => c.scope === scope).flatMap((c) => c.objects.map((o) => o.id));
     expect(inColumn('zeus')).toContain(problem);
-    expect(inColumn('alethea')).not.toContain(problem);
+    expect(inColumn('northwind')).not.toContain(problem);
   });
 
   it('moves a scope under a new parent, and its children come along', async () => {
@@ -84,16 +84,16 @@ describe('scopes.move', () => {
 
   it('keeps every move in history: each one supersedes the scope row before it', async () => {
     const first = ok<Moved>(await move('zeus', null));
-    const second = ok<Moved>(await move('zeus', 'alethea'));
+    const second = ok<Moved>(await move('zeus', 'northwind'));
     expect(second.id).not.toBe(first.id);
-    expect(await parentOf('zeus')).toBe('alethea');
+    expect(await parentOf('zeus')).toBe('northwind');
     expect((await scopes()).filter((s) => s.slug === 'zeus')).toHaveLength(1);
   });
 
   it('changes nothing when the scope already has that parent', async () => {
     const before = (await scopes()).find((s) => s.slug === 'zeus');
-    const same = ok<Moved>(await move('zeus', 'alethea'));
-    expect(same).toMatchObject({ id: before?.id, parent: 'alethea', moved: false });
+    const same = ok<Moved>(await move('zeus', 'northwind'));
+    expect(same).toMatchObject({ id: before?.id, parent: 'northwind', moved: false });
   });
 
   it('refuses a parent that is the scope itself or below it, and unknown slugs', async () => {
@@ -101,7 +101,7 @@ describe('scopes.move', () => {
     expect(failed(await move('mcp', 'mcp-auth')).code).toBe('invalid_input');
     expect(failed(await move('nope', null)).code).toBe('invalid_input');
     expect(failed(await move('zeus', 'nope')).code).toBe('invalid_input');
-    expect(await parentOf('mcp')).toBe('alethea');
+    expect(await parentOf('mcp')).toBe('northwind');
   });
 });
 
@@ -112,9 +112,9 @@ describe('scopes.rename', () => {
   it('changes the display name and keeps the slug, parent, children and what is filed in it', async () => {
     const problem = await deposit('Noise, not signal', 'mcp');
     const renamed = ok<Renamed>(await rename('mcp', 'Themis'));
-    expect(renamed).toMatchObject({ slug: 'mcp', name: 'Themis', kind: 'product', parent: 'alethea', renamed: true });
+    expect(renamed).toMatchObject({ slug: 'mcp', name: 'Themis', kind: 'product', parent: 'northwind', renamed: true });
     const list = await scopes();
-    expect(list.filter((s) => s.slug === 'mcp')).toEqual([expect.objectContaining({ name: 'Themis', parent: 'alethea' })]);
+    expect(list.filter((s) => s.slug === 'mcp')).toEqual([expect.objectContaining({ name: 'Themis', parent: 'northwind' })]);
     expect(await parentOf('mcp-auth')).toBe('mcp');
     expect(ok<ObjectView>(await run('vault.get', { id: problem })).scopes).toEqual(['mcp']);
   });

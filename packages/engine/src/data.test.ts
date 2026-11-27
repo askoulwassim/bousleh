@@ -74,7 +74,7 @@ describe('deposits.write and vault.get', () => {
 
   it('needs a scope for everything but people', async () => {
     expect(failed(await run('deposits.write', { kind: 'problem', title: 'No scope', altitude: 100 })).code).toBe('invalid_input');
-    ok(await run('deposits.write', { kind: 'person', title: 'Peter', altitude: 50000, attrs: { role: 'stakeholder' } }));
+    ok(await run('deposits.write', { kind: 'person', title: 'Rowan', altitude: 50000, attrs: { role: 'stakeholder' } }));
   });
 
   it('refuses unknown scopes, altitudes outside the four and attrs a kind does not have', async () => {

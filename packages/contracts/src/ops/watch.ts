@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { IdSchema, ScopeSlugSchema } from '../model/ids.js';
-import { FINDING_STATUSES, KINDS } from '../model/kinds.js';
+import { FINDING_STATUSES, KINDS, WATCH_ENTRY_ADDED_BY } from '../model/kinds.js';
 import { AltitudeSchema } from '../model/layers.js';
 import { defineOp } from './define.js';
 import { ObjectRefSchema } from './shapes.js';
@@ -19,9 +19,9 @@ export type WatchEntry = z.output<typeof WatchEntrySchema>;
 
 /**
  * An entry as watchlists.set takes it: added_by may be left out, and then an entry already on the
- * list (same url, or same type and name) keeps its added_by and reason; a new one is Wassim's.
+ * list (same url, or same type and name) keeps its added_by and reason; a new one is the user's.
  */
-export const WatchEntryInputSchema = WatchEntrySchema.extend({ added_by: WatchEntrySchema.shape.added_by.unwrap().optional() });
+export const WatchEntryInputSchema = WatchEntrySchema.extend({ added_by: z.enum(WATCH_ENTRY_ADDED_BY).optional() });
 export type WatchEntryInput = z.output<typeof WatchEntryInputSchema>;
 
 /** A date (2026-10-25) or a date-time with an offset, as findings store published_at. */
@@ -42,7 +42,7 @@ export type WatchListView = z.output<typeof WatchListViewSchema>;
 export const watchlistsGet = defineOp({
   name: 'watchlists.get',
   description:
-    'Read watch lists with their entries (type, name, url, notes, added_by, reason): the one for a scope (by slug), one by id, or every watch list when you give neither. Each scope normally has one watch list. added_by is wassim for entries Wassim added (every entry from before Oct 25) and horizon for entries the Weekly Horizon scan proposed and Bousleh applied.',
+    'Read watch lists with their entries (type, name, url, notes, added_by, reason): the one for a scope (by slug), one by id, or every watch list when you give neither. Each scope normally has one watch list. added_by is user for entries the user added (and every entry older than added_by) and horizon for entries the Weekly Horizon scan proposed and Bousleh applied.',
   input: z.object({
     id: IdSchema.optional(),
     scope: ScopeSlugSchema.optional(),
@@ -54,7 +54,7 @@ export const watchlistsGet = defineOp({
 export const watchlistsSet = defineOp({
   name: 'watchlists.set',
   description:
-    "Set what a watch list holds. Give a scope slug to create that scope's watch list, or to replace its entries if it already has one; or give the id of an existing watch list. Give one of the two, not both. entries is the complete new list (each with a type: competitor, topic, outlet, person or podcast; a name; and optionally a url, notes, added_by and reason), and it replaces the old entries as a new version, so send every entry you want to keep. added_by is wassim or horizon: leave it out and an entry already on the list (same url, or same type and name) keeps its own, while a new entry is Wassim's; set horizon on an entry the scan proposed, with its reason. title, altitude (default 10000) and body are optional. Nothing is written when nothing changes; every change is a new version, so the list's history shows what changed and when.",
+    "Set what a watch list holds. Give a scope slug to create that scope's watch list, or to replace its entries if it already has one; or give the id of an existing watch list. Give one of the two, not both. entries is the complete new list (each with a type: competitor, topic, outlet, person or podcast; a name; and optionally a url, notes, added_by and reason), and it replaces the old entries as a new version, so send every entry you want to keep. added_by is user or horizon: leave it out and an entry already on the list (same url, or same type and name) keeps its own, while a new entry is the user's; set horizon on an entry the scan proposed, with its reason. title, altitude (default 10000) and body are optional. Nothing is written when nothing changes; every change is a new version, so the list's history shows what changed and when.",
   input: z.object({
     id: IdSchema.optional(),
     scope: ScopeSlugSchema.optional(),
@@ -88,7 +88,7 @@ export const WatchListChangeOutcomeSchema = z.enum([
   'added',
   /** remove: a horizon-added entry, now off the list. */
   'removed',
-  /** remove: an entry Wassim added, so it stays; a suggestion to remove it is in the queue. */
+  /** remove: an entry the user added, so it stays; a suggestion to remove it is in the queue. */
   'queued',
   /** add: a matching entry is already on the list. */
   'already_on_list',
@@ -101,7 +101,7 @@ export const WatchListChangeOutcomeSchema = z.enum([
 export const watchlistsApply = defineOp({
   name: 'watchlists.apply',
   description:
-    "Apply the watch list changes a Weekly Horizon scan proposed (its \"## Watch list changes\" lines), to the watch list with this id. Each change is add or remove, with the entry's type, name, url (if any) and the scan's reason. An entry matches when its url matches (ignoring www., https and a trailing slash) or, without urls, its type and name match (ignoring case). add puts the entry on the list marked added_by horizon with the reason, unless a match is already there. remove takes an entry off only when Horizon added it. An entry Wassim added is never removed here: instead the suggestion is queued for him (an observation draft linked to the watch list), once, however many scans repeat it; he decides, then edits the list with watchlists.set and resolves the queue item. All the applied changes go in one new version of the list, so its history shows them; nothing is written when nothing changes. source (such as the scan file's name) goes in the queued suggestion's body.",
+    "Apply the watch list changes a Weekly Horizon scan proposed (its \"## Watch list changes\" lines), to the watch list with this id. Each change is add or remove, with the entry's type, name, url (if any) and the scan's reason. An entry matches when its url matches (ignoring www., https and a trailing slash) or, without urls, its type and name match (ignoring case). add puts the entry on the list marked added_by horizon with the reason, unless a match is already there. remove takes an entry off only when Horizon added it. An entry the user added is never removed here: instead the suggestion is queued for them (an observation draft linked to the watch list), once, however many scans repeat it; they decide, then edits the list with watchlists.set and resolves the queue item. All the applied changes go in one new version of the list, so its history shows them; nothing is written when nothing changes. source (such as the scan file's name) goes in the queued suggestion's body.",
   input: z.object({
     id: IdSchema,
     changes: z.array(WatchListChangeSchema).min(1).max(50),

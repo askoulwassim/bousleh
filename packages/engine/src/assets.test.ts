@@ -23,8 +23,8 @@ let engine: Engine;
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-assets-'));
   engine = openEngine({ home });
-  ok(await run('scopes.add', { slug: 'alethea', name: 'Alethea', kind: 'company' }));
-  ok(await run('scopes.add', { slug: 'narratives', name: 'Narratives', kind: 'product', parent: 'alethea' }));
+  ok(await run('scopes.add', { slug: 'northwind', name: 'Northwind', kind: 'company' }));
+  ok(await run('scopes.add', { slug: 'narratives', name: 'Narratives', kind: 'product', parent: 'northwind' }));
   ok(await run('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }));
 });
 afterEach(() => {
@@ -83,7 +83,7 @@ describe('assets.add', () => {
     const added = await add({ url: 'https://docs.example.com/d/1/?utm_source=chat&tab=2&utm_medium=x#heading' });
     expect(added.url).toBe('https://docs.example.com/d/1?tab=2');
     expect((await get(added.id)).version.attrs.url).toBe('https://docs.example.com/d/1?tab=2');
-    expect(normalizeAssetUrl('https://github.com/askoulwassim/bousleh/')).toBe('https://github.com/askoulwassim/bousleh');
+    expect(normalizeAssetUrl('https://github.com/alex-rivera/bousleh/')).toBe('https://github.com/alex-rivera/bousleh');
     expect(normalizeAssetUrl('https://example.com/')).toBe('https://example.com');
   });
 
@@ -146,7 +146,7 @@ describe('the documents link', () => {
   it('runs only from an asset, to any kind', async () => {
     const problem = await deposit('problem', 'Analysts cannot trace a narrative');
     const idea = await deposit('idea', 'Cite every chart');
-    const person = ok<{ id: string }>(await run('deposits.write', { kind: 'person', title: 'Peter', altitude: 50000 })).id;
+    const person = ok<{ id: string }>(await run('deposits.write', { kind: 'person', title: 'Rowan', altitude: 50000 })).id;
     const asset = (await add({ url: DOC })).id;
 
     expect(failed(await run('vault.link', { from: idea, kind: 'documents', to: problem })).code).toBe('invalid_input');
@@ -170,14 +170,15 @@ describe('assets.list', () => {
   it('filters by scope (child scopes included), type and the object documented, newest first', async () => {
     const problem = await deposit('problem', 'Analysts cannot trace a narrative');
     const doc = (await add({ url: DOC, documents: [problem] })).id;
-    const deck = (await add({ url: 'https://claude.ai/artifact/deck', title: 'Provenance pitch', type: 'slides', scopes: ['alethea'] })).id;
-    const repo = (await add({ url: 'https://github.com/askoulwassim/bousleh', title: 'Bousleh', type: 'repo', scopes: ['bousleh'] })).id;
+    const deck = (await add({ url: 'https://claude.ai/artifact/deck', title: 'Provenance pitch', type: 'slides', scopes: ['northwind'] }))
+      .id;
+    const repo = (await add({ url: 'https://github.com/alex-rivera/bousleh', title: 'Bousleh', type: 'repo', scopes: ['bousleh'] })).id;
 
     expect(ids(await list())).toEqual([repo, deck, doc]);
-    expect(ids(await list({ scopes: ['alethea'] }))).toEqual([deck, doc]);
+    expect(ids(await list({ scopes: ['northwind'] }))).toEqual([deck, doc]);
     expect(ids(await list({ scopes: ['narratives'] }))).toEqual([doc]);
     expect(ids(await list({ type: 'repo' }))).toEqual([repo]);
-    expect(ids(await list({ scopes: ['alethea'], type: 'slides' }))).toEqual([deck]);
+    expect(ids(await list({ scopes: ['northwind'], type: 'slides' }))).toEqual([deck]);
     expect(ids(await list({ documents: problem }))).toEqual([doc]);
     expect(ids(await list({ limit: 1 }))).toEqual([repo]);
 
@@ -217,17 +218,17 @@ describe("the brief's assets section", () => {
   });
 
   it('without a centre: the assets in the covered scopes', async () => {
-    const repo = (await add({ url: 'https://github.com/askoulwassim/bousleh', title: 'Bousleh', type: 'repo', scopes: ['bousleh'] })).id;
+    const repo = (await add({ url: 'https://github.com/alex-rivera/bousleh', title: 'Bousleh', type: 'repo', scopes: ['bousleh'] })).id;
     const doc = (await add({ url: DOC, altitude: 50000 })).id;
 
     const bousleh = ok<Brief>(await run('context.brief', { scopes: ['bousleh'], altitude: 100 }));
     expect(bousleh.centre).toEqual([]);
     expect(bousleh.assets).toEqual([
-      expect.objectContaining({ id: repo, type: 'repo', url: 'https://github.com/askoulwassim/bousleh', why: ['in scope bousleh'] }),
+      expect.objectContaining({ id: repo, type: 'repo', url: 'https://github.com/alex-rivera/bousleh', why: ['in scope bousleh'] }),
     ]);
 
-    const alethea = ok<Brief>(await run('context.brief', { scopes: ['alethea'] }));
-    expect(ids(alethea.assets)).toEqual([doc]);
+    const northwind = ok<Brief>(await run('context.brief', { scopes: ['northwind'] }));
+    expect(ids(northwind.assets)).toEqual([doc]);
     expect(ids(ok<Brief>(await run('context.brief', {})).assets)).toEqual([doc, repo]);
   });
 });

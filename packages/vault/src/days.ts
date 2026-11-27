@@ -1,5 +1,5 @@
 /*
- * Days are calendar days on this machine's clock (the Mac's time zone), so "today" is Wassim's
+ * Days are calendar days on this machine's clock (the Mac's time zone), so "today" is the user's
  * today, not UTC's. Plain dates (2026-10-25) are taken as they are; date-times are instants.
  * Shared by every package that reads dates: context (Pulse), intake (signal patterns), metrics
  * (history) and vault (people).

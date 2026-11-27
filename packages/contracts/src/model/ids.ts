@@ -27,9 +27,9 @@ export function kindOfId(id: string): Kind | undefined {
   return KIND_BY_PREFIX.get(id.slice(0, 3));
 }
 
-/** Scope slugs: lower-case words joined by hyphens (`perfect-placement`). */
+/** Scope slugs: lower-case words joined by hyphens (`atlas-mobile`). */
 export const ScopeSlugSchema = z
   .string()
-  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'a scope slug is lower-case words joined by hyphens, like perfect-placement');
+  .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'a scope slug is lower-case words joined by hyphens, like atlas-mobile');
 
 export const SCOPE_KINDS = ['company', 'product', 'project', 'team', 'life'] as const;

@@ -1,11 +1,11 @@
 ---
 name: communicate
-description: Renders one source of truth for a specific audience - leadership, engineering, design, operations, analysts - as a doc, a deck or a short message, at the altitude that audience works at. Use when he says "tell engineering", "brief Peter", "write this up for leadership", "make a deck on...", "slides for the all-hands", "update for the analysts", "how do I explain X to Y", or "draft the message to...".
+description: Renders one source of truth for a specific audience - leadership, engineering, design, operations, analysts - as a doc, a deck or a short message, at the altitude that audience works at. Use when you say "tell engineering", "brief Rowan", "write this up for leadership", "make a deck on...", "slides for the all-hands", "update for the analysts", "how do I explain X to Y", or "draft the message to...".
 ---
 
 # Communicate
 
-Take what Wassim's data holds and render it for one audience. The truth doesn't change between audiences; the altitude, the order and the level of detail do. You judge what this audience needs to know, decide or do. The engine supplies the brief. Communicate writes nothing to his data except the record of what it produced (`assets_add`).
+Take what the user's data holds and render it for one audience. The truth doesn't change between audiences; the altitude, the order and the level of detail do. You judge what this audience needs to know, decide or do. The engine supplies the brief. Communicate writes nothing to the user's data except the record of what it produced (`assets_add`).
 
 ## Ops
 
@@ -23,7 +23,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 | --- | --- | --- |
 | CEO, CTPO, leadership | `50000` | The decision or ask, the bet, the metric it moves |
 | Other PMs, the data team, cross-team leads | `10000` | What changes for them, dependencies, dates |
-| His own PMs, design, operations | `1000` | The problem, the evidence, what's decided and what's open |
+| The user's own PMs, design, operations | `1000` | The problem, the evidence, what's decided and what's open |
 | An engineer, analysts on one question | `100` | The requirement, the acceptance test, who to ask |
 
 If one message goes to a mixed room, pitch it at the highest altitude present and put the detail in an appendix.
@@ -31,7 +31,7 @@ If one message goes to a mixed room, pitch it at the highest altitude present an
 ## Flow
 
 1. Audience and ask. If the audience is missing, ask one question: "Who's it for?".
-2. `context_brief` with the topic as `focus`, at that audience's altitude, in the right scope. Add ids from `vault_search` if he names a specific strategy, problem or decision.
+2. `context_brief` with the topic as `focus`, at that audience's altitude, in the right scope. Add ids from `vault_search` if the user names a specific strategy, problem or decision.
 3. Judge:
    - What this audience must decide or do, in one sentence. Lead with it.
    - Only what the brief holds. Where a fact or number is missing, mark it as a gap; never fill it in.
@@ -43,16 +43,16 @@ If one message goes to a mixed room, pitch it at the highest altitude present an
    - A short email or chat message stays in the conversation.
 5. Produce it, then read back the headline and the one ask in a sentence each.
 
-If Wassim makes a new decision or commitment while drafting, hand it to Capture. Once a strategy has been shared, Shape moves it to `communicated`.
+If the user makes a new decision or commitment while drafting, hand it to Capture. Once a strategy has been shared, Shape moves it to `communicated`.
 
 ## The Product Weekly
 
-Wassim's weekly email to Lisa, Peter, the exec team, the other PMs, David and Yi. Its format and rules came from his pushbacks on issue #1 (Nov 20), and he asked never to repeat them. Before drafting an issue:
+A recurring update, such as a weekly email to the user's manager, the exec team and the other PMs, can have rules of its own: a format and the points the user pushed back on before, never to be repeated. They live in a `decision` named for the update (here "Product Weekly"), and optionally in a playbook in the user's Claude Project. Before drafting an issue:
 
-1. Load the rules: `vault_search` "Product Weekly" with `kinds: [decision]` and read the newest decision with `vault_get`; also read the playbook `claude/product-weekly-playbook.md` in the Bousleh Claude Project when the Projects tool is available. The playbook holds issue #1 as approved (use it as the template) and the carry-over items for the next issue. If neither can be read, say so before drafting.
-2. Draft only from what Wassim lists, plus the playbook's carry-over. Offer anything else once, as a suggestion, outside the draft.
-3. Before showing the draft, check it line by line against every rule in the decision and the playbook, and fix what fails. The ones missed on issue #1: pitched below the most senior reader (versions, internal jargon), a current-state gap that reads as alarming, an overclaim ("fully aligned") or a date he didn't give, items he didn't ask for, a sign-off that doesn't match the calendar, and a missing thank-you (ask him who helped).
-4. When he pushes back on a new point, add it to the playbook so the next issue starts from it, and hand the new rule to Capture to file against the decision.
+1. Load the rules: `vault_search` "Product Weekly" with `kinds: [decision]` and read the newest decision with `vault_get`; also read the playbook in the user's Claude Project when there is one and the Projects tool is available. The playbook holds the last approved issue (use it as the template) and the carry-over items for the next issue. If neither can be read, say so before drafting.
+2. Draft only from what the user lists, plus the playbook's carry-over. Offer anything else once, as a suggestion, outside the draft.
+3. Before showing the draft, check it line by line against every rule in the decision and the playbook, and fix what fails. The usual misses: pitched below the most senior reader (versions, internal jargon), a current-state gap that reads as alarming, an overclaim ("fully aligned") or a date the user didn't give, items the user didn't ask for, a sign-off that doesn't match the calendar, and a missing thank-you (ask the user who helped).
+4. When the user pushes back on a new point, add it to the playbook so the next issue starts from it, and hand the new rule to Capture to file against the decision.
 
 ## Rules
 
