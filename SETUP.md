@@ -20,7 +20,7 @@ scripts/setup-mac.sh --check   # optional: shows what is already set up, changes
 scripts/setup-mac.sh
 ```
 
-Tip: if you clone inside a folder that syncs to iCloud (such as Documents), name the clone with a `.nosync` ending (`git clone … bousleh.nosync`), so iCloud skips `node_modules` and the build. Anywhere else, the name doesn't matter. An existing clone keeps working where it is: the script finds the repo from its own path.
+Tip: if you clone inside a folder that syncs to iCloud (such as Documents), name the clone with a `.nosync` ending (`git clone … bousleh.nosync`), so iCloud skips `node_modules` and the build. Anywhere else, the name doesn't matter. An existing clone keeps working where it is: the script finds the repo from its own path. One thing to know if you install Home as an app: macOS guards Documents, Desktop, Downloads and iCloud Drive per app, so for Home to run Tune and its health check in a clone there, allow Bousleh Home in **System Settings > Privacy & Security > Files & Folders** (or Full Disk Access). A clone outside those folders, such as `~/Code/bousleh`, needs nothing.
 
 The script:
 

@@ -147,3 +147,27 @@ export function elapsed(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+
+/** The macOS folder that guards the repo, when it sits in one: Documents, Desktop, Downloads or iCloud Drive. */
+export function protectedFolder(repo: string | null): string | null {
+  if (!repo) return null;
+  const m = /^\/Users\/[^/]+\/(Documents|Desktop|Downloads|Library\/Mobile Documents)(\/|$)/.exec(repo);
+  if (!m) return null;
+  return m[1] === 'Library/Mobile Documents' ? 'iCloud Drive' : (m[1] ?? null);
+}
+
+/**
+ * What to do when macOS refused the run: the installed app is its own app to macOS, so a repo in
+ * Documents, Desktop, Downloads or iCloud Drive needs that folder allowed for it. Null when the
+ * output shows no such refusal.
+ */
+export function privacyHint(lines: readonly { text: string }[], repo: string | null): RunLine | null {
+  if (!lines.some((l) => /operation not permitted/i.test(l.text))) return null;
+  const folder = protectedFolder(repo);
+  const where = folder ? `your ${folder} folder, where the repo is` : 'the repo folder';
+  const allow = folder && folder !== 'iCloud Drive' ? `turn on ${folder} Folder for Bousleh Home` : 'turn it on for Bousleh Home';
+  return {
+    text: `macOS is keeping Bousleh Home out of ${where}. In System Settings → Privacy & Security → Files & Folders, ${allow} (or add Bousleh Home under Full Disk Access), then reopen Home. Or keep the repo outside Documents, Desktop and Downloads and run scripts/setup-mac.sh there.`,
+    tone: 'needs',
+  };
+}
