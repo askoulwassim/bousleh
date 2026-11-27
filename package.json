@@ -18,7 +18,7 @@
     "demo:home": "node scripts/demo-home.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.3",
+    "@biomejs/biome": "^2.6.9",
     "@types/node": "^22",
     "typescript": "^7",
     "vitest": "^5"
