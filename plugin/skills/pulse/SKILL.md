@@ -48,7 +48,7 @@ Work at `1000` (his own surfaces) by default. For a Friday review or "how are we
    6. New findings worth acting on. Offer Horizon.
    7. Inbox and queue counts if above zero. Offer Capture.
    8. Snoozed: only a count and the next one back ("3 snoozed, next Thursday"), and only if he asks or one comes back tomorrow. Don't list snoozed items: being out of sight is the point.
-3. Say it in about eight short lines he can listen to. Skip empty sections; don't list everything.
+3. Say it in about eight short lines he can listen to. Skip empty sections; don't list everything. Name each commitment once, by its id: one already said in focus or an earlier bucket is not said again.
 4. End with one question: the single most useful next move ("Want to prep the 2pm?").
 
 Across both worlds: the signal bridge between the personal and work instances isn't built yet. If he has told you his load on the other side, use it; otherwise don't ask.
@@ -71,7 +71,7 @@ Across both worlds: the signal bridge between the personal and work instances is
 
 1. "That's due Tuesday", "aim for the 23rd", "put today on that": find the open commitment as for closing.
 2. Work out the date from today's ("Tuesday" is the next Tuesday) and say it back with the date.
-3. `vault_supersede` the commitment with `attrs: { due: "YYYY-MM-DD" }`. Nothing else on it changes.
+3. `vault_supersede` the commitment with `attrs: { due: "YYYY-MM-DD" }`. Nothing else on it changes, except that dating one already back from a snooze ends the snooze (the engine clears its `surface_on`), so it shows once, on its new date. Don't clear it yourself with `commitments_snooze`.
 4. "No date yet, bring it back later" is a snooze, not a date: see below. "Still TBD" changes nothing; say it will show as undated in focus after a week, and offer a snooze.
 
 ## Flow: resizing a commitment

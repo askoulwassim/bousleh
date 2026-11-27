@@ -63,7 +63,7 @@ export const vaultGet = defineOp({
 export const vaultSupersede = defineOp({
   name: 'vault.supersede',
   description:
-    'Write a new version of an existing object. Fields you leave out carry over from the current version. attrs merge into the current ones (set a key to null to remove it). Nothing is overwritten: the old version stays in history. An idea cannot be set to concluded here; link a decision to it with concludes instead.',
+    'Write a new version of an existing object. Fields you leave out carry over from the current version. attrs merge into the current ones (set a key to null to remove it). Nothing is overwritten: the old version stays in history. An idea cannot be set to concluded here; link a decision to it with concludes instead. Setting `due` on a commitment that is already back from a snooze (surface_on today or earlier) also clears surface_on; a snooze still ahead stays.',
   input: z.object({
     id: IdSchema,
     title: z.string().trim().min(1).max(200).optional(),
