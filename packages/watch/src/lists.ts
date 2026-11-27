@@ -1,4 +1,5 @@
 import {
+  LEGACY_USER_ADDED_BY,
   type ObjectView,
   type OpInput,
   type OpOutput,
@@ -20,10 +21,17 @@ import { urlKey } from './findings.js';
 /** The altitude a new watch list gets when the caller gives none. */
 export const DEFAULT_WATCH_LIST_ALTITUDE = 10000;
 
-/** A stored entry as it reads today: entries from before Oct 25 have no added_by, and are Wassim's. */
+/**
+ * A stored entry as it reads today. The oldest entries have no added_by, and v0.1 stored the
+ * owner's name for the user's own: both read as the user's. The schema handles both; this fallback
+ * covers an entry that fails it for another reason.
+ */
 function readEntry(raw: unknown): WatchEntry {
   const parsed = WatchEntrySchema.safeParse(raw);
-  return parsed.success ? parsed.data : ({ added_by: 'wassim', ...(raw as object) } as WatchEntry);
+  if (parsed.success) return parsed.data;
+  const entry = raw as Record<string, unknown>;
+  const addedBy = entry.added_by === undefined || entry.added_by === LEGACY_USER_ADDED_BY ? 'user' : entry.added_by;
+  return { ...entry, added_by: addedBy } as WatchEntry;
 }
 
 export function toWatchListView(object: ObjectView): WatchListView {
@@ -99,13 +107,13 @@ function sameEntry(
 
 /**
  * The entries to store: an entry given without added_by keeps the added_by (and, if it gives none,
- * the reason) of the same entry already on the list; a new one is Wassim's.
+ * the reason) of the same entry already on the list; a new one is the user's.
  */
 export function resolveEntries(input: readonly WatchEntryInput[], current: readonly WatchEntry[]): WatchEntry[] {
   return input.map((entry) => {
     if (entry.added_by !== undefined) return WatchEntrySchema.parse(entry);
     const existing = current.find((c) => sameEntry(c, entry));
-    if (!existing) return WatchEntrySchema.parse({ ...entry, added_by: 'wassim' });
+    if (!existing) return WatchEntrySchema.parse({ ...entry, added_by: 'user' });
     const reason = entry.reason ?? existing.reason;
     // Parsed again so keys come out in the schema's order, as stored entries do.
     return WatchEntrySchema.parse({ ...entry, added_by: existing.added_by, ...(reason !== undefined ? { reason } : {}) });
@@ -163,7 +171,7 @@ export const watchlistsSetHandler = defineHandler(watchlistsSet, async (input, h
   return { ...toWatchListView(await loadWatchList(h, existing.id)), created: false, new_version: true };
 });
 
-/** The title of a queued suggestion to remove one of Wassim's entries; also how a repeat is recognised. */
+/** The title of a queued suggestion to remove one of the user's entries; also how a repeat is recognised. */
 export function removalSuggestionTitle(entryName: string, list: WatchListView): string {
   const scope = list.scopes.join(', ');
   return `Remove "${entryName}" from the ${scope} watch list?`;
@@ -208,7 +216,7 @@ export const watchlistsApplyHandler = defineHandler(watchlistsApply, async (inpu
       continue;
     }
 
-    // One of Wassim's: never removed here. Suggest it once, in the queue.
+    // One of the user's: never removed here. Suggest it once, in the queue.
     const title = removalSuggestionTitle(match.name, list);
     if (openQueue === undefined) {
       openQueue = (await call(h, 'queue.list', {})).items.map((item) => ({
@@ -232,13 +240,13 @@ export const watchlistsApplyHandler = defineHandler(watchlistsApply, async (inpu
         body: [
           `The Weekly Horizon scan suggests removing ${what} from ${list.title}: ${change.reason}`,
           input.source !== undefined ? `Source: ${input.source}.` : undefined,
-          'Wassim added this entry, so it stays on the list until he decides.',
+          'You added this entry, so it stays on the list until you decide.',
         ]
           .filter((line) => line !== undefined)
           .join('\n\n'),
         links: [{ kind: 'related', to: list.id }],
       },
-      reason: 'Horizon suggests removing an entry Wassim added; Wassim decides',
+      reason: 'Horizon suggests removing an entry the user added; the user decides',
       candidates: [list.id],
     });
     openQueue.push({ id: queued.id, title, candidates: [list.id] });

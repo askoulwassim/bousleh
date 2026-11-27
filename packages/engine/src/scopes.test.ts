@@ -21,9 +21,9 @@ let engine: Engine;
 beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-scopes-'));
   engine = openEngine({ home });
-  ok(await run('scopes.add', { slug: 'alethea', name: 'Alethea', kind: 'company' }));
-  ok(await run('scopes.add', { slug: 'zeus', name: 'Zeus', kind: 'product', parent: 'alethea' }));
-  ok(await run('scopes.add', { slug: 'mcp', name: 'MCP', kind: 'product', parent: 'alethea' }));
+  ok(await run('scopes.add', { slug: 'northwind', name: 'Northwind', kind: 'company' }));
+  ok(await run('scopes.add', { slug: 'zephyr', name: 'Zephyr', kind: 'product', parent: 'northwind' }));
+  ok(await run('scopes.add', { slug: 'mcp', name: 'MCP', kind: 'product', parent: 'northwind' }));
   ok(await run('scopes.add', { slug: 'mcp-auth', name: 'MCP auth', kind: 'team', parent: 'mcp' }));
 });
 afterEach(() => {
@@ -48,28 +48,28 @@ const deposit = async (title: string, scope: string) =>
 
 describe('scopes.move', () => {
   it('makes a scope top-level, keeping its slug, name, kind and what is filed in it', async () => {
-    const problem = await deposit('Legacy Artemis does not fit analysts', 'zeus');
-    const moved = ok<Moved>(await move('zeus', null));
-    expect(moved).toMatchObject({ slug: 'zeus', name: 'Zeus', kind: 'product', parent: null, moved: true });
-    expect(await parentOf('zeus')).toBeNull();
-    expect((await scopes()).filter((s) => s.slug === 'zeus')).toHaveLength(1);
-    expect(ok<ObjectView>(await run('vault.get', { id: problem })).scopes).toEqual(['zeus']);
-    const hits = ok<{ hits: { id: string }[] }>(await run('vault.search', { query: 'Legacy Artemis', scopes: ['zeus'] }));
+    const problem = await deposit('Legacy Zephyr does not fit dispatchers', 'zephyr');
+    const moved = ok<Moved>(await move('zephyr', null));
+    expect(moved).toMatchObject({ slug: 'zephyr', name: 'Zephyr', kind: 'product', parent: null, moved: true });
+    expect(await parentOf('zephyr')).toBeNull();
+    expect((await scopes()).filter((s) => s.slug === 'zephyr')).toHaveLength(1);
+    expect(ok<ObjectView>(await run('vault.get', { id: problem })).scopes).toEqual(['zephyr']);
+    const hits = ok<{ hits: { id: string }[] }>(await run('vault.search', { query: 'Legacy Zephyr', scopes: ['zephyr'] }));
     expect(hits.hits.map((r) => r.id)).toContain(problem);
   });
 
   it('gives a top-level scope its own column in the grid, and its parent no longer covers it', async () => {
-    const problem = await deposit('Legacy Artemis does not fit analysts', 'zeus');
+    const problem = await deposit('Legacy Zephyr does not fit dispatchers', 'zephyr');
     type Strata = OpOutput<'context.strata'>;
     const before = ok<Strata>(await run('context.strata', {}));
-    expect(before.columns.map((c) => c.slug)).toEqual(['alethea']);
+    expect(before.columns.map((c) => c.slug)).toEqual(['northwind']);
 
-    ok(await move('zeus', null));
+    ok(await move('zephyr', null));
     const after = ok<Strata>(await run('context.strata', {}));
-    expect(after.columns.map((c) => c.slug)).toEqual(['alethea', 'zeus']);
+    expect(after.columns.map((c) => c.slug)).toEqual(['northwind', 'zephyr']);
     const inColumn = (scope: string) => after.cells.filter((c) => c.scope === scope).flatMap((c) => c.objects.map((o) => o.id));
-    expect(inColumn('zeus')).toContain(problem);
-    expect(inColumn('alethea')).not.toContain(problem);
+    expect(inColumn('zephyr')).toContain(problem);
+    expect(inColumn('northwind')).not.toContain(problem);
   });
 
   it('moves a scope under a new parent, and its children come along', async () => {
@@ -83,25 +83,25 @@ describe('scopes.move', () => {
   });
 
   it('keeps every move in history: each one supersedes the scope row before it', async () => {
-    const first = ok<Moved>(await move('zeus', null));
-    const second = ok<Moved>(await move('zeus', 'alethea'));
+    const first = ok<Moved>(await move('zephyr', null));
+    const second = ok<Moved>(await move('zephyr', 'northwind'));
     expect(second.id).not.toBe(first.id);
-    expect(await parentOf('zeus')).toBe('alethea');
-    expect((await scopes()).filter((s) => s.slug === 'zeus')).toHaveLength(1);
+    expect(await parentOf('zephyr')).toBe('northwind');
+    expect((await scopes()).filter((s) => s.slug === 'zephyr')).toHaveLength(1);
   });
 
   it('changes nothing when the scope already has that parent', async () => {
-    const before = (await scopes()).find((s) => s.slug === 'zeus');
-    const same = ok<Moved>(await move('zeus', 'alethea'));
-    expect(same).toMatchObject({ id: before?.id, parent: 'alethea', moved: false });
+    const before = (await scopes()).find((s) => s.slug === 'zephyr');
+    const same = ok<Moved>(await move('zephyr', 'northwind'));
+    expect(same).toMatchObject({ id: before?.id, parent: 'northwind', moved: false });
   });
 
   it('refuses a parent that is the scope itself or below it, and unknown slugs', async () => {
     expect(failed(await move('mcp', 'mcp')).code).toBe('invalid_input');
     expect(failed(await move('mcp', 'mcp-auth')).code).toBe('invalid_input');
     expect(failed(await move('nope', null)).code).toBe('invalid_input');
-    expect(failed(await move('zeus', 'nope')).code).toBe('invalid_input');
-    expect(await parentOf('mcp')).toBe('alethea');
+    expect(failed(await move('zephyr', 'nope')).code).toBe('invalid_input');
+    expect(await parentOf('mcp')).toBe('northwind');
   });
 });
 
@@ -111,32 +111,32 @@ describe('scopes.rename', () => {
 
   it('changes the display name and keeps the slug, parent, children and what is filed in it', async () => {
     const problem = await deposit('Noise, not signal', 'mcp');
-    const renamed = ok<Renamed>(await rename('mcp', 'Themis'));
-    expect(renamed).toMatchObject({ slug: 'mcp', name: 'Themis', kind: 'product', parent: 'alethea', renamed: true });
+    const renamed = ok<Renamed>(await rename('mcp', 'Tidewater'));
+    expect(renamed).toMatchObject({ slug: 'mcp', name: 'Tidewater', kind: 'product', parent: 'northwind', renamed: true });
     const list = await scopes();
-    expect(list.filter((s) => s.slug === 'mcp')).toEqual([expect.objectContaining({ name: 'Themis', parent: 'alethea' })]);
+    expect(list.filter((s) => s.slug === 'mcp')).toEqual([expect.objectContaining({ name: 'Tidewater', parent: 'northwind' })]);
     expect(await parentOf('mcp-auth')).toBe('mcp');
     expect(ok<ObjectView>(await run('vault.get', { id: problem })).scopes).toEqual(['mcp']);
   });
 
   it('shows the new name on its grid column', async () => {
-    ok(await move('zeus', null));
-    ok(await rename('zeus', 'Zeus platform'));
+    ok(await move('zephyr', null));
+    ok(await rename('zephyr', 'Zephyr platform'));
     const strata = ok<OpOutput<'context.strata'>>(await run('context.strata', {}));
-    expect(strata.columns.find((c) => c.slug === 'zeus')?.name).toBe('Zeus platform');
+    expect(strata.columns.find((c) => c.slug === 'zephyr')?.name).toBe('Zephyr platform');
   });
 
   it('survives a later move, and a move survives a later rename', async () => {
-    ok(await rename('zeus', 'Zeus platform'));
-    ok(await move('zeus', null));
-    expect((await scopes()).find((s) => s.slug === 'zeus')).toMatchObject({ name: 'Zeus platform', parent: null });
-    ok(await rename('zeus', 'Zeus'));
-    expect((await scopes()).find((s) => s.slug === 'zeus')).toMatchObject({ name: 'Zeus', parent: null });
+    ok(await rename('zephyr', 'Zephyr platform'));
+    ok(await move('zephyr', null));
+    expect((await scopes()).find((s) => s.slug === 'zephyr')).toMatchObject({ name: 'Zephyr platform', parent: null });
+    ok(await rename('zephyr', 'Zephyr'));
+    expect((await scopes()).find((s) => s.slug === 'zephyr')).toMatchObject({ name: 'Zephyr', parent: null });
   });
 
   it('changes nothing for the same name, and refuses unknown slugs', async () => {
-    const before = (await scopes()).find((s) => s.slug === 'zeus');
-    expect(ok<Renamed>(await rename('zeus', 'Zeus'))).toMatchObject({ id: before?.id, renamed: false });
+    const before = (await scopes()).find((s) => s.slug === 'zephyr');
+    expect(ok<Renamed>(await rename('zephyr', 'Zephyr'))).toMatchObject({ id: before?.id, renamed: false });
     expect(failed(await rename('nope', 'Nope')).code).toBe('invalid_input');
   });
 });

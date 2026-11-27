@@ -86,7 +86,7 @@ interface Sweep {
 
 describe('inbox.sweep', () => {
   it('moves Drive files into the local inbox instead of copying them, keeping their arrival time', async () => {
-    const dictation = drop(join(drive, 'dictation 1.md'), 'Call Peter about the roadmap.');
+    const dictation = drop(join(drive, 'dictation 1.md'), 'Call Rowan about the roadmap.');
     const arrivedAt = statSync(dictation).mtime.toISOString();
     drop(join(home, 'inbox', 'notes.txt'), 'A local note.');
     drop(join(home, 'inbox', 'transcripts', 'standup.txt'), 'Speaker 1: hello');
@@ -103,12 +103,12 @@ describe('inbox.sweep', () => {
     expect(existsSync(dictation)).toBe(false);
     expect(readdirSync(drive)).toEqual([]);
     const local = join(home, 'inbox', 'drive', 'dictation 1.md');
-    expect(readFileSync(local, 'utf8')).toBe('Call Peter about the roadmap.');
+    expect(readFileSync(local, 'utf8')).toBe('Call Rowan about the roadmap.');
     expect(statSync(local).mtime.toISOString()).toBe(arrivedAt);
 
     const list = ok<{ files: InboxFile[]; duplicates: number }>(await run('inbox.list'));
     expect(list.files).toEqual(sweep.waiting);
-    expect(list.files[0]).toMatchObject({ sha256: sha('Call Peter about the roadmap.'), size: 29, arrived_at: arrivedAt, text: true });
+    expect(list.files[0]).toMatchObject({ sha256: sha('Call Rowan about the roadmap.'), size: 29, arrived_at: arrivedAt, text: true });
   });
 
   it('reports an unset BOUSLEH_DRIVE_INBOX and sweeps only the local inbox', async () => {

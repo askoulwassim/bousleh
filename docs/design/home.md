@@ -1,12 +1,12 @@
 # Bousleh Home: design spec (Oct 25, 2026)
 
-Source: the Claude Design canvas "Bousleh Home" (artboards Home, Home-Phone, Logo, Tokens, Components). The direction Wassim picked is **C · Strata** with **B's Horizon front page**.
+Source: the Claude Design canvas "Bousleh Home" (artboards Home, Home-Phone, Logo, Tokens, Components). The direction picked is **C · Strata** with **B's Horizon front page**.
 
 ## Direction
-- Home is a cross-section with altitude as rows (50,000 company, 10,000 cross-team, 1,000 my surfaces, 100 one thing) and the scopes as columns (Specdr, Placement, Pandora, Anvil, Bousleh; on the work instance, Alethea's scopes). Each cell holds the objects at that scope and altitude. Empty cells are drawn dashed: the gaps are the message.
+- Home is a cross-section with altitude as rows (50,000 company, 10,000 cross-team, 1,000 my surfaces, 100 one thing) and the scopes as columns (Harbor, Atlas, Hiring, Platform, Bousleh; on a work instance, the company's scopes). Each cell holds the objects at that scope and altitude. Empty cells are drawn dashed: the gaps are the message.
 - The desktop view fills the window at any width (no maximum width; side padding grows with the window). Scope columns share the width but never shrink below 168 px (140 px from 720 to 1099 px): when they can't all fit, the grid scrolls sideways and the altitude labels stay pinned on the left. Below 720 px the phone view takes over.
 - Each mode launches from the band it works at: 50K Shape; 10K Horizon, Communicate; 1K Workshop, Pulse, Coach; 100 Counsel, Capture.
-- The header shows the hero count of what needs you, plus readouts (owed me, meetings, inbox, touch due, Alethea countdown) and two actions (one primary, one secondary).
+- The header shows the hero count of what needs you, plus readouts (owed me, meetings, inbox, touch due) and two actions (one primary, one secondary).
 - Below the grid sits the Horizon front page: a masthead (issue number, scan date), a lead story with the week's findings by day, side stories, the beat (findings per watched entry), list changes, and scopes with no watch list.
 - Phone (last snapshot): hero, readouts, a StrataMini heat grid, the needs-you card, the next meeting, the bet, the Horizon front page, and a tab bar with Drop as the primary action.
 
@@ -48,7 +48,7 @@ Space (`space-{px}`): 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 56. St
 Radius: sm 6, cell 10, card 12, phone card 14, chip 999, app icon 40 on 180. Sizes: control 44, control-sm 34, launcher 40, chip 24 (28 hit area), rail 76, tab bar 84, mobile primary 50. Focus 2px accent outline, offset 2. Strata columns 132 | 5 × 1fr | 200, max width 1364. Motion: fast 150ms, base 250ms, ring 600ms ease, pulse 1.4s while a run is going; hover only under (hover:hover); reduced motion respected.
 
 ## Logo: Ba Ring
-- 100 viewBox, Perfect Placement's Ring construction: disc r49 panel fill, 1.5 line-2 stroke; track r38 at 7, line colour; accent arc from 12 o'clock clockwise 82%, round caps; fg end dot r6.5 with a 3 panel stroke ("you are here").
+- 100 viewBox, a Ring construction: disc r49 panel fill, 1.5 line-2 stroke; track r38 at 7, line colour; accent arc from 12 o'clock clockwise 82%, round caps; fg end dot r6.5 with a 3 panel stroke ("you are here").
 - Inside, a geometric ب: path `M31,42 L31,46 Q31,54 39,54 L61,54 Q69,54 69,46 L69,32`, fg at 9 over a panel stroke at 15. Its dot is a north-pointing needle diamond in accent-hi: `50,61 55.5,68 50,75 44.5,68`.
 - Favicon cut (16 to 48): heavier strokes, no disc stroke, no end dot.
 - Lockup: lowercase "bousleh" in Bricolage 800, بوصلة in Noto Kufi Arabic 500 below in muted.
@@ -76,9 +76,9 @@ Radius: sm 6, cell 10, card 12, phone card 14, chip 999, app icon 40 on 180. Siz
 
 ## As built (Oct 25, packages/home)
 The boards in `docs/design/home/*.dc.html` are the visual spec; `packages/home` builds them into one page. Where the build differs from the boards, it is because the data isn't there yet:
-- **Readouts:** owed me, meetings, inbox, touch due, and **next due** (the soonest dated commitment you owe) in place of the Alethea countdown, which no op knows. With nothing read, every readout shows a dash, and the hero says "No data yet" rather than "Clear".
-- **Rail:** Home, Docs (the registered assets, from `assets.list`), the freshness stamp and Ask. No Specdr Hub button (no Hub url in the data) and no InstanceSwitch (each instance is its own published page).
-- **BetCard:** the ClockRing reads its days from the bet's kill criteria ("30 days", "6 weeks") and counts from when the idea became a bet (`since` in `context.strata`); no ring when the kill criteria name no time. No SlotBar: POC and promotion counts live in the Specdr Hub, not in Bousleh. Below the clock, the bet's cell is grouped by kind (experiments, problems, metrics…).
+- **Readouts:** owed me, meetings, inbox, touch due, and **next due** (the soonest dated commitment you owe), which the boards don't show. With nothing read, every readout shows a dash, and the hero says "No data yet" rather than "Clear".
+- **Rail:** Home, Docs (the registered assets, from `assets.list`), the freshness stamp and Ask. No InstanceSwitch (each instance is its own published page).
+- **BetCard:** the ClockRing reads its days from the bet's kill criteria ("30 days", "6 weeks") and counts from when the idea became a bet (`since` in `context.strata`); no ring when the kill criteria name no time. No SlotBar: POC and promotion counts live in a POC tool, not in Bousleh. Below the clock, the bet's cell is grouped by kind (experiments, problems, metrics…).
 - **Horizon:** the masthead reads "Wk 43 · <scan day>" (ISO week) instead of an issue number; the beat counts this week's findings whose url host or text matches each entry. With no findings it shows the same layout with bracketed placeholders and a dashed chip, never invented stories.
 - **Titles** wrap to two lines in a cell, then truncate.
 - **Lockup:** in the page footer, بوصلة beside "bousleh".

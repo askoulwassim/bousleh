@@ -17,8 +17,8 @@ const ctx: OpContext = { actor: 'agent', now: tick };
 
 let home: string;
 let engine: Engine;
-let peter: string;
-let wassim: string;
+let rowan: string;
+let alex: string;
 let strategy: string;
 
 function ok<T = Record<string, unknown>>(outcome: OpOutcome): T {
@@ -45,9 +45,9 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-metrics-'));
   engine = openEngine({ home });
   ok(await run('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }));
-  ok(await run('scopes.add', { slug: 'specdr', name: 'Specdr', kind: 'product' }));
-  peter = await idOf('deposits.write', { kind: 'person', title: 'Peter', altitude: 50000 });
-  wassim = await idOf('deposits.write', { kind: 'person', title: 'Wassim', altitude: 1000 });
+  ok(await run('scopes.add', { slug: 'harbor', name: 'Harbor', kind: 'product' }));
+  rowan = await idOf('deposits.write', { kind: 'person', title: 'Rowan', altitude: 50000 });
+  alex = await idOf('deposits.write', { kind: 'person', title: 'Alex', altitude: 1000 });
   strategy = await idOf('deposits.write', { kind: 'strategy', title: 'Automate the analysts', altitude: 50000, scopes: ['bousleh'] });
 });
 afterEach(() => {
@@ -66,7 +66,7 @@ describe('metrics.upsert', () => {
         cadence: 'weekly',
         unit: 'hours',
         body: 'Self-reported in the Friday survey.',
-        owner: peter,
+        owner: rowan,
         serves: strategy,
       }),
     );
@@ -82,7 +82,7 @@ describe('metrics.upsert', () => {
       body: 'Self-reported in the Friday survey.',
     });
     expect(object.links.out.map((link) => [link.kind, link.to])).toEqual([
-      ['owned_by', peter],
+      ['owned_by', rowan],
       ['serves', strategy],
     ]);
   });
@@ -106,7 +106,7 @@ describe('metrics.upsert', () => {
       unit: 'hours',
       body: 'v1',
     });
-    const updated = ok(await run('metrics.upsert', { id, status: 'instrumented', cadence: 'monthly', unit: null, owner: peter }));
+    const updated = ok(await run('metrics.upsert', { id, status: 'instrumented', cadence: 'monthly', unit: null, owner: rowan }));
     expect(updated).toMatchObject({ id, version: { n: 2 }, created: false, new_version: true });
 
     const object = ok<{
@@ -119,21 +119,21 @@ describe('metrics.upsert', () => {
       [1, 'idea'],
       [2, 'instrumented'],
     ]);
-    expect((await list())[0]).toMatchObject({ owner: { id: peter, title: 'Peter' }, unit: null });
+    expect((await list())[0]).toMatchObject({ owner: { id: rowan, title: 'Rowan' }, unit: null });
   });
 
   it('writes nothing new when an update changes nothing, and replaces the owner', async () => {
-    const id = await idOf('metrics.upsert', { title: 'Hours saved', altitude: 10000, scopes: ['bousleh'], owner: peter });
-    const same = ok(await run('metrics.upsert', { id, title: 'Hours saved', altitude: 10000, scopes: ['bousleh'], owner: peter }));
+    const id = await idOf('metrics.upsert', { title: 'Hours saved', altitude: 10000, scopes: ['bousleh'], owner: rowan });
+    const same = ok(await run('metrics.upsert', { id, title: 'Hours saved', altitude: 10000, scopes: ['bousleh'], owner: rowan }));
     expect(same).toMatchObject({ version: { n: 1 }, new_version: false });
     expect(count(`SELECT count(*) AS n FROM versions WHERE object_id = '${id}'`)).toBe(1);
     expect(count(`SELECT count(*) AS n FROM links WHERE from_id = '${id}' AND kind = 'owned_by'`)).toBe(1);
 
     // A new owner replaces the old one: the old link is retracted, not deleted.
-    expect(ok(await run('metrics.upsert', { id, status: 'defined', owner: wassim }))).toMatchObject({ version: { n: 2 } });
+    expect(ok(await run('metrics.upsert', { id, status: 'defined', owner: alex }))).toMatchObject({ version: { n: 2 } });
     expect(count(`SELECT count(*) AS n FROM links WHERE from_id = '${id}' AND kind = 'owned_by'`)).toBe(2);
     expect(count('SELECT count(*) AS n FROM link_retractions')).toBe(1);
-    expect((await list())[0]).toMatchObject({ owner: { id: wassim } });
+    expect((await list())[0]).toMatchObject({ owner: { id: alex } });
 
     expect(ok(await run('metrics.upsert', { id, serves: strategy }))).toMatchObject({ new_version: false });
     expect((await list())[0]).toMatchObject({ serves: { id: strategy, title: 'Automate the analysts' } });
@@ -143,7 +143,7 @@ describe('metrics.upsert', () => {
     const id = await idOf('metrics.upsert', { title: 'Hours saved', altitude: 10000, scopes: ['bousleh'] });
     expect(failed(await run('metrics.upsert', { id: 'met_01JBX0000000000000000000AB', title: 'x' })).code).toBe('not_found');
     expect(failed(await run('metrics.upsert', { id: strategy, title: 'x' })).code).toBe('invalid_input');
-    expect(failed(await run('metrics.upsert', { id, scopes: ['specdr'] })).message).toMatch(/scopes/);
+    expect(failed(await run('metrics.upsert', { id, scopes: ['harbor'] })).message).toMatch(/scopes/);
     expect(failed(await run('metrics.upsert', { id, status: 'won' })).code).toBe('invalid_input');
   });
 });
@@ -263,16 +263,16 @@ describe('metrics.list', () => {
   it('filters by status and scope, and is read-only', async () => {
     expect(OPS['metrics.list'].readOnly).toBe(true);
     const a = await idOf('metrics.upsert', { title: 'A: hours saved', altitude: 10000, scopes: ['bousleh'], status: 'measured' });
-    const b = await idOf('metrics.upsert', { title: 'B: weekly actives', altitude: 1000, scopes: ['specdr'], status: 'measured' });
-    const c = await idOf('metrics.upsert', { title: 'C: drafts accepted', altitude: 1000, scopes: ['bousleh', 'specdr'] });
+    const b = await idOf('metrics.upsert', { title: 'B: weekly actives', altitude: 1000, scopes: ['harbor'], status: 'measured' });
+    const c = await idOf('metrics.upsert', { title: 'C: drafts accepted', altitude: 1000, scopes: ['bousleh', 'harbor'] });
     ok(await run('metrics.reading', { metric_id: b, value: 120 }));
 
     expect((await list()).map((m) => m.id)).toEqual([a, b, c]);
     expect((await list({ status: ['measured'] })).map((m) => m.id)).toEqual([a, b]);
-    expect((await list({ scope: 'specdr' })).map((m) => m.id)).toEqual([b, c]);
+    expect((await list({ scope: 'harbor' })).map((m) => m.id)).toEqual([b, c]);
     expect((await list({ scope: 'bousleh', status: ['idea', 'defined'] })).map((m) => m.id)).toEqual([c]);
-    expect((await list({ scope: 'specdr' })).map((m) => m.latest_reading?.value ?? null)).toEqual([120, null]);
-    expect((await list({ scope: 'bousleh' }))[1]?.scopes).toEqual(['bousleh', 'specdr']);
+    expect((await list({ scope: 'harbor' })).map((m) => m.latest_reading?.value ?? null)).toEqual([120, null]);
+    expect((await list({ scope: 'bousleh' }))[1]?.scopes).toEqual(['bousleh', 'harbor']);
 
     expect(failed(await run('metrics.list', { scope: 'nowhere' })).code).toBe('invalid_input');
     expect(failed(await run('metrics.list', { status: ['won'] })).code).toBe('invalid_input');

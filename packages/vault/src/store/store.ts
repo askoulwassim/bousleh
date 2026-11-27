@@ -240,7 +240,7 @@ export class Store {
 
   /**
    * The slugs a scope filter covers: each named scope plus every scope below it (a filter on
-   * `alethea` also covers its products and teams). Refuses an unknown slug.
+   * `northwind` also covers its products and teams). Refuses an unknown slug.
    */
   expandScopes(slugs: readonly string[]): Set<string> {
     const scopes = this.listScopes();

@@ -79,9 +79,9 @@ describe('glossary terms', () => {
     expect(KINDS.term).toMatchObject({ layer: 'anchors', prefix: 'trm', scopeRequired: true });
     expect(kindOfId('trm_01JBX0000000000000000000000')).toBe('term');
     expect(checkKindFields('term', {})).toEqual({ ok: true, value: { status: null, attrs: { aliases: [] } } });
-    expect(checkKindFields('term', { attrs: { aliases: ['NI', 'narrative intel'], definition: 'Tracking how claims spread.' } })).toEqual({
+    expect(checkKindFields('term', { attrs: { aliases: ['LI', 'logistics intel'], definition: 'Tracking where loads move.' } })).toEqual({
       ok: true,
-      value: { status: null, attrs: { aliases: ['NI', 'narrative intel'], definition: 'Tracking how claims spread.' } },
+      value: { status: null, attrs: { aliases: ['LI', 'logistics intel'], definition: 'Tracking where loads move.' } },
     });
     expect(checkKindFields('term', { attrs: { aliases: [''] } }).ok).toBe(false);
     expect(checkKindFields('term', { attrs: { definition: '' } }).ok).toBe(false);
@@ -91,9 +91,9 @@ describe('glossary terms', () => {
 
 describe('signal tags', () => {
   it('default to none and must be short lower-case slugs, each once', () => {
-    expect(checkKindFields('signal', { attrs: { source: 'Peter' } })).toEqual({
+    expect(checkKindFields('signal', { attrs: { source: 'Rowan' } })).toEqual({
       ok: true,
-      value: { status: null, attrs: { source: 'Peter', tags: [] } },
+      value: { status: null, attrs: { source: 'Rowan', tags: [] } },
     });
     expect(checkKindFields('signal', { attrs: { tags: ['export-speed', 'onboarding'], sentiment: 'negative' } }).ok).toBe(true);
     for (const bad of [['Export Speed'], ['export_speed'], ['-export'], ['a'.repeat(41)], ['onboarding', 'onboarding']]) {
@@ -168,12 +168,12 @@ describe('problem statuses', () => {
 });
 
 describe('watch list entries', () => {
-  it('say who added them: wassim by default, or horizon with an optional reason', () => {
-    expect(checkKindFields('watch_list', { attrs: { entries: [{ type: 'competitor', name: 'Glean' }] } })).toEqual({
+  it('say who added them: user by default, or horizon with an optional reason', () => {
+    expect(checkKindFields('watch_list', { attrs: { entries: [{ type: 'competitor', name: 'Lumen Search' }] } })).toEqual({
       ok: true,
-      value: { status: null, attrs: { entries: [{ type: 'competitor', name: 'Glean', added_by: 'wassim' }] } },
+      value: { status: null, attrs: { entries: [{ type: 'competitor', name: 'Lumen Search', added_by: 'user' }] } },
     });
-    const scanned = { type: 'outlet', name: 'Stratechery', added_by: 'horizon', reason: 'broke 2 stories this week' };
+    const scanned = { type: 'outlet', name: 'Signal Weekly', added_by: 'horizon', reason: 'broke 2 stories this week' };
     expect(checkKindFields('watch_list', { attrs: { entries: [scanned] } })).toMatchObject({
       ok: true,
       value: { attrs: { entries: [scanned] } },

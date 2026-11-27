@@ -19,7 +19,7 @@ Saying it again republishes to the same link. (A script can't do this step: publ
 1. **Build and check.**
    - Run `pnpm build` in the repo (or confirm `scripts/setup-mac.sh` ran since the last `git pull`; `scripts/setup-mac.sh --check` says whether `packages/home/dist/home.html` exists). Never edit `dist/home.html` by hand.
    - Call `vault_health` on the `bousleh` MCP server. It must answer with all Bousleh ops, `context_strata` among them; if it doesn't, stop and say to run `scripts/setup-mac.sh` and restart Claude Desktop.
-2. **Find the existing Home.** Call `assets_list` with `type: "page"` and `scopes: ["bousleh"]`, and look for the asset titled "Bousleh Home". On the work Mac, use that instance's own scope instead of `bousleh` (the one Home is registered under, else ask).
+2. **Find the existing Home.** Call `assets_list` with `type: "page"` and `scopes: ["bousleh"]`, and look for the asset titled "Bousleh Home". On a second instance, use that instance's own scope instead of `bousleh` (the one Home is registered under, else ask).
 3. **Publish.** Publish `packages/home/dist/home.html` with the Artifact tool, using the title, icon word and the `capabilities` object exactly as `packages/home/artifact.json` gives them (and its description). When step 2 found a Home, publish to its url so the link stays the same; otherwise publish a new one. Read the file first, as the Artifact tool requires; it holds no data, only the page.
 4. **Register it, on first publish only.** Call `assets_add` with the artifact's url, title "Bousleh Home", `type: "page"`, `scopes: ["bousleh"]`, and `documents` set to the id of the Bousleh strategy (find it with `context_brief` on scope `bousleh` at altitude 50000, or `vault_search` kinds `["strategy"]`). A republish to the same url needs no `assets_add`; calling it again is safe.
 5. **Report** in a few lines: the link, whether it was a new page or an update, and that:
@@ -27,9 +27,9 @@ Saying it again republishes to the same link. (A script can't do this step: publ
    - the phone and the web show the last snapshot, taken the last time Home was open in the desktop app;
    - the first live open saves the first snapshot, so open it once on the Mac before checking the phone.
 
-## The work instance
+## A second instance
 
-The work Mac publishes its own Home the same way, from the same repo, in its own Claude account: same page, its own data, its own snapshot and link. It shows Alethea's scopes because its engine holds them. Register it under the work instance's scope in step 4.
+A second Mac, such as a work Mac with its own Claude account and its own data, publishes its own Home the same way, from the same repo: same page, its own data, its own snapshot and link. It shows that instance's scopes because its engine holds them. Register it under that instance's scope in step 4.
 
 ## Developing Home
 

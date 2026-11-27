@@ -45,7 +45,7 @@ interface Digest {
 }
 
 const competitors = [
-  { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
+  { type: 'competitor', name: 'Lumen Search', url: 'https://www.lumensearch.example' },
   { type: 'topic', name: 'Agentic analytics', notes: 'Anything on agents replacing dashboards' },
 ];
 
@@ -53,7 +53,7 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-watch-'));
   engine = openEngine({ home });
   ok(await run('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }));
-  ok(await run('scopes.add', { slug: 'specdr', name: 'Specdr', kind: 'product' }));
+  ok(await run('scopes.add', { slug: 'harbor', name: 'Harbor', kind: 'product' }));
 });
 afterEach(() => {
   engine.close();
@@ -72,19 +72,19 @@ describe('watchlists.set and watchlists.get', () => {
       created: true,
       new_version: true,
     });
-    const specdr = ok<SetResult>(
-      await run('watchlists.set', { scope: 'specdr', entries: [{ type: 'podcast', name: 'Latent Space' }], altitude: 1000 }),
+    const harbor = ok<SetResult>(
+      await run('watchlists.set', { scope: 'harbor', entries: [{ type: 'podcast', name: 'Product Loop' }], altitude: 1000 }),
     );
-    expect(specdr.id).not.toBe(bousleh.id);
+    expect(harbor.id).not.toBe(bousleh.id);
 
-    const byScope = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { scope: 'specdr' })).watch_lists;
+    const byScope = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { scope: 'harbor' })).watch_lists;
     expect(byScope).toEqual([
-      expect.objectContaining({ id: specdr.id, entries: [{ type: 'podcast', name: 'Latent Space', added_by: 'wassim' }] }),
+      expect.objectContaining({ id: harbor.id, entries: [{ type: 'podcast', name: 'Product Loop', added_by: 'user' }] }),
     ]);
     const byId = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { id: bousleh.id })).watch_lists;
     expect(byId.map((list) => list.id)).toEqual([bousleh.id]);
     const all = ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', {})).watch_lists;
-    expect(all.map((list) => list.scopes)).toEqual([['bousleh'], ['specdr']]);
+    expect(all.map((list) => list.scopes)).toEqual([['bousleh'], ['harbor']]);
     expect(OPS['watchlists.get'].readOnly).toBe(true);
   });
 
@@ -108,7 +108,7 @@ describe('watchlists.set and watchlists.get', () => {
     expect(failed(await run('watchlists.set', { scope: 'nowhere', entries: [] })).code).toBe('invalid_input');
     expect(failed(await run('watchlists.get', { scope: 'nowhere' })).code).toBe('invalid_input');
     expect(failed(await run('watchlists.set', { scope: 'bousleh', entries: [{ type: 'rumour', name: 'x' }] })).code).toBe('invalid_input');
-    expect(ok<{ watch_lists: unknown[] }>(await run('watchlists.get', { scope: 'specdr' })).watch_lists).toEqual([]);
+    expect(ok<{ watch_lists: unknown[] }>(await run('watchlists.get', { scope: 'harbor' })).watch_lists).toEqual([]);
   });
 });
 
@@ -116,19 +116,19 @@ describe('watch list entries: who added them', () => {
   const entries = async (scope = 'bousleh') =>
     ok<{ watch_lists: WatchListView[] }>(await run('watchlists.get', { scope })).watch_lists[0]?.entries ?? [];
 
-  it("are Wassim's by default, and take horizon with a reason", async () => {
+  it("are Alex's by default, and take horizon with a reason", async () => {
     const created = ok<SetResult>(
       await run('watchlists.set', {
         scope: 'bousleh',
         entries: [
-          { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
-          { type: 'outlet', name: 'Stratechery', added_by: 'horizon', reason: 'cited in 3 findings as the source' },
+          { type: 'competitor', name: 'Lumen Search', url: 'https://www.lumensearch.example' },
+          { type: 'outlet', name: 'Signal Weekly', added_by: 'horizon', reason: 'cited in 3 findings as the source' },
         ],
       }),
     );
     expect(created.entries).toEqual([
-      { type: 'competitor', name: 'Glean', url: 'https://www.glean.com', added_by: 'wassim' },
-      { type: 'outlet', name: 'Stratechery', added_by: 'horizon', reason: 'cited in 3 findings as the source' },
+      { type: 'competitor', name: 'Lumen Search', url: 'https://www.lumensearch.example', added_by: 'user' },
+      { type: 'outlet', name: 'Signal Weekly', added_by: 'horizon', reason: 'cited in 3 findings as the source' },
     ]);
     const stored = ok<{ version: { attrs: { entries: unknown[] } } }>(await run('vault.get', { id: created.id }));
     expect(stored.version.attrs.entries).toEqual(created.entries);
@@ -142,9 +142,15 @@ describe('watch list entries: who added them', () => {
       await run('watchlists.set', {
         scope: 'bousleh',
         entries: [
-          { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
-          { type: 'competitor', name: 'Hebbia', url: 'https://hebbia.ai', added_by: 'horizon', reason: 'direct alternative in 3 articles' },
-          { type: 'podcast', name: 'Latent Space', added_by: 'horizon', reason: 'two episodes on agent memory' },
+          { type: 'competitor', name: 'Lumen Search', url: 'https://www.lumensearch.example' },
+          {
+            type: 'competitor',
+            name: 'Quarry AI',
+            url: 'https://quarryai.example',
+            added_by: 'horizon',
+            reason: 'direct alternative in 3 articles',
+          },
+          { type: 'podcast', name: 'Product Loop', added_by: 'horizon', reason: 'two episodes on agent memory' },
         ],
       }),
     );
@@ -154,32 +160,32 @@ describe('watch list entries: who added them', () => {
       await run('watchlists.set', {
         id: first.id,
         entries: [
-          { type: 'competitor', name: 'Glean', url: 'https://glean.com/' },
-          { type: 'competitor', name: 'Hebbia AI', url: 'https://www.hebbia.ai' },
-          { type: 'podcast', name: 'latent space', notes: 'show notes only' },
+          { type: 'competitor', name: 'Lumen Search', url: 'https://lumensearch.example/' },
+          { type: 'competitor', name: 'Quarry AI Inc', url: 'https://www.quarryai.example' },
+          { type: 'podcast', name: 'product loop', notes: 'show notes only' },
           { type: 'topic', name: 'Agent memory' },
         ],
       }),
     );
     expect(second.version.n).toBe(2);
     expect(second.entries.map((e) => [e.name, e.added_by, e.reason ?? null])).toEqual([
-      ['Glean', 'wassim', null],
-      ['Hebbia AI', 'horizon', 'direct alternative in 3 articles'],
-      ['latent space', 'horizon', 'two episodes on agent memory'],
-      ['Agent memory', 'wassim', null],
+      ['Lumen Search', 'user', null],
+      ['Quarry AI Inc', 'horizon', 'direct alternative in 3 articles'],
+      ['product loop', 'horizon', 'two episodes on agent memory'],
+      ['Agent memory', 'user', null],
     ]);
 
-    // The same list again writes nothing; an explicit added_by wins (Wassim adopts an entry).
+    // The same list again writes nothing; an explicit added_by wins (Alex adopts an entry).
     const same = ok<SetResult>(await run('watchlists.set', { id: first.id, entries: second.entries.map(({ added_by, ...e }) => e) }));
     expect(same.new_version).toBe(false);
     const adopted = ok<SetResult>(
       await run('watchlists.set', {
         id: first.id,
-        entries: second.entries.map((e) => (e.name === 'Hebbia AI' ? { ...e, added_by: 'wassim' as const } : e)),
+        entries: second.entries.map((e) => (e.name === 'Quarry AI Inc' ? { ...e, added_by: 'user' as const } : e)),
       }),
     );
-    expect(adopted.entries.find((e) => e.name === 'Hebbia AI')?.added_by).toBe('wassim');
-    expect((await entries()).map((e) => e.added_by)).toEqual(['wassim', 'wassim', 'horizon', 'wassim']);
+    expect(adopted.entries.find((e) => e.name === 'Quarry AI Inc')?.added_by).toBe('user');
+    expect((await entries()).map((e) => e.added_by)).toEqual(['user', 'user', 'horizon', 'user']);
 
     // Every change is a version: the history shows what the list held before.
     const history = ok<{ history: { n: number }[] }>(await run('vault.get', { id: first.id, history: true })).history;
@@ -187,7 +193,7 @@ describe('watch list entries: who added them', () => {
   });
 });
 
-describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => {
+describe('watchlists.apply: the scan learns, Alex keeps the last word', () => {
   interface ApplyResult {
     watch_list: WatchListView;
     new_version: boolean;
@@ -207,7 +213,7 @@ describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => 
       await run('watchlists.set', {
         scope: 'bousleh',
         entries: [
-          { type: 'competitor', name: 'Glean', url: 'https://www.glean.com' },
+          { type: 'competitor', name: 'Lumen Search', url: 'https://www.lumensearch.example' },
           { type: 'outlet', name: 'Some Blog', url: 'https://someblog.example', added_by: 'horizon', reason: 'covered agent memory twice' },
           { type: 'topic', name: 'Agentic analytics' },
         ],
@@ -215,15 +221,21 @@ describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => 
     );
   }
 
-  it('adds as horizon, removes only what horizon added, and queues removing one of Wassim’s entries once', async () => {
+  it('adds as horizon, removes only what horizon added, and queues removing one of Alex’s entries once', async () => {
     const list = await seedList();
     const applied = ok<ApplyResult>(
       await run('watchlists.apply', {
         id: list.id,
         source: 'horizon-scan-bousleh-2026-10-26.md',
         changes: [
-          { action: 'add', type: 'competitor', name: 'Hebbia', url: 'https://hebbia.ai', reason: 'direct alternative in 3 articles' },
-          { action: 'add', type: 'competitor', name: 'Glean', url: 'https://glean.com/', reason: 'again' },
+          {
+            action: 'add',
+            type: 'competitor',
+            name: 'Quarry AI',
+            url: 'https://quarryai.example',
+            reason: 'direct alternative in 3 articles',
+          },
+          { action: 'add', type: 'competitor', name: 'Lumen Search', url: 'https://lumensearch.example/', reason: 'again' },
           { action: 'remove', type: 'outlet', name: 'Some Blog', url: 'https://www.someblog.example/', reason: 'now covers crypto' },
           { action: 'remove', type: 'topic', name: 'agentic analytics', reason: 'quiet for 4 weeks' },
           { action: 'remove', type: 'podcast', name: 'Not There', reason: 'n/a' },
@@ -232,25 +244,31 @@ describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => 
     );
     expect(applied.new_version).toBe(true);
     expect(applied.results.map((r) => [r.name, r.outcome])).toEqual([
-      ['Hebbia', 'added'],
-      ['Glean', 'already_on_list'],
+      ['Quarry AI', 'added'],
+      ['Lumen Search', 'already_on_list'],
       ['Some Blog', 'removed'],
       ['agentic analytics', 'queued'],
       ['Not There', 'not_on_list'],
     ]);
     expect(applied.watch_list.version.n).toBe(2);
     expect(applied.watch_list.entries).toEqual([
-      { type: 'competitor', name: 'Glean', url: 'https://www.glean.com', added_by: 'wassim' },
-      { type: 'topic', name: 'Agentic analytics', added_by: 'wassim' },
-      { type: 'competitor', name: 'Hebbia', url: 'https://hebbia.ai', added_by: 'horizon', reason: 'direct alternative in 3 articles' },
+      { type: 'competitor', name: 'Lumen Search', url: 'https://www.lumensearch.example', added_by: 'user' },
+      { type: 'topic', name: 'Agentic analytics', added_by: 'user' },
+      {
+        type: 'competitor',
+        name: 'Quarry AI',
+        url: 'https://quarryai.example',
+        added_by: 'horizon',
+        reason: 'direct alternative in 3 articles',
+      },
     ]);
 
-    // The suggestion waits in the queue for Wassim, tied to the watch list.
+    // The suggestion waits in the queue for Alex, tied to the watch list.
     const queue = ok<QueueItems>(await run('queue.list', {})).items;
     expect(queue).toHaveLength(1);
     const item = queue[0];
     expect(item?.id).toBe(applied.results[3]?.queue_id);
-    expect(item?.reason).toBe('Horizon suggests removing an entry Wassim added; Wassim decides');
+    expect(item?.reason).toBe('Horizon suggests removing an entry the user added; the user decides');
     expect(item?.candidates.map((c) => c.id)).toEqual([list.id]);
     expect(item?.draft).toMatchObject({
       kind: 'observation',
@@ -266,7 +284,7 @@ describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => 
       await run('watchlists.apply', {
         id: list.id,
         changes: [
-          { action: 'add', type: 'competitor', name: 'hebbia', url: 'https://www.hebbia.ai', reason: 'still' },
+          { action: 'add', type: 'competitor', name: 'quarry ai', url: 'https://www.quarryai.example', reason: 'still' },
           { action: 'remove', type: 'topic', name: 'Agentic analytics', reason: 'still quiet' },
           { action: 'remove', type: 'outlet', name: 'Some Blog', reason: 'gone' },
         ],
@@ -277,7 +295,7 @@ describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => 
     expect(again.results[1]?.queue_id).toBe(item?.id);
     expect(ok<QueueItems>(await run('queue.list', {})).items).toHaveLength(1);
 
-    // Once Wassim has decided (the item is resolved), a later scan may ask again.
+    // Once Alex has decided (the item is resolved), a later scan may ask again.
     ok(await run('queue.resolve', { id: item?.id, action: 'discard', note: 'keeping it' }));
     const later = ok<ApplyResult>(
       await run('watchlists.apply', {
@@ -304,23 +322,23 @@ describe('watchlists.apply: the scan learns, Wassim keeps the last word', () => 
 
 describe('watch.file', () => {
   it("files findings in the watch list's scopes, linked to it, and skips urls already filed", async () => {
-    const list = ok<SetResult>(await run('watchlists.set', { scope: 'specdr', entries: competitors, altitude: 1000 }));
+    const list = ok<SetResult>(await run('watchlists.set', { scope: 'harbor', entries: competitors, altitude: 1000 }));
     const first = ok<FileResult>(
       await run('watch.file', {
-        scope: 'specdr',
+        scope: 'harbor',
         findings: [
           {
-            title: 'Glean ships agent builder',
-            url: 'https://www.glean.com/blog/agents/?utm_source=x#top',
+            title: 'Lumen Search ships agent builder',
+            url: 'https://www.lumensearch.example/blog/agents/?utm_source=x#top',
             published_at: '2026-10-24',
-            summary: 'Glean now lets customers build agents on their index.',
+            summary: 'Lumen Search now lets customers build agents on their index.',
           },
           { title: 'Dashboards are dead', url: 'https://example.com/dashboards' },
         ],
       }),
     );
-    expect(first.watch_list).toEqual({ id: list.id, title: 'Watch list: Specdr', scopes: ['specdr'] });
-    expect(first.filed.map((f) => f.url)).toEqual(['https://www.glean.com/blog/agents/', 'https://example.com/dashboards']);
+    expect(first.watch_list).toEqual({ id: list.id, title: 'Watch list: Harbor', scopes: ['harbor'] });
+    expect(first.filed.map((f) => f.url)).toEqual(['https://www.lumensearch.example/blog/agents/', 'https://example.com/dashboards']);
     expect(first.skipped).toEqual([]);
 
     const finding = ok<{
@@ -331,11 +349,11 @@ describe('watch.file', () => {
     }>(await run('vault.get', { id: first.filed[0]?.id }));
     expect(finding).toMatchObject({
       kind: 'finding',
-      scopes: ['specdr'],
+      scopes: ['harbor'],
       version: {
         altitude: 1000,
-        attrs: { url: 'https://www.glean.com/blog/agents/', published_at: '2026-10-24' },
-        body: 'Glean now lets customers build agents on their index.',
+        attrs: { url: 'https://www.lumensearch.example/blog/agents/', published_at: '2026-10-24' },
+        body: 'Lumen Search now lets customers build agents on their index.',
       },
     });
     expect(finding.links.out).toEqual([expect.objectContaining({ kind: 'from_watch_list', to: list.id })]);
@@ -344,7 +362,7 @@ describe('watch.file', () => {
       await run('watch.file', {
         watch_list_id: list.id,
         findings: [
-          { title: 'Glean agents (again)', url: 'http://glean.com/blog/agents' },
+          { title: 'Lumen Search agents (again)', url: 'http://lumensearch.example/blog/agents' },
           { title: 'New one', url: 'https://example.com/new' },
           { title: 'New one, twice', url: 'https://example.com/new/' },
         ],
@@ -352,17 +370,22 @@ describe('watch.file', () => {
     );
     expect(second.filed.map((f) => f.title)).toEqual(['New one']);
     expect(second.skipped).toEqual([
-      { title: 'Glean agents (again)', url: 'http://glean.com/blog/agents', reason: 'already_filed', existing_id: first.filed[0]?.id },
+      {
+        title: 'Lumen Search agents (again)',
+        url: 'http://lumensearch.example/blog/agents',
+        reason: 'already_filed',
+        existing_id: first.filed[0]?.id,
+      },
       { title: 'New one, twice', url: 'https://example.com/new/', reason: 'repeated', existing_id: second.filed[0]?.id },
     ]);
   });
 
   it('dedupes across watch lists', async () => {
     ok(await run('watchlists.set', { scope: 'bousleh', entries: [] }));
-    const specdr = ok<SetResult>(await run('watchlists.set', { scope: 'specdr', entries: [] }));
+    const harbor = ok<SetResult>(await run('watchlists.set', { scope: 'harbor', entries: [] }));
     ok(await run('watch.file', { scope: 'bousleh', findings: [{ title: 'Shared news', url: 'https://example.com/shared' }] }));
     const again = ok<FileResult>(
-      await run('watch.file', { watch_list_id: specdr.id, findings: [{ title: 'Shared news', url: 'https://example.com/shared' }] }),
+      await run('watch.file', { watch_list_id: harbor.id, findings: [{ title: 'Shared news', url: 'https://example.com/shared' }] }),
     );
     expect(again.filed).toEqual([]);
     expect(again.skipped.map((s) => s.reason)).toEqual(['already_filed']);
@@ -370,9 +393,9 @@ describe('watch.file', () => {
 
   it('needs a watch list that exists', async () => {
     const finding = { title: 'x', url: 'https://example.com/x' };
-    expect(failed(await run('watch.file', { scope: 'specdr', findings: [finding] })).message).toMatch(/watchlists.set/);
+    expect(failed(await run('watch.file', { scope: 'harbor', findings: [finding] })).message).toMatch(/watchlists.set/);
     expect(failed(await run('watch.file', { findings: [finding] })).code).toBe('invalid_input');
-    expect(failed(await run('watch.file', { scope: 'specdr', findings: [{ title: 'x', url: 'not a url' }] })).code).toBe('invalid_input');
+    expect(failed(await run('watch.file', { scope: 'harbor', findings: [{ title: 'x', url: 'not a url' }] })).code).toBe('invalid_input');
   });
 
   it('cleans urls without losing what matters', () => {
@@ -390,7 +413,7 @@ describe('watch.digest', () => {
   it('returns findings filed in the window, grouped by watch list, newest first', async () => {
     at('2026-10-01T09:00:00.000Z');
     const bousleh = ok<SetResult>(await run('watchlists.set', { scope: 'bousleh', entries: [] }));
-    const specdr = ok<SetResult>(await run('watchlists.set', { scope: 'specdr', entries: [] }));
+    const harbor = ok<SetResult>(await run('watchlists.set', { scope: 'harbor', entries: [] }));
 
     at('2026-10-14T09:00:00.000Z');
     ok(await run('watch.file', { scope: 'bousleh', findings: [{ title: 'Old news', url: 'https://example.com/old' }] }));
@@ -407,8 +430,8 @@ describe('watch.digest', () => {
     );
     ok(
       await run('watch.file', {
-        scope: 'specdr',
-        findings: [{ title: 'Specdr news', url: 'https://example.com/c', summary: 'C. '.repeat(300) }],
+        scope: 'harbor',
+        findings: [{ title: 'Harbor news', url: 'https://example.com/c', summary: 'C. '.repeat(300) }],
       }),
     );
 
@@ -416,15 +439,15 @@ describe('watch.digest', () => {
     const digest = ok<Digest>(await run('watch.digest', {}));
     expect(digest.since).toBe('2026-10-18T09:00:01.000Z');
     expect(digest.total).toBe(3);
-    expect(digest.groups.map((g) => g.watch_list?.id)).toEqual([bousleh.id, specdr.id]);
+    expect(digest.groups.map((g) => g.watch_list?.id)).toEqual([bousleh.id, harbor.id]);
     expect(digest.groups[0]?.findings.map((f) => [f.title, f.published_at])).toEqual([
       ['Fresh article', '2026-10-21T08:00:00Z'],
       ['Older article, found this week', '2026-09-30'],
     ]);
-    const specdrFinding = digest.groups[1]?.findings[0];
-    expect(specdrFinding).toMatchObject({ title: 'Specdr news', url: 'https://example.com/c', published_at: null });
-    expect(specdrFinding?.summary.length).toBeLessThanOrEqual(501);
-    expect(specdrFinding?.summary.endsWith('…')).toBe(true);
+    const harborFinding = digest.groups[1]?.findings[0];
+    expect(harborFinding).toMatchObject({ title: 'Harbor news', url: 'https://example.com/c', published_at: null });
+    expect(harborFinding?.summary.length).toBeLessThanOrEqual(501);
+    expect(harborFinding?.summary.endsWith('…')).toBe(true);
 
     const wider = ok<Digest>(await run('watch.digest', { since: '2026-10-10' }));
     expect(wider.total).toBe(4);
@@ -433,7 +456,7 @@ describe('watch.digest', () => {
 
   it('filters by scope and by watch list, and honours the limit', async () => {
     const bousleh = ok<SetResult>(await run('watchlists.set', { scope: 'bousleh', entries: [] }));
-    ok(await run('watchlists.set', { scope: 'specdr', entries: [] }));
+    ok(await run('watchlists.set', { scope: 'harbor', entries: [] }));
     ok(
       await run('watch.file', {
         scope: 'bousleh',
@@ -443,9 +466,9 @@ describe('watch.digest', () => {
         ],
       }),
     );
-    ok(await run('watch.file', { scope: 'specdr', findings: [{ title: 'Three', url: 'https://example.com/3' }] }));
+    ok(await run('watch.file', { scope: 'harbor', findings: [{ title: 'Three', url: 'https://example.com/3' }] }));
 
-    const byScope = ok<Digest>(await run('watch.digest', { scope: 'specdr' }));
+    const byScope = ok<Digest>(await run('watch.digest', { scope: 'harbor' }));
     expect(byScope.groups.flatMap((g) => g.findings.map((f) => f.title))).toEqual(['Three']);
     const byList = ok<Digest>(await run('watch.digest', { watch_list_id: bousleh.id }));
     expect(byList.groups).toHaveLength(1);

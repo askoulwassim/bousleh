@@ -21,7 +21,7 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-vault-ops-'));
   engine = openEngine({ home });
   ok(await engine.runOp('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }, ctx));
-  ok(await engine.runOp('scopes.add', { slug: 'specdr', name: 'Specdr', kind: 'product' }, ctx));
+  ok(await engine.runOp('scopes.add', { slug: 'harbor', name: 'Harbor', kind: 'product' }, ctx));
 });
 afterEach(() => {
   engine.close();
@@ -52,16 +52,16 @@ async function write(input: Record<string, unknown>): Promise<string> {
   return ok(await run('deposits.write', { altitude: 1000, scopes: ['bousleh'], ...input })).id as string;
 }
 const person = (title: string) =>
-  write({ kind: 'person', title, altitude: 10000, scopes: [], attrs: { role: 'stakeholder', org: 'Alethea' } });
+  write({ kind: 'person', title, altitude: 10000, scopes: [], attrs: { role: 'stakeholder', org: 'Northwind' } });
 
 describe('vault.search', () => {
   it('finds current versions, title matches first, with a snippet, status, altitude and scopes', async () => {
     const inBody = await write({ kind: 'problem', title: 'Analysts rebuild things', body: 'The weekly export is rebuilt by hand.' });
-    const inTitle = await write({ kind: 'signal', title: 'Export takes an hour', scopes: ['bousleh', 'specdr'], altitude: 100 });
+    const inTitle = await write({ kind: 'signal', title: 'Export takes an hour', scopes: ['bousleh', 'harbor'], altitude: 100 });
     const { hits, match } = ok(await run('vault.search', { query: 'export' }));
     expect(match).toBe('all');
     expect(hits.map((hit: { id: string }) => hit.id)).toEqual([inTitle, inBody]);
-    expect(hits[0]).toMatchObject({ kind: 'signal', layer: 'evidence', altitude: 100, status: null, scopes: ['bousleh', 'specdr'] });
+    expect(hits[0]).toMatchObject({ kind: 'signal', layer: 'evidence', altitude: 100, status: null, scopes: ['bousleh', 'harbor'] });
     expect(hits[1].snippet).toContain('**export**');
 
     ok(await run('vault.supersede', { id: inTitle, title: 'Downloads take an hour' }));
@@ -88,24 +88,24 @@ describe('vault.search', () => {
   });
 
   it('does not match scope names or kinds as words', async () => {
-    await write({ kind: 'problem', title: 'Unrelated', scopes: ['specdr'] });
-    expect(ok(await run('vault.search', { query: 'specdr' })).hits).toEqual([]);
+    await write({ kind: 'problem', title: 'Unrelated', scopes: ['harbor'] });
+    expect(ok(await run('vault.search', { query: 'harbor' })).hits).toEqual([]);
     expect(ok(await run('vault.search', { query: 'problem' })).hits).toEqual([]);
   });
 
   it('filters by kinds, layers and scopes, and honours the limit', async () => {
     const problem = await write({ kind: 'problem', title: 'Roadmap drift', scopes: ['bousleh'] });
-    const idea = await write({ kind: 'idea', title: 'Roadmap review ritual', scopes: ['specdr'] });
-    const signal = await write({ kind: 'signal', title: 'Roadmap feels stale', scopes: ['specdr'] });
+    const idea = await write({ kind: 'idea', title: 'Roadmap review ritual', scopes: ['harbor'] });
+    const signal = await write({ kind: 'signal', title: 'Roadmap feels stale', scopes: ['harbor'] });
     const ids = async (input: Record<string, unknown>) =>
       (ok(await run('vault.search', { query: 'roadmap', ...input })).hits as { id: string }[]).map((hit) => hit.id).sort();
 
     expect(await ids({ kinds: ['idea'] })).toEqual([idea]);
     expect(await ids({ kinds: ['idea', 'problem'] })).toEqual([idea, problem].sort());
     expect(await ids({ layers: ['evidence'] })).toEqual([signal]);
-    expect(await ids({ scopes: ['specdr'] })).toEqual([idea, signal].sort());
-    expect(await ids({ scopes: ['specdr'], layers: ['work'] })).toEqual([idea]);
-    expect(await ids({ scopes: ['bousleh', 'specdr'] })).toEqual([problem, idea, signal].sort());
+    expect(await ids({ scopes: ['harbor'] })).toEqual([idea, signal].sort());
+    expect(await ids({ scopes: ['harbor'], layers: ['work'] })).toEqual([idea]);
+    expect(await ids({ scopes: ['bousleh', 'harbor'] })).toEqual([problem, idea, signal].sort());
     expect(await ids({ limit: 2 })).toHaveLength(2);
   });
 
@@ -169,14 +169,14 @@ describe('vault.link', () => {
 describe('vault.unlink', () => {
   it('retracts a link without deleting it, and is safe to repeat', async () => {
     const meeting = await write({ kind: 'meeting', title: 'Roadmap review' });
-    const peter = await person('Peter');
-    const { id } = ok(await run('vault.link', { from: meeting, kind: 'attended_by', to: peter }));
+    const rowan = await person('Rowan');
+    const { id } = ok(await run('vault.link', { from: meeting, kind: 'attended_by', to: rowan }));
 
     expect(ok(await run('vault.unlink', { id, reason: 'he missed it' }))).toEqual({
       id,
       kind: 'attended_by',
       from: meeting,
-      to: peter,
+      to: rowan,
       already_retracted: false,
     });
     expect(ok(await run('vault.get', { id: meeting })).links.out).toEqual([]);
@@ -187,7 +187,7 @@ describe('vault.unlink', () => {
     expect(ok(await run('vault.unlink', { id })).already_retracted).toBe(true);
     expect(query<{ n: number }>('SELECT count(*) AS n FROM link_retractions')[0]?.n).toBe(1);
 
-    const again = ok(await run('vault.link', { from: meeting, kind: 'attended_by', to: peter }));
+    const again = ok(await run('vault.link', { from: meeting, kind: 'attended_by', to: rowan }));
     expect(again).toMatchObject({ created: true });
     expect(again.id).not.toBe(id);
   });
@@ -209,8 +209,8 @@ describe('vault.unlink', () => {
 
 describe('commitments', () => {
   async function setup() {
-    const wassim = await person('Wassim');
-    const peter = await person('Peter');
+    const alex = await person('Alex');
+    const rowan = await person('Rowan');
     const commit = async (title: string, extra: Record<string, unknown>, owedBy: string, owedTo: string) =>
       write({
         kind: 'commitment',
@@ -222,16 +222,16 @@ describe('commitments', () => {
           { kind: 'owed_to', to: owedTo },
         ],
       });
-    const deck = await commit('Send the roadmap deck', { attrs: { due: '2026-10-28' } }, wassim, peter);
-    const intro = await commit('Intro to the data team', { scopes: ['specdr'] }, peter, wassim);
-    const spec = await commit('Review the POC spec', { attrs: { due: '2026-11-15' }, scopes: ['specdr'] }, wassim, peter);
-    const old = await commit('Book the offsite', { status: 'done', attrs: { due: '2026-10-01' } }, wassim, peter);
-    return { wassim, peter, deck, intro, spec, old };
+    const deck = await commit('Send the roadmap deck', { attrs: { due: '2026-10-28' } }, alex, rowan);
+    const intro = await commit('Intro to the data team', { scopes: ['harbor'] }, rowan, alex);
+    const spec = await commit('Review the POC spec', { attrs: { due: '2026-11-15' }, scopes: ['harbor'] }, alex, rowan);
+    const old = await commit('Book the offsite', { status: 'done', attrs: { due: '2026-10-01' } }, alex, rowan);
+    return { alex, rowan, deck, intro, spec, old };
   }
   const ids = (output: { commitments: { id: string }[] }) => output.commitments.map((c) => c.id);
 
   it('lists open commitments by due date, undated last, with who owes whom', async () => {
-    const { wassim, peter, deck, intro, spec } = await setup();
+    const { alex, rowan, deck, intro, spec } = await setup();
     const listed = ok(await run('commitments.list', {}));
     expect(ids(listed)).toEqual([deck, spec, intro]);
     expect(listed.commitments[0]).toEqual({
@@ -243,21 +243,21 @@ describe('commitments', () => {
       surface_on: null,
       size: 'major',
       scopes: ['bousleh'],
-      owed_by: [{ id: wassim, name: 'Wassim' }],
-      owed_to: [{ id: peter, name: 'Peter' }],
+      owed_by: [{ id: alex, name: 'Alex' }],
+      owed_to: [{ id: rowan, name: 'Rowan' }],
     });
-    expect(listed.commitments[2]).toMatchObject({ due: null, owed_by: [{ id: peter }], owed_to: [{ id: wassim }] });
+    expect(listed.commitments[2]).toMatchObject({ due: null, owed_by: [{ id: rowan }], owed_to: [{ id: alex }] });
   });
 
   it('filters by status, owed_by, owed_to, scope and due_before', async () => {
-    const { wassim, peter, deck, intro, spec, old } = await setup();
+    const { alex, rowan, deck, intro, spec, old } = await setup();
     const list = async (input: Record<string, unknown>) => ids(ok(await run('commitments.list', input)));
     expect(await list({ status: 'done' })).toEqual([old]);
     expect(await list({ status: 'any' })).toEqual([old, deck, spec, intro]);
-    expect(await list({ owed_by: wassim })).toEqual([deck, spec]);
-    expect(await list({ owed_to: wassim })).toEqual([intro]);
-    expect(await list({ owed_by: peter, owed_to: wassim })).toEqual([intro]);
-    expect(await list({ scope: 'specdr' })).toEqual([spec, intro]);
+    expect(await list({ owed_by: alex })).toEqual([deck, spec]);
+    expect(await list({ owed_to: alex })).toEqual([intro]);
+    expect(await list({ owed_by: rowan, owed_to: alex })).toEqual([intro]);
+    expect(await list({ scope: 'harbor' })).toEqual([spec, intro]);
     expect(await list({ due_before: '2026-10-28' })).toEqual([deck]);
     expect(await list({ due_before: '2026-10-27' })).toEqual([]);
     expect(await list({ status: 'any', due_before: '2026-10-31' })).toEqual([old, deck]);
@@ -265,15 +265,15 @@ describe('commitments', () => {
   });
 
   it('gives each commitment a size, major by default, and filters by it', async () => {
-    const { wassim, peter, deck, intro, spec } = await setup();
+    const { alex, rowan, deck, intro, spec } = await setup();
     const ask = await write({
       kind: 'commitment',
-      title: 'Ask Peter about the offsite',
+      title: 'Ask Rowan about the offsite',
       altitude: 100,
       attrs: { size: 'minor', due: '2026-10-30' },
       links: [
-        { kind: 'owed_by', to: wassim },
-        { kind: 'owed_to', to: peter },
+        { kind: 'owed_by', to: alex },
+        { kind: 'owed_to', to: rowan },
       ],
     });
     const roadmap = await write({ kind: 'commitment', title: 'Finalize the roadmap', altitude: 100, attrs: { size: 'major' } });
@@ -288,7 +288,7 @@ describe('commitments', () => {
     const list = async (input: Record<string, unknown>) => ids(ok(await run('commitments.list', input)));
     expect(await list({ size: 'minor' })).toEqual([ask]);
     expect(await list({ size: 'major' })).toEqual([deck, spec, intro, roadmap]);
-    expect(await list({ size: 'minor', owed_by: wassim })).toEqual([ask]);
+    expect(await list({ size: 'minor', owed_by: alex })).toEqual([ask]);
     expect(failed(await run('commitments.list', { size: 'huge' })).code).toBe('invalid_input');
 
     // The size is checked on write, and can be changed with a new version.
@@ -304,15 +304,15 @@ describe('commitments', () => {
     ok(await run('vault.supersede', { id: deck, attrs: { size: 'minor' } }));
     expect(await list({ size: 'minor' })).toEqual([deck, ask]);
     // people.get shows the size too.
-    const profile = ok(await run('people.get', { id: wassim }));
+    const profile = ok(await run('people.get', { id: alex }));
     expect(profile.commitments.owes.find((c: { id: string }) => c.id === deck)).toMatchObject({ size: 'minor' });
   });
 
   it('follows retracted links', async () => {
-    const { wassim, deck } = await setup();
+    const { alex, deck } = await setup();
     const link = ok(await run('vault.get', { id: deck })).links.out.find((l: { kind: string }) => l.kind === 'owed_by');
-    ok(await run('vault.unlink', { id: link.id, reason: 'Peter took it' }));
-    expect(ids(ok(await run('commitments.list', { owed_by: wassim })))).not.toContain(deck);
+    ok(await run('vault.unlink', { id: link.id, reason: 'Rowan took it' }));
+    expect(ids(ok(await run('commitments.list', { owed_by: alex })))).not.toContain(deck);
     expect(ok(await run('commitments.list', {})).commitments[0]).toMatchObject({ id: deck, owed_by: [] });
   });
 
@@ -377,16 +377,16 @@ describe('commitments.snooze', () => {
   });
 
   it('wakes a snoozed commitment with until: null, and refuses what makes no sense', async () => {
-    const id = await write({ kind: 'commitment', title: 'Ping Lisa' });
+    const id = await write({ kind: 'commitment', title: 'Ping Mira' });
     expect(failed(await run('commitments.snooze', { id, until: null })).code).toBe('conflict');
     expect(failed(await run('commitments.snooze', { id, until: '2026-10-24' })).code).toBe('invalid_input');
     expect(failed(await run('commitments.snooze', { id, until: 'Monday' })).code).toBe('invalid_input');
     ok(await run('commitments.snooze', { id, until: '2026-10-25' }));
     expect(failed(await run('commitments.snooze', { id, until: '2026-10-25' })).code).toBe('conflict');
-    ok(await run('commitments.snooze', { id, until: null, note: 'Lisa wrote first.' }));
+    ok(await run('commitments.snooze', { id, until: null, note: 'Mira wrote first.' }));
     const object = ok(await run('vault.get', { id }));
     expect(object.version.attrs).toEqual({});
-    expect(object.version.body).toBe('**Woken on 2026-10-25:** Lisa wrote first.');
+    expect(object.version.body).toBe('**Woken on 2026-10-25:** Mira wrote first.');
 
     ok(await run('commitments.close', { id, status: 'done' }));
     expect(failed(await run('commitments.snooze', { id, until: '2026-11-01' })).code).toBe('conflict');
@@ -434,10 +434,10 @@ describe('people.get', () => {
       title: 'Sara',
       altitude: 1000,
       scopes: ['bousleh'],
-      attrs: { role: 'pm', org: 'Alethea' },
+      attrs: { role: 'pm', org: 'Northwind' },
       body: 'Joined in October.',
     });
-    const wassim = await person('Wassim');
+    const alex = await person('Alex');
     const firstNote = await write({
       kind: 'growth_note',
       title: 'Strong discovery instincts',
@@ -450,14 +450,14 @@ describe('people.get', () => {
       title: 'Share the discovery plan',
       links: [
         { kind: 'owed_by', to: sara },
-        { kind: 'owed_to', to: wassim },
+        { kind: 'owed_to', to: alex },
       ],
     });
     const owed = await write({
       kind: 'commitment',
-      title: 'Intro Sara to Peter',
+      title: 'Intro Sara to Rowan',
       links: [
-        { kind: 'owed_by', to: wassim },
+        { kind: 'owed_by', to: alex },
         { kind: 'owed_to', to: sara },
       ],
     });
@@ -472,7 +472,7 @@ describe('people.get', () => {
       id: sara,
       name: 'Sara',
       role: 'pm',
-      org: 'Alethea',
+      org: 'Northwind',
       scopes: ['bousleh'],
       body: 'Joined in October.',
     });
@@ -483,7 +483,7 @@ describe('people.get', () => {
       scopes: ['bousleh'],
     });
     expect(profile.commitments.owes.map((c: { id: string }) => c.id)).toEqual([owes]);
-    expect(profile.commitments.owes[0].owed_to).toEqual([{ id: wassim, name: 'Wassim' }]);
+    expect(profile.commitments.owes[0].owed_to).toEqual([{ id: alex, name: 'Alex' }]);
     expect(profile.commitments.owed.map((c: { id: string }) => c.id)).toEqual([owed]);
 
     const recent = profile.recent as { id: string; links: { kind: string; direction: string }[] }[];
@@ -501,7 +501,7 @@ describe('people.get', () => {
   it('works for a person with nothing linked, and refuses anything that is not a person', async () => {
     const lone = await person('Lone');
     expect(ok(await run('people.get', { id: lone }))).toMatchObject({
-      person: { name: 'Lone', role: 'stakeholder', org: 'Alethea', scopes: [], body: '' },
+      person: { name: 'Lone', role: 'stakeholder', org: 'Northwind', scopes: [], body: '' },
       growth_notes: [],
       commitments: { owes: [], owed: [] },
       recent: [],

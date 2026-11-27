@@ -20,7 +20,7 @@ export interface BouslehMcpServerOptions {
 }
 
 const INSTRUCTIONS = [
-  'Bousleh: Wassim’s personal operating system for product leadership. Every tool is one op from the Bousleh ops registry; the tool name is the op name with its dots replaced by underscores.',
+  'Bousleh: a personal operating system for product leadership. Every tool is one op from the Bousleh ops registry; the tool name is the op name with its dots replaced by underscores.',
   'You supply the judgment; the tools do the mechanics (filing, linking, history). Nothing is overwritten: changes supersede.',
 ].join(' ');
 

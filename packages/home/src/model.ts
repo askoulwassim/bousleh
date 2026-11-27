@@ -113,7 +113,7 @@ export function clockDays(text: string | undefined): number | null {
   return null;
 }
 
-/** Three letters for a scope: the first letter of its last word, then its consonants ("perfect-placement" → PLC). */
+/** Three letters for a scope: the first letter of its last word, then its consonants ("atlas-mobile" → MBL). */
 export function abbreviate(slug: string): string {
   const word = slug.split('-').filter(Boolean).at(-1) ?? slug;
   const head = word[0] ?? '';
@@ -122,7 +122,7 @@ export function abbreviate(slug: string): string {
   return letters.toUpperCase();
 }
 
-/** A meeting title without a leading scope name, short enough for a button ("Specdr Weekly" → "Weekly"). */
+/** A meeting title without a leading scope name, short enough for a button ("Harbor Weekly" → "Weekly"). */
 export function shortTitle(title: string, scopeNames: readonly string[], max = 16): string {
   let out = title.trim();
   for (const name of scopeNames) {

@@ -83,8 +83,18 @@ export const FINDING_STATUSES = ['new', 'to_read', 'read', 'dismissed'] as const
 export const MEETING_STATUSES = ['planned', 'held'] as const;
 
 export const WATCH_ENTRY_TYPES = ['competitor', 'topic', 'outlet', 'person', 'podcast'] as const;
-/** Who put an entry on a watch list: Wassim, or the Weekly Horizon scan's learning loop. Entries without it are Wassim's. */
-export const WATCH_ENTRY_ADDED_BY = ['wassim', 'horizon'] as const;
+/** Who put an entry on a watch list: the user, or the Weekly Horizon scan's learning loop. Entries without it are the user's. */
+export const WATCH_ENTRY_ADDED_BY = ['user', 'horizon'] as const;
+/**
+ * The value v0.1 stored for the user's own entries: the owner's first name. It reads as `user`, so
+ * old data parses through every door. Built from two parts so the name stays out of the source.
+ */
+export const LEGACY_USER_ADDED_BY = 'was' + 'sim';
+/** added_by as stored: the legacy value reads as `user`; anything else must be one of WATCH_ENTRY_ADDED_BY. */
+export const WatchEntryAddedBySchema = z.preprocess(
+  (value) => (value === LEGACY_USER_ADDED_BY ? 'user' : value),
+  z.enum(WATCH_ENTRY_ADDED_BY),
+);
 export const PERSON_ROLES = ['stakeholder', 'pm', 'engineer', 'analyst', 'other'] as const;
 /** At most this many email addresses on one person. */
 export const MAX_PERSON_EMAILS = 5;
@@ -127,7 +137,7 @@ export const KINDS = {
     layer: 'anchors',
     prefix: 'wls',
     description:
-      'What Horizon watches for a scope: competitors, topics, outlets, people and podcasts. Each entry says who added it (wassim, the default, or horizon, for one the weekly scan proposed) and optionally why.',
+      'What Horizon watches for a scope: competitors, topics, outlets, people and podcasts. Each entry says who added it (user, the default, or horizon, for one the weekly scan proposed) and optionally why.',
     attrs: z.strictObject({
       entries: z
         .array(
@@ -136,8 +146,8 @@ export const KINDS = {
             name: text,
             url: z.url().optional(),
             notes: text.optional(),
-            /** Entries written before Oct 25 have none: they are Wassim's. */
-            added_by: z.enum(WATCH_ENTRY_ADDED_BY).default('wassim'),
+            /** The oldest entries have none: they are the user's. */
+            added_by: WatchEntryAddedBySchema.default('user'),
             /** Why it was added, for an entry the scan proposed. */
             reason: text.optional(),
           }),

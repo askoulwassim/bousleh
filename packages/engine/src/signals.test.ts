@@ -28,8 +28,8 @@ beforeEach(async () => {
   clock = new Date(2026, 8, 1, 9, 0).getTime();
   home = mkdtempSync(join(tmpdir(), 'bousleh-signals-'));
   engine = openEngine({ home });
-  ok(await run('scopes.add', { slug: 'alethea', name: 'Alethea', kind: 'company' }));
-  ok(await run('scopes.add', { slug: 'narratives', name: 'Narratives', kind: 'product', parent: 'alethea' }));
+  ok(await run('scopes.add', { slug: 'northwind', name: 'Northwind', kind: 'company' }));
+  ok(await run('scopes.add', { slug: 'logistics', name: 'Logistics', kind: 'product', parent: 'northwind' }));
   ok(await run('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }));
 });
 afterEach(() => {
@@ -54,7 +54,7 @@ const signal = async (title: string, attrs: Record<string, unknown>, more: { abo
       kind: 'signal',
       title,
       altitude: 1000,
-      scopes: more.scopes ?? ['narratives'],
+      scopes: more.scopes ?? ['logistics'],
       attrs,
       links: (more.about ?? []).map((to) => ({ kind: 'about', to })),
     }),
@@ -68,25 +68,25 @@ describe('signals.patterns', () => {
   });
 
   it('groups by tag: count, sources, people, sentiment, newest and examples, strongest first', async () => {
-    const peter = await person('Peter');
-    const lisa = await person('Lisa');
+    const rowan = await person('Rowan');
+    const mira = await person('Mira');
     at(10, 10);
     const first = await signal(
       'Exports take minutes',
-      { tags: ['export-speed'], source: 'Peter', sentiment: 'negative' },
-      { about: [peter] },
+      { tags: ['export-speed'], source: 'Rowan', sentiment: 'negative' },
+      { about: [rowan] },
     );
     at(10, 12);
     await signal('CSV export timed out', { tags: ['export-speed', 'reliability'], source: 'Support ticket', sentiment: 'negative' });
     at(10, 20);
     const newest = await signal(
       'Export is fine now?',
-      { tags: ['export-speed'], source: 'Peter', sentiment: 'mixed' },
-      { about: [peter, lisa] },
+      { tags: ['export-speed'], source: 'Rowan', sentiment: 'mixed' },
+      { about: [rowan, mira] },
     );
-    await signal('Love the new chart', { tags: ['charts'], source: 'Lisa', sentiment: 'positive' }, { about: [lisa] });
+    await signal('Love the new chart', { tags: ['charts'], source: 'Mira', sentiment: 'positive' }, { about: [mira] });
     await signal('Charts are cluttered', { tags: ['charts'], source: 'Sam' });
-    await signal('Something untagged', { source: 'Peter' });
+    await signal('Something untagged', { source: 'Rowan' });
     await signal('One-off', { tags: ['pricing'] });
 
     at(10, 25);
@@ -98,14 +98,14 @@ describe('signals.patterns', () => {
       ['charts', 2],
     ]);
     const exports = result.patterns[0];
-    expect(exports?.sources).toEqual(['Peter', 'Support ticket']);
+    expect(exports?.sources).toEqual(['Rowan', 'Support ticket']);
     expect(exports?.people).toEqual([
-      { id: peter, name: 'Peter' },
-      { id: lisa, name: 'Lisa' },
+      { id: rowan, name: 'Rowan' },
+      { id: mira, name: 'Mira' },
     ]);
     expect(exports?.sentiment).toEqual({ positive: 0, neutral: 0, negative: 2, mixed: 1, unknown: 0 });
     expect(exports?.examples.map((e) => e.id)).toHaveLength(3);
-    expect(exports?.examples[0]).toMatchObject({ id: newest, title: 'Export is fine now?', source: 'Peter', sentiment: 'mixed' });
+    expect(exports?.examples[0]).toMatchObject({ id: newest, title: 'Export is fine now?', source: 'Rowan', sentiment: 'mixed' });
     expect(exports?.examples.at(-1)?.id).toBe(first);
     expect(exports?.newest_at).toBe(exports?.examples[0]?.filed_at);
     expect(result.patterns[1]?.sentiment).toEqual({ positive: 1, neutral: 0, negative: 0, mixed: 0, unknown: 1 });
@@ -122,13 +122,13 @@ describe('signals.patterns', () => {
     at(10, 20);
     const ids: string[] = [];
     for (let i = 1; i <= 7; i += 1) ids.push(await signal(`Onboarding pain ${i}`, { tags: ['onboarding'] }));
-    const replacement = await signal('Onboarding pain, restated', { tags: ['onboarding'] });
-    ok(await run('vault.link', { from: replacement, kind: 'supersedes', to: ids[0] }));
+    const successor = await signal('Onboarding pain, restated', { tags: ['onboarding'] });
+    ok(await run('vault.link', { from: successor, kind: 'supersedes', to: ids[0] }));
 
     at(10, 25);
     const [onboarding] = (await patterns()).patterns;
     expect(onboarding?.count).toBe(7);
-    expect(onboarding?.examples.map((e) => e.id)).toEqual([replacement, ...ids.slice(3).reverse()]);
+    expect(onboarding?.examples.map((e) => e.id)).toEqual([successor, ...ids.slice(3).reverse()]);
   });
 
   it('defaults to the last 30 days, and reads since and until as whole local days', async () => {
@@ -162,15 +162,15 @@ describe('signals.patterns', () => {
 
   it('narrows to scopes, child scopes included', async () => {
     at(10, 20);
-    await signal('Product feedback', { tags: ['search'] }, { scopes: ['narratives'] });
-    await signal('Company feedback', { tags: ['search'] }, { scopes: ['alethea'] });
+    await signal('Product feedback', { tags: ['search'] }, { scopes: ['logistics'] });
+    await signal('Company feedback', { tags: ['search'] }, { scopes: ['northwind'] });
     await signal('Elsewhere', { tags: ['search'] }, { scopes: ['bousleh'] });
 
     at(10, 25);
-    const company = await patterns({ scopes: ['alethea'] });
-    expect(company.scopes).toEqual(['alethea', 'narratives']);
+    const company = await patterns({ scopes: ['northwind'] });
+    expect(company.scopes).toEqual(['logistics', 'northwind']);
     expect(company.patterns.map((p) => [p.tag, p.count])).toEqual([['search', 2]]);
-    expect((await patterns({ scopes: ['narratives'] })).patterns).toEqual([]);
+    expect((await patterns({ scopes: ['logistics'] })).patterns).toEqual([]);
     expect(failed(await run('signals.patterns', { scopes: ['nowhere'] })).code).toBe('invalid_input');
   });
 });

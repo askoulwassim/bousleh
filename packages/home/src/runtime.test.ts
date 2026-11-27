@@ -146,7 +146,7 @@ describe('rendering', () => {
           kind: 'commitment',
           eyebrow: '2 days late',
           title: '<i>Send the one-pager</i>',
-          detail: 'owed to Peter, your manager',
+          detail: 'owed to Rowan, your manager',
           scopeName: 'Lantern',
           altitude: 1000,
           tone: 'needs',

@@ -85,7 +85,7 @@ export const contextStrataHandler = defineHandler(contextStrata, async (input, h
   const covers = slugs.map((slug) => ({ slug, cover: coverScopes(h, [slug]).slugs ?? new Set<string>() }));
   const scopeBySlug = new Map(scopes.map((s) => [s.slug, s]));
 
-  // ------------------------------------------------------------ people: last touchpoints, and placement for those with no scope
+  // ------------------------------------------------------------ people: last touchpoints, and scopes for those with none
   const touch = new Map((await call(h, 'people.list', { limit: 200 })).people.map((p) => [p.id, p.last_touchpoint?.at]));
   const placedScopes = (object: ObjectView): string[] => {
     if (object.kind !== 'person' || object.scopes.length > 0) return object.scopes;
