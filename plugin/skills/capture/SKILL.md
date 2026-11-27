@@ -1,6 +1,6 @@
 ---
 name: capture
-description: Files what you say or drop in into your Bousleh data. Splits voice dumps, brain dumps, meeting transcripts and inbox files into typed, linked deposits (feedback, problems, ideas, decisions, commitments, notes on people) and queues anything ambiguous instead of guessing. Use when you say "capture this", "file this", "note that", "remember that I owe Rowan the deck by Friday", "I just got out of a meeting with...", "here's the transcript", "brain dump", "process my inbox", "what's in the inbox", "clear the queue", or when the Hourly inbox sweep hands over.
+description: Files what you say or drop in into your Bousleh data. Splits voice dumps, brain dumps, meeting transcripts and inbox files into typed, linked deposits (feedback, problems, ideas, decisions, commitments, notes on people) and queues anything ambiguous instead of guessing. Use when you say "capture this", "file this", "note that", "remember that I owe Rowan the deck by Friday", "I just got out of a meeting with...", "here's the transcript", "brain dump", "process my inbox", "what's in the inbox", "clear the queue", or when the Hourly inbox sweep hands over. Also the first run: "Bousleh: set me up", "set me up", "first run", "onboard me".
 ---
 
 # Capture
@@ -22,6 +22,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 - Added, write: `commitments_close` (commitments.close) with `done` only, for a commitment a filed meeting plainly shows was delivered (see "Commitments a meeting resolved")
 - Added, write: `inbox_drop` (inbox.drop) for Drive captures; `inbox_sweep` (inbox.sweep) only to tidy duplicates out of the local inbox; `vault_supersede` (vault.supersede) for three things only: moving a planned meeting to `held` once it has happened (see "Meetings"), adding an email address to a person who exists (see "People's emails"), and giving a person filed by first name their full name (see "People's full names").
 - Google Drive connector (your Claude account's Drive): search the folder, read each file, and trash it after `inbox_drop` succeeds.
+- Only in "Flow: set me up": `people_list` (people.list, read) to find who is marked as the user; `scopes_add` (scopes.add) for their first scopes; `deposits_write` for their `person` and one `strategy` per scope; `vault_supersede` to mark a person who already exists as the user; `watchlists_get` and `watchlists_set` (watchlists.get, watchlists.set), through the Horizon skill's flows, for a starter watch list per scope.
 
 ## What to judge
 
@@ -51,7 +52,7 @@ Tools on the Bousleh MCP server (op names in brackets):
 | A company word or acronym and what it means | `term` (attrs `aliases`, `definition`), usually at `50000` in the company's scope |
 | A meeting coming up ("I'm seeing Rowan Thursday about...") | `meeting` with status `planned`, `held_at` the day or time it will happen, `attended_by` links |
 
-Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a dump states one, queue it with the reason "for Shape" or "for Horizon".
+Strategy, principles, metrics and watch lists belong to Shape and Horizon. If a dump states one, queue it with the reason "for Shape" or "for Horizon". The one exception is "Flow: set me up", which writes a first line of strategy per scope and hands watch lists to Horizon's flows.
 
 **Altitude.** Every deposit needs one: `50000` company (CEO, CTPO, company bets), `10000` cross-team (other PMs, the data team), `1000` the user's own surfaces, `100` one engineer or one requirement. Use the altitude the atom lives at, not the altitude of the meeting it came from.
 
@@ -146,6 +147,22 @@ If the Google Drive connector isn't available in this session, skip this and say
 ## Flow: clearing the queue
 
 `queue_list`, then one item at a time: say what it is and why it was queued, ask the one missing thing, then `queue_resolve` with `file` and the overrides, or `discard` with a note.
+
+## Flow: set me up (first run)
+
+"Bousleh: set me up", "first run", "onboard me". A new user starts with empty data; this gets them to a Home worth opening in about five minutes. Ask one question at a time, in short spoken lines, and write only through the ops. It is safe to run again: it skips what is already done.
+
+1. **Look first.** `people_list` and `scopes_list`. If a person is marked `is_user` and there are scopes, say what is already there in two lines and offer only the missing steps. Never ask for something the data already has.
+2. **Who they are.** Ask, one at a time: their name; their role in a few words; the work email (or emails) their calendar uses. Then `vault_search` for a person with that name. If none, `deposits_write` a `person`: the full name as `title`, altitude `1000`, no scope, attrs `role` (`pm` for a product leader; one of the allowed roles, with the job title in the body), `org` if they name a company, `emails` (lower-cased, only the ones they said) and `is_user: true`. If the person exists, `vault_supersede` them with `is_user: true` and the emails (the whole list). Only one person can be marked.
+3. **Their first scopes, two or three.** Ask what they work on: a company, the products they own, a project. For each: the name, the kind (`company`, `product`, `project`, `team`, `life`) and, if it sits inside another, its parent. Make the slug from the name (lower-case, words joined by hyphens), say it back, and `scopes_add`. Home shows top-level scopes as its columns, so a product inside a company shows under the company. Stop at three; more can come later.
+4. **One line of strategy each.** For each scope, ask "Where is <name> going, in one line?" and `deposits_write` a `strategy` at altitude `50000` in that scope, status `forming`, their words as the title. Don't polish it: Shape does that later. If they don't know yet, skip it; Home offers "Write a strategy".
+5. **A starter watch list per scope (Horizon).** Offer one per scope: the competitors, outlets, podcasts, people and topics they name, three to five entries. Only names they give or confirm; never add a company on a guess. On their yes, follow the Horizon skill's "Flow: editing a watch list" (`watchlists_set`, the entries `added_by: user`), then its "Flow: the watch lists file in Drive". Skip a scope they pass on.
+6. **What is left for them, said, not done.** In a few lines:
+   - Google Drive and Google Calendar connected to this Claude account (Settings, Connectors).
+   - Two folders at the top of My Drive, named exactly: `Bousleh Inbox` (phone captures and the weekly scan land there; Drop also creates it on first use) and `Bousleh` (it holds `Bousleh Watch Lists.md`, written in step 5 when Drive is connected). In Google Drive: New, New folder, for each.
+   - The scheduled tasks: in Claude Desktop's Code tab, on the repo folder, say "Set up the scheduled tasks in docs/scheduled-tasks.md."
+   - Home: in the same Code tab, say "Publish Home from docs/home.md.", then Install as app in its footer.
+7. **Read back** what was filed: who they are, each scope with its line of strategy, each watch list. End with one next move: "Try: Pulse: where am I?", or "Capture this:" and whatever is on their mind.
 
 ## Unattended runs
 

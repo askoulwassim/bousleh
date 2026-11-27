@@ -16,6 +16,10 @@
   },
   "devDependencies": {
     "@bousleh/contracts": "workspace:*",
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource/noto-kufi-arabic": "^5.3.0",
     "esbuild": "^0.25.0"
   }
 }

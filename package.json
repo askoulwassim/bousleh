@@ -13,7 +13,9 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "lint": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "demo": "node scripts/demo.mjs",
+    "demo:home": "node scripts/demo-home.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.3",
