@@ -28,12 +28,18 @@ describe('the commands', () => {
     }
   });
 
-  it('lets Tune use the bousleh tools, git, gh and pnpm without asking, and stream its steps', () => {
+  it('lets Tune use only the bousleh tools and the read-only setup check, and stream its steps', () => {
     expect(COMMANDS.tune).toContain('claude -p "Tune: run the Friday tune-up now."');
-    expect(COMMANDS.tune).toContain('--permission-mode acceptEdits');
     expect(COMMANDS.tune).toContain('--output-format stream-json --verbose');
-    expect(COMMANDS.tune).toContain('--allowedTools "mcp__bousleh" "Bash(git *)" "Bash(gh *)" "Bash(pnpm *)"');
+    expect(COMMANDS.tune).toContain('--allowedTools "mcp__bousleh" "Bash(scripts/setup-mac.sh --check)" --disallowedTools');
     expect(COMMANDS.tune).not.toContain('bypassPermissions');
+    expect(COMMANDS.tune).not.toContain('acceptEdits');
+  });
+
+  it('never lets Tune change the repo', () => {
+    const allowed = COMMANDS.tune.slice(COMMANDS.tune.indexOf('--allowedTools'), COMMANDS.tune.indexOf('--disallowedTools'));
+    for (const tool of ['git', 'gh', 'pnpm', 'Edit', 'Write']) expect(allowed).not.toContain(tool);
+    expect(COMMANDS.tune).toContain('--disallowedTools "Bash(git *)" "Bash(gh *)" "Bash(pnpm *)" "Edit" "Write" "NotebookEdit"');
   });
 });
 

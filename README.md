@@ -67,7 +67,7 @@ Each mode is a skill in the plugin. Say its name or just say what you need.
 | Communicate | One truth, rendered for each audience. | Claude on your Mac; Docs, Slides |
 | Coach | The PMs you lead: their growth goals, your feedback, the next nudge. | Claude on your Mac; Docs |
 | Horizon | The outside view: competitors, news, podcasts, per scope. | Claude on your Mac; Home; the Weekly Horizon scan in the cloud |
-| Tune | The Friday tune-up: reviews the week, fixes safe noise, queues judgment calls, opens pull requests for Bousleh itself. | On your Mac, scheduled or from Home |
+| Tune | The Friday tune-up: reviews the week, fixes safe noise in your data, queues judgment calls, checks this Mac's setup. Never changes the repo. | On your Mac, scheduled or from Home |
 | Drop | Saves a dictated note to Google Drive for Capture to file later. | Anywhere, the phone included |
 
 ## Home

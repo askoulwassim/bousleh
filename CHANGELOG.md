@@ -2,6 +2,11 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+- The Friday tune-up keeps to your data and this Mac's setup. It still fixes safe noise and queues judgment calls (duplicates, stale commitments and plans), and it now checks the setup read-only with `scripts/setup-mac.sh --check`. It no longer edits the repo, runs `git`, `gh` or `pnpm`, or opens pull requests: changes to Bousleh are yours, by hand. Home's Tune now allows only the Bousleh tools and that check, and disallows edits, git, gh and pnpm outright. Rerun `scripts/setup-mac.sh` and press Enter on the finish prompt so the Friday task gets its new prompt.
+
 ## 0.2.0 (2026-11-27)
 
 The first public release. Home becomes an installable Claude app, and the repo is ready for anyone to clone and run with their own data.
