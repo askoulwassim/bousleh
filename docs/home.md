@@ -42,7 +42,9 @@ The first time it opens, a screen, "Let Bousleh work on this Mac", lists the thr
 - **Menu bar item** (`menu-bar`): the needs-you count as its title, and a menu: the things that need you (each brings the window up), Open Home, Capture…, Pulse: where am I? (opens Ask with that question), Run Tune now.
 - **Capture shortcut** (`shortcuts`): ⌥⇧B brings the window up and opens Capture, from anywhere.
 
-Open Home continues; Home remembers that in its own storage (readable only by you) and shows the screen again only while a permission is still to ask and you haven't continued. The footer's Permissions button brings it back, or opens the app's own Permissions dialog. No notifications in v0.2.
+Open Home continues; Home remembers that in its own storage (readable only by you) and shows the screen again only while a permission is still to ask and you haven't continued. The footer's Permissions button brings it back, or opens the app's own Permissions dialog; it shows whenever full access isn't on.
+
+The Claude desktop app drops every Allow when a newer published version of Home loads, so each republish turns full access off. Home remembers what you allowed (in its own storage, `app/granted`) and, on the first open after an update, asks again for exactly those, in one dialog that you answer; anything you turned off is never asked. While the app still answers "unavailable" (it can, for a moment, while it learns the new version), Home reads the permissions again a few times, and again whenever its window comes back to the front. No notifications in v0.2.
 
 ## How to publish it (for Claude)
 
