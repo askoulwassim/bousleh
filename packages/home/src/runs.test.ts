@@ -122,8 +122,8 @@ describe('macOS privacy refusals', () => {
     const hint = privacyHint(refused, '/Users/alex/Documents/bousleh');
     expect(hint?.tone).toBe('needs');
     expect(hint?.text).toContain('your Documents folder, where the repo is');
-    expect(hint?.text).toContain('turn on Documents Folder for Bousleh Home');
-    expect(hint?.text).toContain('Full Disk Access');
+    expect(hint?.text).toContain('Move the clone outside Documents, Desktop, Downloads and iCloud Drive');
+    expect(hint?.text).toContain('docs/move.md');
     expect(privacyHint(refused, '/Users/alex/Code/bousleh')?.text).toContain('out of the repo folder');
   });
 

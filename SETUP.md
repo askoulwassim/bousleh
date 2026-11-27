@@ -14,13 +14,13 @@ Want to look first? `pnpm install && pnpm demo` seeds fictional demo data in `~/
 ## Run
 
 ```sh
-git clone https://github.com/askoulwassim/bousleh.git   # anywhere you like
-cd bousleh
+git clone https://github.com/askoulwassim/bousleh.git ~/Developer/bousleh   # or anywhere outside Documents, Desktop and Downloads
+cd ~/Developer/bousleh
 scripts/setup-mac.sh --check   # optional: shows what is already set up, changes nothing
 scripts/setup-mac.sh
 ```
 
-Tip: if you clone inside a folder that syncs to iCloud (such as Documents), name the clone with a `.nosync` ending (`git clone … bousleh.nosync`), so iCloud skips `node_modules` and the build. Anywhere else, the name doesn't matter. An existing clone keeps working where it is: the script finds the repo from its own path. One thing to know if you install Home as an app: macOS guards Documents, Desktop, Downloads and iCloud Drive per app, so for Home to run Tune and its health check in a clone there, allow Bousleh Home in **System Settings > Privacy & Security > Files & Folders** (or Full Disk Access). A clone outside those folders, such as `~/Code/bousleh`, needs nothing.
+Tip: if you clone inside a folder that syncs to iCloud, name the clone with a `.nosync` ending (`git clone … bousleh.nosync`), so iCloud skips `node_modules` and the build. Anywhere else, the name doesn't matter. An existing clone keeps working where it is: the script finds the repo from its own path. But keep it out of Documents, Desktop, Downloads and iCloud Drive if you'll install Home as an app: macOS guards those folders per app, and Home's Tune and health check can't run there ("Operation not permitted"), Full Disk Access or not. A clone already in one of them moves with [docs/move.md](docs/move.md).
 
 The script:
 
