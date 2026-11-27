@@ -2,7 +2,7 @@
 
 Bousleh runs four scheduled tasks. This file is their only definition: nobody sets one up by hand, and the same file sets up every Mac that runs Bousleh, a personal one or a work one.
 
-`scripts/setup-mac.sh` ends by pointing here. To apply it, open the Code tab in Claude Desktop on this repo folder (`bousleh.nosync`) and say:
+`scripts/setup-mac.sh` ends by pointing here. To apply it, open the Code tab in Claude Desktop on this repo folder (your clone) and say:
 
 > Set up the scheduled tasks in docs/scheduled-tasks.md.
 

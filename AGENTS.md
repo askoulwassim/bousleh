@@ -46,9 +46,9 @@ Only `vault` and `intake` touch your data on disk directly. Every package import
 
 | Skill | Reads | Writes | Hands off to |
 | --- | --- | --- | --- |
-| Capture | `inbox.list`, `inbox.take`, `vault.search`, `signals.patterns` (to reuse signal tags), `commitments.list` (open commitments a new one repeats or a meeting resolved); the Google Drive connector for "Bousleh Inbox" (phone captures, Horizon scans, Meet notes) | `inbox.drop`, `inbox.settle`, `deposits.write` (a follow-up snoozed from the start gets `surface_on`), `queue.add`, `queue.resolve`, `vault.link`, `assets.add`; `vault.supersede` only to mark a planned meeting held, add a person's email, or give a person filed by first name their full name; `commitments.close` (`done` only) for a commitment a filed meeting plainly delivered | nothing |
+| Capture | `inbox.list`, `inbox.take`, `vault.search`, `signals.patterns` (to reuse signal tags), `commitments.list` (open commitments a new one repeats or a meeting resolved); the Google Drive connector for "Bousleh Inbox" (phone captures, Horizon scans, Meet notes) | `inbox.drop`, `inbox.settle`, `deposits.write` (a follow-up snoozed from the start gets `surface_on`), `queue.add`, `queue.resolve`, `vault.link`, `assets.add`; `vault.supersede` only to mark a planned meeting held, add a person's email, or give a person filed by first name their full name; `commitments.close` (`done` only) for a commitment a filed meeting plainly delivered; in "Bousleh: set me up" only, `people.list`, `scopes.add`, `deposits.write` for the user and a first strategy per scope, and `watchlists.set` through Horizon's flows | Horizon (starter watch lists) |
 | Drop (phone) | nothing | a new `.md` file in "Bousleh Inbox", through the Google Drive connector | Capture |
-| Pulse | `pulse.today`, `commitments.list`, `metrics.list`, `metrics.history`; the Google Calendar connector for today's events | `commitments.close`, `commitments.snooze`; `vault.supersede` or `deposits.write` once, to mark the user; `vault.supersede` to add an email to a person, on the user's yes, to set an open commitment's `due`, or to change its `size` when the user says it is bigger or smaller | Home |
+| Pulse | `pulse.today`, `commitments.list`, `metrics.list`, `metrics.history`, `scopes.list` (empty data: it suggests "Bousleh: set me up"); the Google Calendar connector for today's events | `commitments.close`, `commitments.snooze`; `vault.supersede` or `deposits.write` once, to mark the user; `vault.supersede` to add an email to a person, on the user's yes, to set an open commitment's `due`, or to change its `size` when the user says it is bigger or smaller | Home |
 | Counsel | `context.brief`, `people.get`; the Google Calendar connector for the meeting's event | `deposits.write` | nothing |
 | Shape | `context.brief`, `metrics.list`, `signals.patterns` | `deposits.write`, `vault.supersede`, `metrics.upsert`, `vault.link`, `assets.add` | Docs |
 | Workshop | `context.brief`, `metrics.list`, `signals.patterns` | `deposits.write`, `vault.link`, `assets.add` | Whiteboard where the account has it, else a tab in the scope's Claude Doc; a POC plugin, when one is installed |
@@ -76,7 +76,7 @@ The calendar is the source for the user's schedule: Pulse and Counsel read it th
 ## Layout
 
 ```
-<repo>/                      this repo (SETUP.md clones it as bousleh.nosync)
+<repo>/                      this repo (clone it anywhere; SETUP.md has a tip for iCloud)
   AGENTS.md
   packages/
     contracts/               typed schemas and the ops registry
@@ -104,7 +104,7 @@ The calendar is the source for the user's schedule: Pulse and Counsel read it th
 
 ## Set up a Mac
 
-`scripts/setup-mac.sh` does the whole setup (build, MCP server in Claude Desktop and Claude Code, the plugin in Claude Code, a health check); `--check` reports what is already set up without changing anything. The Claude account gets the plugin from this repo as a marketplace (`.claude-plugin/marketplace.json`). SETUP.md has the ten-minute walkthrough. Rerun the script after `git pull`; it never registers anything twice.
+`scripts/setup-mac.sh` does the whole setup (build, MCP server in Claude Desktop and Claude Code, the plugin in Claude Code, a health check); `--check` reports what is already set up without changing anything; `--demo` registers the demo data (`~/.bousleh-demo`, seeded by `pnpm demo`) as a second server, `bousleh-demo`, and `--demo --remove` takes it out, never touching the `bousleh` entry. The Claude account gets the plugin from this repo as a marketplace (`.claude-plugin/marketplace.json`). SETUP.md has the ten-minute walkthrough. Rerun the script after `git pull`; it never registers anything twice.
 
 ## Run and test
 
@@ -118,7 +118,7 @@ pnpm lint         # biome check (pnpm format to fix formatting)
 
 Before opening a pull request, `pnpm build && pnpm typecheck && pnpm lint && pnpm test` must all pass, from a fresh clone when the change touches `.gitignore` or package layout.
 
-The MCP server runs with `node packages/mcp-server/dist/bin.js` (stdio; logs go to stderr only). It reads your data at `--home <dir>`, else `BOUSLEH_HOME`, else `~/.bousleh`. Tests always use a temporary home, never your real data. Fixtures, examples and docs use a fictional cast (Alex Rivera, Northwind, the Harbor and Atlas scopes, `.example` addresses), never real people or companies.
+The MCP server runs with `node packages/mcp-server/dist/bin.js` (stdio; logs go to stderr only). It reads your data at `--home <dir>`, else `BOUSLEH_HOME`, else `~/.bousleh`. Tests always use a temporary home, never your real data. Fixtures, examples and docs use a fictional cast (Alex Rivera, Northwind, the Harbor and Atlas scopes, `.example` addresses), never real people or companies. The demo data is that cast: `packages/home/preview/demo-data.mjs`, written through the ops by `pnpm demo` (to `~/.bousleh-demo`, never your data) and by the Home preview (to a throwaway home). `pnpm demo:home` serves Home on it at http://localhost:4173.
 
 ## Workflow
 

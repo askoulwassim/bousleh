@@ -46,9 +46,11 @@ Skills name tools as the server exposes them, with underscores (`inbox_drop`), a
 | Capture | `queue.list` (read) | Needed to clear the queue with `queue.resolve`. |
 | Capture | `vault.get` (read) | To check a candidate before linking or queueing. |
 | Capture | `commitments.list` (read), `commitments.close` (write, `done` only) | To find an open commitment a new one repeats, and to close one a filed meeting plainly shows was delivered. |
+| Capture | `people.list` (read), `scopes.add`, `deposits.write` (the user and a strategy), `vault.supersede` (marking the user), `watchlists.get` and `watchlists.set` (through Horizon's flows) | Only in "Bousleh: set me up", the first run: who the user is, their first scopes with a line of strategy each, and a starter watch list per scope. |
 | Capture, Counsel, Shape, Workshop, Communicate, Coach, Horizon | `scopes.list` (read) | Every deposit and asset needs scope slugs. |
 | Counsel, Shape, Workshop, Communicate, Coach | `vault.search` (read) | To find an id by name; `people.get` itself says to. |
 | Shape | `vault.get` (read) | To read the object being shaped and its history. |
+| Pulse | `scopes.list` (read) | To tell empty data (no user, no scopes) from a user not yet marked, and suggest "Bousleh: set me up". |
 | Shape, Workshop, Communicate, Coach, Horizon, Pulse | `assets.list` (read) | To find the Doc, deck or whiteboard already registered for an object or scope before making a new one (Workshop adds a tab to the scope's Doc instead of a second Doc), and to answer "where's the doc on X?". |
 | Capture, Counsel | `vault.supersede` (write) | To move a planned meeting to `held` once it has happened (Counsel also updates the prep on it), and to add an email address to a person who exists (Counsel only on your yes). |
 | Pulse, Counsel | `people.list` (read) | To match calendar attendees to people by their `emails`. |

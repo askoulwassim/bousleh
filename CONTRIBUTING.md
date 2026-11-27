@@ -18,11 +18,11 @@ Bousleh is [MIT-licensed](LICENSE), so you can do anything with it: change it, r
 
 You need a Mac, Node 22 or newer, git, Claude Desktop and, ideally, Claude Code. [SETUP.md](SETUP.md) has the full walkthrough; with a fork, change only the steps below.
 
-1. **Clone your fork** (inside a Documents folder, keep the `.nosync` name so iCloud skips `node_modules`):
+1. **Clone your fork**, anywhere (see SETUP.md for a tip if the folder syncs to iCloud):
 
    ```sh
-   git clone https://github.com/<your-account>/bousleh.git bousleh.nosync
-   cd bousleh.nosync
+   git clone https://github.com/<your-account>/bousleh.git
+   cd bousleh
    scripts/setup-mac.sh
    ```
 

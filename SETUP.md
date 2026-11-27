@@ -4,19 +4,23 @@ About ten minutes, on the personal Mac or the work Mac alike. Each Mac gets its 
 
 ## You need
 
-- Node 22 or newer (`brew install node@22`) and git.
-- Claude Desktop, signed in to the Claude account this Mac belongs to (personal or work).
+- Node 22 or newer (`brew install node@22`) and git. pnpm comes through `corepack enable`, or the script installs it.
+- Claude Desktop, signed in to the Claude account this Mac belongs to (personal or work), on a paid plan (the README's Requirements say which).
 - Claude Code, optional but recommended (`claude` on the PATH).
-- Google Drive connected to that Claude account (in Claude's Settings, under Connectors). No Google Drive desktop app is needed.
+- Google Drive and Google Calendar connected to that Claude account (in Claude's Settings, under Connectors). No Google Drive desktop app is needed.
+
+Want to look first? `pnpm install && pnpm demo` seeds fictional demo data in `~/.bousleh-demo`, `pnpm demo:home` shows Home on it at http://localhost:4173, and `scripts/setup-mac.sh --demo` adds it to Claude as a second server, `bousleh-demo`, so you can say "Pulse: where am I?" on it. It never touches `~/.bousleh` or the `bousleh` entry; `scripts/setup-mac.sh --demo --remove` takes it out again.
 
 ## Run
 
 ```sh
-git clone https://github.com/askoulwassim/bousleh.git bousleh.nosync   # inside a Documents folder, keep the .nosync name
-cd bousleh.nosync
+git clone https://github.com/askoulwassim/bousleh.git   # anywhere you like
+cd bousleh
 scripts/setup-mac.sh --check   # optional: shows what is already set up, changes nothing
 scripts/setup-mac.sh
 ```
+
+Tip: if you clone inside a folder that syncs to iCloud (such as Documents), name the clone with a `.nosync` ending (`git clone … bousleh.nosync`), so iCloud skips `node_modules` and the build. Anywhere else, the name doesn't matter. An existing clone keeps working where it is: the script finds the repo from its own path.
 
 The script:
 
@@ -33,8 +37,8 @@ It's safe to rerun: it replaces its own Claude Desktop entry rather than adding 
 
 1. Quit Claude Desktop (Cmd-Q) and open it again.
 2. Once per Claude account, add the plugin from GitHub: in Claude Desktop, **Customize > Plugins > Add > Add marketplace > Add from a repository**, enter `askoulwassim/bousleh`, then add **Bousleh**. That brings the nine skills, Drop included, to Desktop chat and the web, and they update from GitHub. If that option is missing or the private repo can't be reached from this account, upload `dist/bousleh.plugin` there instead. Check on the phone that Drop is listed; if it isn't, add Drop on its own as a skill.
-3. In a Claude Desktop chat: "Bousleh: mark me as the user, I'm <your name>."
-4. In Claude Desktop's Code tab, on this repo folder, say: "Set up the scheduled tasks in docs/scheduled-tasks.md." That file is the only definition of the Hourly inbox sweep (needs this Mac, hourly 07:00–22:00) and the Weekly Horizon scan (in the cloud, Mondays 06:40). It also writes `Bousleh Watch Lists.md` to the Drive folder "Bousleh", where the scan reads the watch lists. Saying it again updates them and never adds a second copy. Repeat it after `git pull`; a watch list change doesn't need it, since Horizon rewrites the Drive file itself.
+3. In a Claude Desktop chat, say: "Bousleh: set me up." One question at a time, it files who you are (your name, role and work emails, so your calendar matches), your first two or three scopes with one line of strategy each, and a starter watch list per scope. It ends with what is left for you: the two Drive folders ("Bousleh Inbox" and "Bousleh", at the top of My Drive) and the next two steps. Saying it again skips what is done.
+4. In Claude Desktop's Code tab, on this repo folder, say: "Set up the scheduled tasks in docs/scheduled-tasks.md." That file is the only definition of the four tasks: the Hourly inbox sweep (needs this Mac, hourly from 07:00 to 22:00), the Weekly Horizon scan (in the cloud, Mondays 06:40), the Hourly Meet notes mirror (in the cloud) and the Friday Bousleh tune-up (needs this Mac). It also writes `Bousleh Watch Lists.md` to the Drive folder "Bousleh", where the scan reads the watch lists. Saying it again updates them and never adds a second copy. Repeat it after `git pull`; a watch list change doesn't need it, since Horizon rewrites the Drive file itself.
 5. In the same Code tab, say: "Publish Home from docs/home.md." That publishes `packages/home/dist/home.html` as your Home page (to the same link every time) and registers it. Open it once in Claude Desktop so it saves its first snapshot for the phone. Repeat after `git pull`. To make it an app, press Install as app in its footer, then allow what you want on its first screen (see docs/home.md).
 6. Phone test: in the Claude app, say "Drop this: test from my phone." Then, in Claude Desktop on the Mac: "Process my Bousleh inbox." The note should be filed (or skipped), and gone from Drive's "Bousleh Inbox".
 
