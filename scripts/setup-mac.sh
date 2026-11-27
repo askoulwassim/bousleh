@@ -5,9 +5,12 @@
 #   scripts/setup-mac.sh --check           only report what is already set up; change nothing
 #   scripts/setup-mac.sh --demo            add the demo data (~/.bousleh-demo) as a second server, bousleh-demo
 #   scripts/setup-mac.sh --demo --remove   take the bousleh-demo server out again (the demo data stays)
+#   scripts/setup-mac.sh --no-claude       don't open Claude at the end (print the hand-off instead)
 #
 # Builds the engine, registers the Bousleh MCP server in Claude Desktop and Claude Code, installs the
-# plugin in Claude Code, builds the plugin file for your Claude account, and checks the server.
+# plugin in Claude Code, builds the plugin file for your Claude account, and checks the server. Then it
+# opens Claude's Code tab on this repo with "Finish setting up Bousleh from docs/finish-setup.md." typed in:
+# pressing Enter publishes Home and sets up the scheduled tasks, the same way every time.
 # It never touches your data beyond creating the empty folder. --demo never touches the bousleh
 # entry or ~/.bousleh. Clone the repo anywhere. See SETUP.md.
 set -euo pipefail
@@ -17,12 +20,14 @@ DATA="${BOUSLEH_HOME:-$HOME/.bousleh}"
 CHECK=0
 DEMO=0
 REMOVE=0
+OPEN_CLAUDE=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --home) DATA="$2"; shift 2 ;;
     --check) CHECK=1; shift ;;
     --demo) DEMO=1; shift ;;
     --remove) REMOVE=1; shift ;;
+    --no-claude) OPEN_CLAUDE=0; shift ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
@@ -84,6 +89,8 @@ if (( CHECK )); then
   fi
   if [[ -f "$REPO/packages/home/dist/home.html" ]]; then echo "  Home page: built (packages/home/dist/home.html); publish it with docs/home.md"; else echo "  Home page: not built yet (packages/home/dist/home.html is missing; run this script)"; fi
   if [[ -n "$GUARDED" ]]; then echo "  ! $GUARDED_NOTE"; fi
+  echo "  Scheduled tasks this repo defines (docs/scheduled-tasks.md; the finish step creates or updates them):"
+  node "$REPO/scripts/scheduled-tasks.mjs" --list 2>&1 | sed 's/^/    /' || true
   if [[ -f "$APP_JSON" ]]; then echo "  Home app: $APP_JSON points at $(node -p 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).repo' "$APP_JSON" 2>/dev/null || echo 'an unreadable path')"; else echo "  Home app: $APP_JSON not written yet (run this script without --check)"; fi
   if [[ -d "$DATA" ]]; then echo "  Data folder: $DATA ($(find "$DATA" -type f | wc -l | tr -d ' ') files, vault.db $([[ -f "$DATA/vault.db" ]] && echo present || echo absent))"; else echo "  Data folder: $DATA (not created yet)"; fi
   if [[ -d "$DATA-backups" ]]; then echo "  Backups: $(ls "$DATA-backups" | wc -l | tr -d ' ') snapshots in $DATA-backups"; else echo "  Backups: none yet"; fi
@@ -243,7 +250,7 @@ if [[ "$(uname)" == "Darwin" || -n "${BOUSLEH_DESKTOP_CONFIG:-}" ]]; then
     fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
   ' "$DESKTOP_CONFIG" "$SERVER_JSON"
   ok "bousleh MCP server registered in Claude Desktop"
-  LEFT+=("Quit Claude Desktop (Cmd-Q) and open it again, so it starts the Bousleh server.")
+  LEFT+=("When the Code tab says it's done, quit Claude Desktop (Cmd-Q) and open it again, so its chats start the Bousleh server.")
 else
   note "not a Mac: skipped"
 fi
@@ -275,9 +282,6 @@ rm -f "$REPO/dist/bousleh.plugin"
 ok "the repo is a plugin marketplace (.claude-plugin/marketplace.json); dist/bousleh.plugin is built as a fallback"
 LEFT+=("Once per Claude account, in Claude Desktop: Customize > Plugins > Add > Add marketplace > Add from a repository, enter askoulwassim/bousleh, then add the Bousleh plugin. It brings the nine skills, Drop included, to Desktop chat and the web, and updates from GitHub. Skip this if the account already has it. Fallback, if that option is missing or the repo can't be reached: upload dist/bousleh.plugin there instead.")
 LEFT+=("Check that Google Drive is connected to this Claude account (Settings, Connectors). Capture and Drop use it for the \"Bousleh Inbox\" folder; Drop creates the folder on first use.")
-LEFT+=("In a Claude Desktop chat, say: \"Bousleh: set me up.\" It asks who you are, adds your first scopes and watch lists, and walks you through the Drive folders and scheduled tasks. (Once per Mac; skip if done.)")
-LEFT+=("In Claude Desktop's Code tab, on this repo folder, say: \"Publish Home from docs/home.md.\" It publishes the Home page to the same link every time; open it once in Claude Desktop so the phone has a snapshot. Repeat after git pull.")
-LEFT+=("In Claude Desktop's Code tab, on this repo folder, say: \"Set up the scheduled tasks in docs/scheduled-tasks.md.\" That file is the only definition of the Hourly inbox sweep (needs this Mac, hourly) and the Weekly Horizon scan (cloud, Mondays); saying it again updates them, never duplicates. Repeat after git pull.")
 
 step "Check"
 OPS="$("$NODE" --input-type=module -e '
@@ -290,6 +294,23 @@ OPS="$("$NODE" --input-type=module -e '
 ' "$REPO/packages/engine/dist/index.js" "$DATA")"
 ok "the engine answers with $OPS ops"
 
+"$NODE" "$REPO/scripts/scheduled-tasks.mjs" --repo "$REPO" >/dev/null || { echo "  docs/scheduled-tasks.md doesn't parse; fix it before the finish step" >&2; exit 1; }
+ok "the scheduled tasks are defined ($("$NODE" "$REPO/scripts/scheduled-tasks.mjs" --list | wc -l | tr -d ' ') in docs/scheduled-tasks.md)"
+
+# The part that lives in the Claude account (Home, the scheduled tasks) takes Claude: hand it over, same words every time.
+FINISH="Finish setting up Bousleh from docs/finish-setup.md."
+FINISH_URL="$("$NODE" -e '
+  const enc = (s) => encodeURIComponent(s).replace(/[!'"'"'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  process.stdout.write(`claude://code/new?q=${enc(process.argv[1])}&folder=${enc(process.argv[2])}`);
+' "$FINISH" "$REPO")"
+step "Finish in Claude"
+if (( OPEN_CLAUDE )) && [[ "$(uname)" == "Darwin" ]] && open "$FINISH_URL" >/dev/null 2>&1; then
+  ok "opened Claude's Code tab on this repo with \"$FINISH\" typed in: press Enter there"
+  LEFT=("In the Code tab that just opened, press Enter on \"$FINISH\" It publishes Home and creates or updates the scheduled tasks, then lists the rest." "${LEFT[@]}")
+else
+  note "open Claude's Code tab on $REPO and say: \"$FINISH\""
+  LEFT=("In Claude Desktop's Code tab, on $REPO, say: \"$FINISH\" It publishes Home and creates or updates the scheduled tasks, then lists the rest." "${LEFT[@]}")
+fi
+
 printf '\n\033[1mLeft for you\033[0m\n'
 for i in "${!LEFT[@]}"; do printf '  %d. %s\n' "$((i + 1))" "${LEFT[$i]}"; done
-if [[ "$(uname)" == "Darwin" ]]; then open "$REPO/dist" >/dev/null 2>&1 || true; fi

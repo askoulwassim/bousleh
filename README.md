@@ -46,10 +46,10 @@ To see Home first, with nothing installed in Claude: `pnpm demo:home` serves it 
 
 [SETUP.md](SETUP.md) is the ten-minute walkthrough. In short:
 
-1. `scripts/setup-mac.sh` builds everything, registers the `bousleh` MCP server in Claude Desktop and Claude Code, and installs the plugin in Claude Code. `--check` shows what is set up and changes nothing. It is safe to rerun after `git pull`.
+1. `scripts/setup-mac.sh` builds everything, registers the `bousleh` MCP server in Claude Desktop and Claude Code, and installs the plugin in Claude Code. At the end it opens Claude's Code tab with "Finish setting up Bousleh from docs/finish-setup.md." typed in. Press Enter: that publishes Home and creates the scheduled tasks, the same way every time. `--check` shows what is set up and changes nothing. Rerun it after every `git pull`; it brings everything back in line.
 2. Add the plugin to your Claude account once: in Claude Desktop, **Customize > Plugins > Add > Add marketplace > Add from a repository**, enter `askoulwassim/bousleh` (or your fork), then add **Bousleh**.
-3. In a Claude Desktop chat, say **"Bousleh: set me up."** One question at a time, it files who you are, your first two or three scopes with a line of strategy each and a starter watch list per scope, and tells you how to make the two Drive folders and set up the scheduled tasks.
-4. In Claude Desktop's Code tab, on your clone, say **"Publish Home from docs/home.md."** Then press **Install as app** in Home's footer and allow what you want on its first screen.
+3. In a Claude Desktop chat, say **"Bousleh: set me up."** One question at a time, it files who you are, your first two or three scopes with a line of strategy each and a starter watch list per scope.
+4. Open Home, press **Install as app** in its footer, and allow what you want on its first screen.
 
 ## The modes
 

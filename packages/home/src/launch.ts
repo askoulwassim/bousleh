@@ -82,7 +82,7 @@ export function chatUrl(prompt: string): string {
   return `claude://claude.ai/new?q=${enc(clipPrompt(prompt))}`;
 }
 
-/** The Code tab on a folder with the prompt typed in. Only Publish Home opens it. */
+/** The Code tab on a folder with the prompt typed in. Only Health's Finish setup opens it. */
 export function codeUrl(prompt: string, folder: string): string {
   return `claude://code/new?q=${enc(clipPrompt(prompt))}&folder=${enc(folder)}`;
 }
@@ -102,4 +102,5 @@ export function openCommand(url: string, platform: string): string | null {
 }
 
 /** The prompt for the one launcher that opens the Code tab. */
-export const PUBLISH_HOME = 'Publish Home from docs/home.md.';
+/** Health's Finish setup: the same hand-off scripts/setup-mac.sh opens (Home and the scheduled tasks, from the repo). */
+export const PUBLISH_HOME = 'Finish setting up Bousleh from docs/finish-setup.md.';

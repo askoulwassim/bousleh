@@ -90,7 +90,7 @@ The calendar is the source for the user's schedule: Pulse and Counsel read it th
     home/                    the Home page (dist/home.html, a Claude page; docs/home.md)
   plugin/
     skills/                  capture, pulse, counsel, shape, workshop, communicate, coach, horizon, tune; drop
-  docs/                      decisions.md, scheduled-tasks.md, home.md, move.md
+  docs/                      decisions.md, scheduled-tasks.md, home.md, move.md, finish-setup.md
   docs/design/               design notes; docs/design/home/ holds the Claude Design boards for Home
 ```
 
@@ -104,7 +104,7 @@ The calendar is the source for the user's schedule: Pulse and Counsel read it th
 
 ## Set up a Mac
 
-`scripts/setup-mac.sh` does the whole setup (build, MCP server in Claude Desktop and Claude Code, the plugin in Claude Code, a health check); `--check` reports what is already set up without changing anything; `--demo` registers the demo data (`~/.bousleh-demo`, seeded by `pnpm demo`) as a second server, `bousleh-demo`, and `--demo --remove` takes it out, never touching the `bousleh` entry. The Claude account gets the plugin from this repo as a marketplace (`.claude-plugin/marketplace.json`). SETUP.md has the ten-minute walkthrough. Rerun the script after `git pull`; it never registers anything twice.
+`scripts/setup-mac.sh` does the whole setup (build, MCP server in Claude Desktop and Claude Code, the plugin in Claude Code, a health check); `--check` reports what is already set up without changing anything; `--demo` registers the demo data (`~/.bousleh-demo`, seeded by `pnpm demo`) as a second server, `bousleh-demo`, and `--demo --remove` takes it out, never touching the `bousleh` entry. The Claude account gets the plugin from this repo as a marketplace (`.claude-plugin/marketplace.json`). It ends by opening Claude's Code tab with "Finish setting up Bousleh from docs/finish-setup.md." typed in, which publishes Home and creates or updates the scheduled tasks from `node scripts/scheduled-tasks.mjs` (the JSON form of `docs/scheduled-tasks.md`, applied literally). SETUP.md has the ten-minute walkthrough. Rerun the script after `git pull`; it never registers anything twice.
 
 ## Run and test
 

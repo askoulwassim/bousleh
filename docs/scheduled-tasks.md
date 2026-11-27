@@ -2,30 +2,31 @@
 
 Bousleh runs four scheduled tasks. This file is their only definition: nobody sets one up by hand, and the same file sets up every Mac that runs Bousleh, a personal one or a work one.
 
-`scripts/setup-mac.sh` ends by pointing here. To apply it, open the Code tab in Claude Desktop on this repo folder (your clone) and say:
+`scripts/setup-mac.sh` applies this file for you: it ends by opening Claude's Code tab on your clone with "Finish setting up Bousleh from docs/finish-setup.md." typed in, and that runs the steps below. Rerun the script after every `git pull`.
 
-> Set up the scheduled tasks in docs/scheduled-tasks.md.
-
-Say it again after `git pull` changes this file. A watch list change doesn't need it: the Weekly Horizon scan reads the watch lists from Google Drive (below). (A script can't do this step: Claude Desktop keeps a task's schedule outside any file a script could write, and a headless `claude -p` run can't reach your Claude account's connectors.)
+Each task below has an exact name, a place (this Mac or the cloud), a cron in local time and a prompt. `node scripts/scheduled-tasks.mjs` prints them as JSON, and Claude applies that JSON literally: same names, same schedules, same prompts on every Mac, created or updated by name, never duplicated. To change a task, change this file. `node scripts/scheduled-tasks.mjs --list` shows them in one line each. (Creating the tasks takes Claude: they live in your Claude account, not in a file a script can write.)
 
 ## How to apply this file (for Claude)
 
-1. **Check the basics.**
-   - Call `vault_health` on the `bousleh` MCP server. It must answer with all Bousleh ops; if it doesn't, stop and say to run `scripts/setup-mac.sh`.
-   - Check that the Google Drive connector is available in this account. If it isn't, say so: both tasks need it.
-   - Refresh the watch lists file in Drive, as the Horizon skill's "Flow: the watch lists file in Drive" says (`watchlists_get`, then create or replace `Bousleh Watch Lists.md` in the Drive folder `Bousleh`). The Weekly Horizon scan reads it and stops if it is missing. If there are no watch lists yet, skip this and Task 2, and say Horizon has nothing to watch yet.
-   - Seed the Meet ledger for Task 3, once. If the Drive folder `Bousleh` has no file titled exactly `Bousleh Meet Ledger.md`, create it (content type `text/markdown`, conversion to a Google Doc turned off) in the format under Task 3, listing every Gemini notes doc already in the "Google Meet" folder, so only meetings from now on flow in. If there's no "Google Meet" folder at the top of My Drive yet, create the ledger with no entries. If the ledger already exists, leave it alone.
-2. **List what exists:** the scheduled tasks on this Mac and the cloud scheduled tasks (routines) on this account.
-3. **For each task below:**
-   - If a task with that exact name already exists in the same place (this Mac or the cloud), update its prompt and schedule to match this file. Otherwise create it. Never create a second task with the same name.
-   - **Connectors:** a scheduled task gets every connector on the account, and neither the scheduling tools nor the app can limit that. Don't try to remove any, and don't report the extra ones as a problem. Each task's prompt limits what it touches instead: Bousleh's own tools, the "Bousleh Inbox" folder and the watch lists file. **Needs** lists what a task actually uses; check those are available.
-   - **Tasks that need the Mac:** create a scheduled task that requires this Mac, with this repo folder as its working folder. Set the permission mode so runs don't stall on approvals for the Bousleh tools and the Google Drive connector. If only a mode that asks is available, say so, and tell the user to click **Run now** once and choose "always allow" for each tool.
-   - **Cloud-only tasks:** give the run no access to the Mac.
-   - **The Friday Bousleh tune-up** also needs `git`, `pnpm` and `gh` in this repo folder. Check `gh auth status`; if it isn't signed in, still create the task, and say its pull requests will come back as proposals in its report until `gh auth login` is run.
-4. **Remove strays.** If a scheduled task looks like an older copy of one of these under another name, name it and ask before deleting it.
-5. **Report** in a few lines:
-   - each task, whether it was created or updated, where it runs, and its next run time;
-   - that a task that needs the Mac only does its work while the Mac is awake with Claude Desktop open. A run that finds the Mac asleep ends at once, and the next hour's run picks up.
+Apply it exactly. Take every name, cron and prompt from the script's JSON, never from memory, and change nothing in them. Ask nothing except the approvals the app itself shows.
+
+1. **Read the definitions.** Run `node scripts/scheduled-tasks.mjs --repo <this clone's absolute path>` in this clone and use its JSON. If it fails, stop and show its error.
+2. **Check the basics.**
+   - Call `vault_health` on the `bousleh` MCP server. It must answer with all Bousleh ops. If it doesn't, stop and say to run `scripts/setup-mac.sh`.
+   - Check that the Google Drive connector is available on this account. If it isn't, stop and say so: three of the tasks need it.
+   - Write the watch lists file: `watchlists_get`, then create or replace `Bousleh Watch Lists.md` in the Drive folder `Bousleh`, as the Horizon skill's "Flow: the watch lists file in Drive" says. If there are no watch lists yet, skip it and say Horizon has nothing to watch yet.
+   - Seed the Meet ledger, once. If the Drive folder `Bousleh` has no file titled exactly `Bousleh Meet Ledger.md`, create it (content type `text/markdown`, conversion to a Google Doc turned off) in the format under Task 3, listing every Gemini notes doc already in the "Google Meet" folder, so only meetings from now on flow in. If there's no "Google Meet" folder at the top of My Drive, create the ledger with no entries. If the ledger exists, leave it alone.
+3. **List what exists:** every scheduled task on this account, with its name, schedule, prompt, whether it needs this Mac, its working folder and whether it's on.
+4. **For each task in the JSON, in order:**
+   - The schedule is the task's `cron` in the user's local time zone (`CRON_TZ=<their IANA zone> <cron>`), unchanged. Never move the minute.
+   - A task that `runs` on `mac` requires this Mac, with `folder` as its working folder. One that `runs` in the `cloud` gets no access to the Mac.
+   - Set the permission mode so runs don't stall on approvals, where the app allows it.
+   - **Exists, same name, same place, same folder:** update its schedule and prompt to the JSON's where they differ, and turn it on.
+   - **Exists, same name, but needs this Mac with another working folder** (an older clone): a task's folder can't be changed in place, so create the new one first, then delete the old one.
+   - **Missing:** create it.
+   - Never create a second task with a name already in the JSON.
+5. **Older names.** These were renamed: "Daily inbox sweep" is now the Hourly inbox sweep, and "Daily Horizon scan" is now the Weekly Horizon scan. If one exists, update it in place to the new name, schedule and prompt. Name any other task that looks like a stray copy of these, and leave it alone.
+6. **Report** as a table: each task, created, updated or unchanged, where it runs, and its next run. Then one line: a task that needs the Mac does its work only while the Mac is awake with Claude Desktop open; a run that finds it asleep ends at once, and the next run picks up. If `gh auth status` isn't signed in in this clone, say the Friday tune-up's pull requests come back as proposals in its report until `gh auth login` is run.
 
 ## Why the sweep needs the Mac
 
@@ -36,7 +37,8 @@ Bousleh's data lives only on the Mac: local, never pushed. So filing into it nee
 An older version of this task was called "Daily inbox sweep". If a task by that name exists, update it in place: rename it, and change its schedule and prompt. Don't create a second one.
 
 - **Runs:** as a scheduled task that requires this Mac. It works through the Mac's `bousleh` MCP server.
-- **Schedule:** every hour from 07:00 to 22:00, local time.
+- **Schedule:** every hour at :43, from 06:43 to 21:43, local time.
+- **Cron:** `43 6-21 * * *`
 - **Needs:** the Bousleh MCP server on this Mac, and the Google Drive connector. The other connectors on the account stay attached but unused: the prompt keeps the run to Bousleh and those two Drive locations.
 - **Permissions:** runs without asking, for the Bousleh tools and the Google Drive connector.
 
@@ -77,6 +79,7 @@ An older version of this task was called "Daily Horizon scan" and ran every day,
 
 - **Runs:** in the cloud, as a cloud scheduled task, so it works when the Mac is off.
 - **Schedule:** every Monday at 06:40, local time, before the first inbox sweep.
+- **Cron:** `40 6 * * 1`
 - **Needs:** web search and the Google Drive connector, with no access to the Mac. The other connectors on the account stay attached but unused: the prompt keeps the run to reading the watch lists file and writing to "Bousleh Inbox".
 - **Permissions:** runs on its own.
 - **Watch lists:** the prompt carries none. Each run reads them from `Bousleh Watch Lists.md` in the Drive folder `Bousleh`, which the Mac keeps current: Horizon rewrites it after every watch list change, and the Hourly inbox sweep after it files a scan. So a watch list change never needs this file applied again.
@@ -103,7 +106,8 @@ Never change the watch lists file yourself: the Mac applies your proposals. End 
 ## Task 3: Hourly Meet notes mirror
 
 - **Runs:** in the cloud, as a cloud scheduled task, so it works when the Mac is off.
-- **Schedule:** every hour from 07:20 to 21:20, Monday to Friday, local time: twenty minutes ahead of the Hourly inbox sweep, which files what it copies.
+- **Schedule:** every hour at :20, from 07:20 to 21:20, Monday to Friday, local time, so the Hourly inbox sweep files what it copies at :43.
+- **Cron:** `20 7-21 * * 1-5`
 - **Needs:** the Google Drive connector, with no access to the Mac. The other connectors on the account stay attached but unused.
 - **Permissions:** runs on its own.
 - **What it does:** Google Meet saves Gemini's notes (with the transcript, when one was recorded) as a Google Doc in a subfolder of the Drive folder "Google Meet", one subfolder per meeting (a recurring meeting keeps one subfolder). For a meeting the user owns the doc itself sits there; for others' meetings, a shortcut to it. This task copies each new notes doc, as plain text, into "Bousleh Inbox"; Capture files it on the Mac, skips meetings with nothing for the user, and moves a planned meeting to held.
@@ -161,6 +165,7 @@ Never read, move, rename or delete anything in "Google Meet" or its subfolders; 
 
 - **Runs:** as a scheduled task that requires this Mac, with this repo folder as its working folder. It reads your data through the Mac's `bousleh` MCP server, and changes Bousleh itself through pull requests from this folder, on your own clone or fork, never on the upstream repo.
 - **Schedule:** every Friday at 16:47, local time (end of day; off the hour, since runs on the hour can be delayed).
+- **Cron:** `47 16 * * 5`
 - **Needs:** the Bousleh MCP server on this Mac; `git`, `pnpm` and a signed-in `gh` in this folder for pull requests. No connectors.
 - **Permissions:** runs without asking, for the Bousleh tools and for `git`, `pnpm` and `gh` in this folder.
 - **What it may do on its own:** safe, reversible data fixes that follow rules the user has already set (each with a reason starting `Friday tune-up:`, nothing deleted); judgment calls go to the user's queue; any change to Bousleh itself goes to a pull request, on the user's own clone or fork, for the user to merge. It reports only when it did something.

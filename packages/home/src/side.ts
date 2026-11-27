@@ -542,7 +542,7 @@ function paintHealth(): void {
       : can
         ? `<button class="btn2 sm" type="button" data-action="run-setup">Rerun setup${mac}</button>`
         : '',
-    `<button class="btn2 sm" type="button" data-action="publish-home">Publish Home${whereTag(app.ui.reach.open && app.facts.repo ? 'claude' : 'copy')}</button>`,
+    `<button class="btn2 sm" type="button" data-action="publish-home">Finish setup${whereTag(app.ui.reach.open && app.facts.repo ? 'claude' : 'copy')}</button>`,
     '<button class="btn2 sm" type="button" data-action="health-refresh">Refresh</button>',
   ].join('');
   setHtml(part('.hl-acts'), 'hl-acts', acts);
