@@ -59,6 +59,8 @@ export interface Readout {
 export interface Action {
   label: string;
   prompt: string;
+  /** A read-only question Home answers itself (Ask), by key; the prompt is then the copy fallback. */
+  ask?: string;
 }
 
 export type Mode = 'Capture' | 'Pulse' | 'Counsel' | 'Shape' | 'Workshop' | 'Communicate' | 'Coach' | 'Horizon';
@@ -68,6 +70,10 @@ export interface Launcher {
   label: string;
   /** Prompt key; absent when disabled. */
   prompt?: string;
+  /** Answered here: the Ask question's key (the prompt is the copy fallback). */
+  ask?: string;
+  /** Here: opens Capture. */
+  capture?: boolean;
 }
 
 export interface ColumnVM {
@@ -93,6 +99,8 @@ export interface RowVM {
   launchers: Launcher[];
   /** Prompt key: a brief at this altitude. */
   prompt: string;
+  /** Ask question key: the same brief, answered here. Absent in older snapshots. */
+  ask?: string;
 }
 
 export interface ItemVM {
@@ -150,6 +158,8 @@ export interface CellVM {
   /** Minor commitments (small follow-ups) in the cell, drawn after the rest in a collapsed group. Absent when there are none. */
   minor?: MinorVM;
   prompt: string;
+  /** A filled cell's brief, answered here (Ask question key). */
+  ask?: string;
   label: string;
 }
 
@@ -166,6 +176,8 @@ export interface MeetingVM {
 /** One of the few things to do first, from pulse.today's focus. */
 export interface FocusItemVM {
   kind: 'commitment' | 'meeting';
+  /** The commitment's or meeting's id: Home acts on a commitment by it. Absent in older snapshots. */
+  id?: string;
   /** The first reason, as the eyebrow: "2 days late", "follow up with Ian", "today at 14:00". */
   eyebrow: string;
   title: string;
@@ -188,6 +200,22 @@ export interface FocusVM {
   snoozed: string | null;
   /** Prompt key for the rest (Pulse). */
   morePrompt: string;
+  /** The same, answered here (Ask question key). */
+  moreAsk?: string;
+}
+
+/** One of today's meetings, in the row under First. */
+export interface MeetingRowVM {
+  title: string;
+  /** "14:00", or "Today" for one filed with a date only. */
+  time: string;
+  /** "Prep filed", "Notes filed" or "On your calendar". */
+  sub: string;
+  held: boolean;
+  /** Brief me (Here): Ask question key. Absent for a meeting already held. */
+  ask?: string;
+  /** Prep with Counsel (In Claude): prompt key. Absent for a meeting already held. */
+  prompt?: string;
 }
 
 export interface StoryVM {
@@ -224,6 +252,8 @@ export interface HorizonVM {
   readingList: number;
   /** Prompt key for the reading list. */
   readingPrompt: string;
+  /** The reading list, answered here (Ask question key). */
+  readingAsk?: string;
   filters: { slug: string; name: string }[];
 }
 
@@ -244,6 +274,8 @@ export interface ViewModel {
   /** The few things to do first. Absent without pulse.today, and in snapshots taken before Nov 13. */
   focus?: FocusVM;
   phone: { needs: NeedsVM | null; meeting: MeetingVM | null; bet: BetVM | null };
+  /** Today's meetings, for the row under First. Absent in older snapshots. */
+  meetings?: MeetingRowVM[];
   horizon: HorizonVM;
   docs: { title: string; url: string; type: string }[];
   /** Ready prompts, by key. */

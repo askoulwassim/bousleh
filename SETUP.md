@@ -22,7 +22,7 @@ The script:
 
 1. checks Node and pnpm;
 2. builds the engine, the MCP server and the Home page;
-3. creates `~/.bousleh` (empty; daily backups will go to `~/.bousleh-backups`, the newest 14 kept);
+3. creates `~/.bousleh` (empty; daily backups will go to `~/.bousleh-backups`, the newest 14 kept), and writes `~/.bousleh/app.json` with this repo's path, so Home installed as an app can run Tune and the setup check here;
 4. registers the `bousleh` MCP server in Claude Desktop, after backing up its config;
 5. registers it in Claude Code and installs the plugin there, straight from this repo;
 6. builds `dist/bousleh.plugin` as a fallback, and checks that the engine answers.
@@ -35,7 +35,7 @@ It's safe to rerun: it replaces its own Claude Desktop entry rather than adding 
 2. Once per Claude account, add the plugin from GitHub: in Claude Desktop, **Customize > Plugins > Add > Add marketplace > Add from a repository**, enter `askoulwassim/bousleh`, then add **Bousleh**. That brings the nine skills, Drop included, to Desktop chat and the web, and they update from GitHub. If that option is missing or the private repo can't be reached from this account, upload `dist/bousleh.plugin` there instead. Check on the phone that Drop is listed; if it isn't, add Drop on its own as a skill.
 3. In a Claude Desktop chat: "Bousleh: mark me as the user, I'm <your name>."
 4. In Claude Desktop's Code tab, on this repo folder, say: "Set up the scheduled tasks in docs/scheduled-tasks.md." That file is the only definition of the Hourly inbox sweep (needs this Mac, hourly 07:00–22:00) and the Weekly Horizon scan (in the cloud, Mondays 06:40). It also writes `Bousleh Watch Lists.md` to the Drive folder "Bousleh", where the scan reads the watch lists. Saying it again updates them and never adds a second copy. Repeat it after `git pull`; a watch list change doesn't need it, since Horizon rewrites the Drive file itself.
-5. In the same Code tab, say: "Publish Home from docs/home.md." That publishes `packages/home/dist/home.html` as your Home page (to the same link every time) and registers it. Open it once in Claude Desktop so it saves its first snapshot for the phone. Repeat after `git pull`.
+5. In the same Code tab, say: "Publish Home from docs/home.md." That publishes `packages/home/dist/home.html` as your Home page (to the same link every time) and registers it. Open it once in Claude Desktop so it saves its first snapshot for the phone. Repeat after `git pull`. To make it an app, press Install as app in its footer, then allow what you want on its first screen (see docs/home.md).
 6. Phone test: in the Claude app, say "Drop this: test from my phone." Then, in Claude Desktop on the Mac: "Process my Bousleh inbox." The note should be filed (or skipped), and gone from Drive's "Bousleh Inbox".
 
 ## Backups and restore

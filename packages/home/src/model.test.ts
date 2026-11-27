@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { glyphState } from './glyph.js';
-import { abbreviate, buildViewModel, clockDays, mergeMeetings, needsAltitude, needsYouCount, shortTitle } from './model.js';
-import { renderPage } from './render.js';
+import {
+  abbreviate,
+  buildViewModel,
+  clockDays,
+  meetingRows,
+  mergeMeetings,
+  needsAltitude,
+  needsYouCount,
+  PromptBook,
+  shortTitle,
+} from './model.js';
+import { initialUi, renderPage } from './render.js';
 import type { Pulse, Sources, Strata, StrataCell, StrataObj } from './types.js';
 
 /* The pure view model: op outputs in, what Home draws out. Data here is invented for the test. */
@@ -331,7 +341,7 @@ describe('buildViewModel', () => {
     expect(drawn?.minor?.needs).toBe(true);
     // The needs-you count stays the strata's.
     expect(vm.hero.needs).toBe(2);
-    const html = renderPage(vm, { mode: 'live', stamp: '09:30', filter: 'all', docsOpen: false, errors: {}, approval: false, done: {} });
+    const html = renderPage(vm, { ...initialUi(), mode: 'live', stamp: '09:30' });
     expect(html).toContain('<details class="minor"><summary class="eb sm t-needs">Small follow-ups (2)</summary>');
     expect(html).not.toContain('<details class="minor" open');
 
@@ -429,7 +439,13 @@ describe('buildViewModel', () => {
     expect(vm.prompts[vm.focus?.morePrompt ?? '']).toBe('Pulse: where am I?');
 
     // Nothing snoozed, nothing ranked: an empty focus, which the page leaves out.
-    expect(buildViewModel(sources(), NOW).focus).toEqual({ items: [], more: 0, snoozed: null, morePrompt: expect.any(String) });
+    expect(buildViewModel(sources(), NOW).focus).toEqual({
+      items: [],
+      more: 0,
+      snoozed: null,
+      morePrompt: expect.any(String),
+      moreAsk: expect.any(String),
+    });
     // Without Pulse there is no focus at all.
     expect(buildViewModel({ strata: sources().strata }, NOW).focus).toBeUndefined();
   });
@@ -539,5 +555,51 @@ describe('buildViewModel', () => {
     ]);
     expect(h.noWatch.map((s) => s.name)).toEqual(['Quill']);
     expect(h.eyebrow).toBe('Wk 43 · Wed 21 Oct · Lantern');
+  });
+});
+
+describe('where launchers go (v0.2)', () => {
+  it('answers read-only launchers here, opens Capture here, and keeps a mode prompt to copy', () => {
+    const vm = buildViewModel({}, NOW);
+    const all = vm.rows.flatMap((r) => r.launchers);
+    const pulse = all.find((l) => l.mode === 'Pulse');
+    expect(vm.prompts[pulse?.ask ?? '']).toBe('Where am I?');
+    expect(vm.prompts[pulse?.prompt ?? '']).toBe('Pulse: where am I?');
+    expect(all.find((l) => l.mode === 'Capture')?.capture).toBe(true);
+    const horizon = all.find((l) => l.mode === 'Horizon');
+    expect(vm.prompts[horizon?.ask ?? '']).toBe("What's new outside this week?");
+    // Modes that make a Claude output or write on judgment have no question: they open Claude.
+    for (const mode of ['Shape', 'Communicate', 'Workshop', 'Counsel'] as const)
+      expect(all.find((l) => l.mode === mode)?.ask).toBeUndefined();
+    expect(vm.rows.map((r) => vm.prompts[r.ask ?? ''])).toEqual([
+      'Brief me at 50K across every scope',
+      'Brief me at 10K across every scope',
+      'Brief me at 1K across every scope',
+      'Brief me at 100 ft across every scope',
+    ]);
+    expect(vm.prompts[vm.primary?.ask ?? '']).toBe('Where am I?');
+    expect(vm.prompts[vm.horizon.readingAsk ?? '']).toBe("What's on my reading list?");
+  });
+
+  it("lists today's meetings: Brief me here, Prep with Counsel in Claude, nothing for one already held", () => {
+    const book = new PromptBook();
+    const rows = meetingRows(
+      [
+        { title: 'Harbor weekly', at: '2026-10-25T14:00:00', when: 'Today 14:00', planned: true },
+        { title: '1:1 Rowan Vale', at: '2026-10-25T16:00:00', when: 'Today 16:00', planned: false },
+        { title: 'Standup', at: '2026-10-25', when: 'Today', planned: false, held: true },
+      ],
+      NOW,
+      book,
+    );
+    expect(rows.map(({ ask: _a, prompt: _p, ...r }) => r)).toEqual([
+      { title: 'Harbor weekly', time: '14:00', sub: 'Prep filed', held: false },
+      { title: '1:1 Rowan Vale', time: '16:00', sub: 'On your calendar', held: false },
+      { title: 'Standup', time: 'Today', sub: 'Notes filed', held: true },
+    ]);
+    expect(book.byKey[rows[0]?.ask ?? '']).toBe('Brief me for "Harbor weekly"');
+    expect(book.byKey[rows[1]?.prompt ?? '']).toBe('Counsel: prep me for "1:1 Rowan Vale" (Today 16:00).');
+    expect(rows[2]?.ask).toBeUndefined();
+    expect(rows[2]?.prompt).toBeUndefined();
   });
 });

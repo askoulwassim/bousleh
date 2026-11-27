@@ -39,4 +39,18 @@ export const prompts = {
   briefBand: (altitude: number) => `Brief me at ${feet(altitude)} ft across every scope.`,
   drop: () => 'Drop this: ',
   ask: () => 'Bousleh: ',
+  publishHome: () => 'Publish Home from docs/home.md.',
 } as const;
+
+/** Questions Home answers itself, in Ask. Each launcher that asks one keeps a mode prompt to copy where Ask can't answer. */
+export const questions = {
+  first: () => "What's first today, and what can wait?",
+  where: () => 'Where am I?',
+  brief: (scope: string, altitude: number) => `Brief me on ${scope} at ${SHORT[altitude] ?? feet(altitude)}`,
+  band: (altitude: number) => `Brief me at ${SHORT[altitude] ?? feet(altitude)} across every scope`,
+  meeting: (title: string) => `Brief me for ${quote(title)}`,
+  outside: () => "What's new outside this week?",
+  reading: () => "What's on my reading list?",
+} as const;
+
+const SHORT: Record<number, string> = { 50000: '50K', 10000: '10K', 1000: '1K', 100: '100 ft' };

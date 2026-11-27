@@ -1,5 +1,7 @@
 // Builds dist/home.html: one self-contained page. All JS and CSS inline; only the Google Fonts
 // stylesheet is external. No data is ever written into it: the page reads its data at run time.
+// Ask's instructions (src/ask-prompt.md) are bundled in as text. The desktop permissions Home uses
+// are declared in the claude-artifacts-manifest tag, exactly the ones it calls.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +22,7 @@ async function bundle(entry, format) {
     minify: format === 'iife',
     legalComments: 'none',
     logLevel: 'warning',
+    loader: { '.md': 'text' },
   });
   return out.outputFiles[0].text;
 }
@@ -41,11 +44,19 @@ function minifyCss(css) {
     .trim();
 }
 
+/** The permissions Home asks the desktop app for: full access (open Claude, run Tune and the checks), the menu bar item, the Capture shortcut. */
+export const PERMISSIONS = ['full-access', 'menu-bar', 'shortcuts'];
+
 export async function buildPage() {
   const [js, tokens] = await Promise.all([bundle('src/main.ts', 'iife'), tokensCss()]);
   const css = minifyCss(readFileSync(join(root, 'src/styles.css'), 'utf8'));
   const favicon = readFileSync(join(root, 'assets/favicon.svg'), 'utf8').trim();
   const faviconUri = `data:image/svg+xml,${encodeURIComponent(favicon)}`;
+  // The installed app's icon (desktop capability): drawn onto a 256 px canvas at run time, from this SVG.
+  const appIcon = readFileSync(join(root, 'assets/app-icon.svg'), 'utf8').trim();
+  const appIconUri = `data:image/svg+xml,${encodeURIComponent(appIcon)}`;
+  const version = JSON.parse(readFileSync(join(root, '../../package.json'), 'utf8')).version ?? '';
+  const manifest = JSON.stringify({ permissions: PERMISSIONS });
   // A literal "</script" inside the bundle would end the script element early.
   const safeJs = js.replace(/<\/script/gi, '<\\/script');
   return `<!doctype html>
@@ -56,6 +67,9 @@ export async function buildPage() {
 <title>Bousleh Home</title>
 <meta name="description" content="Bousleh Home: every scope at every altitude, what needs you, and what Horizon found.">
 <link rel="icon" type="image/svg+xml" href="${faviconUri}">
+<meta name="bousleh-app-icon" content="${appIconUri}">
+<meta name="bousleh-version" content="${version}">
+<script type="application/json" id="claude-artifacts-manifest">${manifest}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="${FONTS.replace(/&/g, '&amp;')}">
@@ -65,6 +79,9 @@ ${css}</style>
 <body>
 <div id="app"></div>
 <div id="sheet" class="sheet" hidden><div class="card sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheet-t"><span id="sheet-t" class="disp sheet-t"></span><textarea aria-labelledby="sheet-t" spellcheck="false"></textarea><span class="sheet-n"></span><div class="sheet-a"><button class="btn2 sm" type="button" data-action="sheet-close">Close</button><button class="btn" type="button" data-action="sheet-copy">Copy</button></div></div></div>
+<aside id="side" class="side" hidden aria-label="Side panel"></aside>
+<div id="capture" class="cap-wrap" hidden></div>
+<div id="first" class="first" hidden></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script>${safeJs}</script>
 </body>
