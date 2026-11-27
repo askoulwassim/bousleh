@@ -79,9 +79,9 @@ describe('glossary terms', () => {
     expect(KINDS.term).toMatchObject({ layer: 'anchors', prefix: 'trm', scopeRequired: true });
     expect(kindOfId('trm_01JBX0000000000000000000000')).toBe('term');
     expect(checkKindFields('term', {})).toEqual({ ok: true, value: { status: null, attrs: { aliases: [] } } });
-    expect(checkKindFields('term', { attrs: { aliases: ['NI', 'narrative intel'], definition: 'Tracking how claims spread.' } })).toEqual({
+    expect(checkKindFields('term', { attrs: { aliases: ['LI', 'logistics intel'], definition: 'Tracking where loads move.' } })).toEqual({
       ok: true,
-      value: { status: null, attrs: { aliases: ['NI', 'narrative intel'], definition: 'Tracking how claims spread.' } },
+      value: { status: null, attrs: { aliases: ['LI', 'logistics intel'], definition: 'Tracking where loads move.' } },
     });
     expect(checkKindFields('term', { attrs: { aliases: [''] } }).ok).toBe(false);
     expect(checkKindFields('term', { attrs: { definition: '' } }).ok).toBe(false);

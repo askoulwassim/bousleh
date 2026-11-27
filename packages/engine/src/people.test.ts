@@ -29,7 +29,7 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-people-'));
   engine = openEngine({ home });
   ok(await run('scopes.add', { slug: 'northwind', name: 'Northwind', kind: 'company' }));
-  ok(await run('scopes.add', { slug: 'narratives', name: 'Narratives', kind: 'product', parent: 'northwind' }));
+  ok(await run('scopes.add', { slug: 'logistics', name: 'Logistics', kind: 'product', parent: 'northwind' }));
   ok(await run('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }));
 });
 afterEach(() => {
@@ -48,7 +48,7 @@ function failed(outcome: OpOutcome): { code: string } {
 const run = (name: string, input: unknown = {}) => engine.runOp(name, input, ctx);
 const list = async (input: unknown = {}) => ok<People>(await run('people.list', input));
 const deposit = async (kind: string, title: string, more: Record<string, unknown> = {}) =>
-  ok<{ id: string }>(await run('deposits.write', { kind, title, altitude: 1000, scopes: kind === 'person' ? [] : ['narratives'], ...more }))
+  ok<{ id: string }>(await run('deposits.write', { kind, title, altitude: 1000, scopes: kind === 'person' ? [] : ['logistics'], ...more }))
     .id;
 
 describe('people.list', () => {
@@ -105,7 +105,7 @@ describe('people.list', () => {
   });
 
   it('puts a person in a scope by their own scopes, or, with none, by what is linked to them', async () => {
-    const own = await deposit('person', 'Owns a scope', { scopes: ['narratives'] });
+    const own = await deposit('person', 'Owns a scope', { scopes: ['logistics'] });
     const elsewhere = await deposit('person', 'Elsewhere', { scopes: ['bousleh'] });
     const linked = await deposit('person', 'Linked in');
     await deposit('person', 'Floating');

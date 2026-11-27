@@ -29,7 +29,7 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-signals-'));
   engine = openEngine({ home });
   ok(await run('scopes.add', { slug: 'northwind', name: 'Northwind', kind: 'company' }));
-  ok(await run('scopes.add', { slug: 'narratives', name: 'Narratives', kind: 'product', parent: 'northwind' }));
+  ok(await run('scopes.add', { slug: 'logistics', name: 'Logistics', kind: 'product', parent: 'northwind' }));
   ok(await run('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }));
 });
 afterEach(() => {
@@ -54,7 +54,7 @@ const signal = async (title: string, attrs: Record<string, unknown>, more: { abo
       kind: 'signal',
       title,
       altitude: 1000,
-      scopes: more.scopes ?? ['narratives'],
+      scopes: more.scopes ?? ['logistics'],
       attrs,
       links: (more.about ?? []).map((to) => ({ kind: 'about', to })),
     }),
@@ -162,15 +162,15 @@ describe('signals.patterns', () => {
 
   it('narrows to scopes, child scopes included', async () => {
     at(10, 20);
-    await signal('Product feedback', { tags: ['search'] }, { scopes: ['narratives'] });
+    await signal('Product feedback', { tags: ['search'] }, { scopes: ['logistics'] });
     await signal('Company feedback', { tags: ['search'] }, { scopes: ['northwind'] });
     await signal('Elsewhere', { tags: ['search'] }, { scopes: ['bousleh'] });
 
     at(10, 25);
     const company = await patterns({ scopes: ['northwind'] });
-    expect(company.scopes).toEqual(['narratives', 'northwind']);
+    expect(company.scopes).toEqual(['logistics', 'northwind']);
     expect(company.patterns.map((p) => [p.tag, p.count])).toEqual([['search', 2]]);
-    expect((await patterns({ scopes: ['narratives'] })).patterns).toEqual([]);
+    expect((await patterns({ scopes: ['logistics'] })).patterns).toEqual([]);
     expect(failed(await run('signals.patterns', { scopes: ['nowhere'] })).code).toBe('invalid_input');
   });
 });

@@ -24,7 +24,7 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-assets-'));
   engine = openEngine({ home });
   ok(await run('scopes.add', { slug: 'northwind', name: 'Northwind', kind: 'company' }));
-  ok(await run('scopes.add', { slug: 'narratives', name: 'Narratives', kind: 'product', parent: 'northwind' }));
+  ok(await run('scopes.add', { slug: 'logistics', name: 'Logistics', kind: 'product', parent: 'northwind' }));
   ok(await run('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }));
 });
 afterEach(() => {
@@ -43,9 +43,9 @@ function failed(outcome: OpOutcome): { code: string; message: string } {
 const run = (name: string, input: unknown = {}) => engine.runOp(name, input, ctx);
 const get = async (id: string, history = false) => ok<ObjectView>(await run('vault.get', { id, history }));
 const deposit = async (kind: string, title: string, more: Record<string, unknown> = {}) =>
-  ok<{ id: string }>(await run('deposits.write', { kind, title, altitude: 1000, scopes: ['narratives'], ...more })).id;
+  ok<{ id: string }>(await run('deposits.write', { kind, title, altitude: 1000, scopes: ['logistics'], ...more })).id;
 const add = async (input: Record<string, unknown>) =>
-  ok<Added>(await run('assets.add', { title: 'Narrative provenance', type: 'doc', scopes: ['narratives'], ...input }));
+  ok<Added>(await run('assets.add', { title: 'Load provenance', type: 'doc', scopes: ['logistics'], ...input }));
 const list = async (input: Record<string, unknown> = {}) => ok<{ assets: AssetView[] }>(await run('assets.list', input)).assets;
 const ids = (refs: { id: string }[]) => refs.map((ref) => ref.id);
 
@@ -53,7 +53,7 @@ const DOC = 'https://claude.ai/artifact/0f3c9d2e';
 
 describe('assets.add', () => {
   it('registers an asset in the work layer, linked with documents to what it documents', async () => {
-    const problem = await deposit('problem', 'Analysts cannot trace a narrative');
+    const problem = await deposit('problem', 'Dispatchers cannot trace a load');
     const added = await add({ url: DOC, documents: [problem], body: 'The write-up for leadership.' });
     expect(added).toMatchObject({ url: DOC, created: true, new_version: true, linked: [problem] });
     expect(added.id).toMatch(/^ast_/);
@@ -62,8 +62,8 @@ describe('assets.add', () => {
     expect(asset).toMatchObject({
       kind: 'asset',
       layer: 'work',
-      scopes: ['narratives'],
-      version: { title: 'Narrative provenance', altitude: 1000, status: null, attrs: { url: DOC, type: 'doc' } },
+      scopes: ['logistics'],
+      version: { title: 'Load provenance', altitude: 1000, status: null, attrs: { url: DOC, type: 'doc' } },
     });
     expect(asset.version.body).toBe('The write-up for leadership.');
     expect(asset.links.out).toEqual([expect.objectContaining({ kind: 'documents', to: problem, to_kind: 'problem' })]);
@@ -73,10 +73,10 @@ describe('assets.add', () => {
   it('needs a scope, a known scope, a url and a known type', async () => {
     expect(failed(await run('assets.add', { url: DOC, title: 'x', type: 'doc', scopes: [] })).code).toBe('invalid_input');
     expect(failed(await run('assets.add', { url: DOC, title: 'x', type: 'doc', scopes: ['nowhere'] })).code).toBe('invalid_input');
-    expect(failed(await run('assets.add', { url: 'claude doc', title: 'x', type: 'doc', scopes: ['narratives'] })).code).toBe(
+    expect(failed(await run('assets.add', { url: 'claude doc', title: 'x', type: 'doc', scopes: ['logistics'] })).code).toBe(
       'invalid_input',
     );
-    expect(failed(await run('assets.add', { url: DOC, title: 'x', type: 'video', scopes: ['narratives'] })).code).toBe('invalid_input');
+    expect(failed(await run('assets.add', { url: DOC, title: 'x', type: 'video', scopes: ['logistics'] })).code).toBe('invalid_input');
   });
 
   it('stores the url without its fragment, utm parameters and trailing slash', async () => {
@@ -99,7 +99,7 @@ describe('assets.add', () => {
   });
 
   it('adds new documents links on a re-add, and is fine with the ones it has', async () => {
-    const problem = await deposit('problem', 'Analysts cannot trace a narrative');
+    const problem = await deposit('problem', 'Dispatchers cannot trace a load');
     const idea = await deposit('idea', 'Cite every chart');
     const first = await add({ url: DOC, documents: [problem] });
 
@@ -117,26 +117,26 @@ describe('assets.add', () => {
 
   it('writes a new version only when the title or type changed', async () => {
     const first = await add({ url: DOC });
-    const renamed = await add({ url: DOC, title: 'Narrative provenance v2' });
+    const renamed = await add({ url: DOC, title: 'Load provenance v2' });
     expect(renamed).toMatchObject({ id: first.id, created: false, new_version: true });
-    const retyped = await add({ url: DOC, title: 'Narrative provenance v2', type: 'slides' });
+    const retyped = await add({ url: DOC, title: 'Load provenance v2', type: 'slides' });
     expect(retyped.new_version).toBe(true);
     // Scopes, altitude and body of a registered asset are left as they are.
-    const same = await add({ url: DOC, title: 'Narrative provenance v2', type: 'slides', altitude: 50000, body: 'ignored' });
+    const same = await add({ url: DOC, title: 'Load provenance v2', type: 'slides', altitude: 50000, body: 'ignored' });
     expect(same.new_version).toBe(false);
 
     const asset = await get(first.id, true);
     expect(asset.history?.map((v) => [v.n, v.title])).toEqual([
-      [1, 'Narrative provenance'],
-      [2, 'Narrative provenance v2'],
-      [3, 'Narrative provenance v2'],
+      [1, 'Load provenance'],
+      [2, 'Load provenance v2'],
+      [3, 'Load provenance v2'],
     ]);
     expect(asset.version).toMatchObject({ altitude: 1000, body: '', attrs: { url: DOC, type: 'slides' } });
   });
 
   it('refuses documents to an unknown object and writes nothing', async () => {
     const missing = 'prb_01JBX0000000000000000000AB';
-    const outcome = await run('assets.add', { url: DOC, title: 'x', type: 'doc', scopes: ['narratives'], documents: [missing] });
+    const outcome = await run('assets.add', { url: DOC, title: 'x', type: 'doc', scopes: ['logistics'], documents: [missing] });
     expect(failed(outcome).code).toBe('not_found');
     expect(await list()).toEqual([]);
   });
@@ -144,7 +144,7 @@ describe('assets.add', () => {
 
 describe('the documents link', () => {
   it('runs only from an asset, to any kind', async () => {
-    const problem = await deposit('problem', 'Analysts cannot trace a narrative');
+    const problem = await deposit('problem', 'Dispatchers cannot trace a load');
     const idea = await deposit('idea', 'Cite every chart');
     const person = ok<{ id: string }>(await run('deposits.write', { kind: 'person', title: 'Rowan', altitude: 50000 })).id;
     const asset = (await add({ url: DOC })).id;
@@ -156,7 +156,7 @@ describe('the documents link', () => {
           kind: 'observation',
           title: 'Not an asset',
           altitude: 1000,
-          scopes: ['narratives'],
+          scopes: ['logistics'],
           links: [{ kind: 'documents', to: problem }],
         }),
       ).code,
@@ -168,7 +168,7 @@ describe('the documents link', () => {
 
 describe('assets.list', () => {
   it('filters by scope (child scopes included), type and the object documented, newest first', async () => {
-    const problem = await deposit('problem', 'Analysts cannot trace a narrative');
+    const problem = await deposit('problem', 'Dispatchers cannot trace a load');
     const doc = (await add({ url: DOC, documents: [problem] })).id;
     const deck = (await add({ url: 'https://claude.ai/artifact/deck', title: 'Provenance pitch', type: 'slides', scopes: ['northwind'] }))
       .id;
@@ -176,7 +176,7 @@ describe('assets.list', () => {
 
     expect(ids(await list())).toEqual([repo, deck, doc]);
     expect(ids(await list({ scopes: ['northwind'] }))).toEqual([deck, doc]);
-    expect(ids(await list({ scopes: ['narratives'] }))).toEqual([doc]);
+    expect(ids(await list({ scopes: ['logistics'] }))).toEqual([doc]);
     expect(ids(await list({ type: 'repo' }))).toEqual([repo]);
     expect(ids(await list({ scopes: ['northwind'], type: 'slides' }))).toEqual([deck]);
     expect(ids(await list({ documents: problem }))).toEqual([doc]);
@@ -184,12 +184,12 @@ describe('assets.list', () => {
 
     expect((await list({ documents: problem }))[0]).toEqual({
       id: doc,
-      title: 'Narrative provenance',
+      title: 'Load provenance',
       type: 'doc',
       url: DOC,
-      scopes: ['narratives'],
+      scopes: ['logistics'],
       altitude: 1000,
-      documents: [{ id: problem, kind: 'problem', title: 'Analysts cannot trace a narrative' }],
+      documents: [{ id: problem, kind: 'problem', title: 'Dispatchers cannot trace a load' }],
     });
   });
 
@@ -201,7 +201,7 @@ describe('assets.list', () => {
 
 describe("the brief's assets section", () => {
   it('with a centre: the assets that document anything in the brief, at any altitude', async () => {
-    const problem = await deposit('problem', 'Analysts cannot trace a narrative', { altitude: 100 });
+    const problem = await deposit('problem', 'Dispatchers cannot trace a load', { altitude: 100 });
     const decision = await deposit('decision', 'Trace claims at ingest', { altitude: 100, links: [{ kind: 'related', to: problem }] });
     const elsewhere = await deposit('problem', 'Onboarding is slow', { altitude: 100 });
     const doc = (await add({ url: DOC, documents: [problem], altitude: 50000 })).id;
@@ -210,7 +210,7 @@ describe("the brief's assets section", () => {
 
     const result = ok<Brief>(await run('context.brief', { ids: [problem], altitude: 100 }));
     expect(result.assets.map((a) => [a.id, a.why])).toEqual([
-      [doc, ['documents "Analysts cannot trace a narrative"']],
+      [doc, ['documents "Dispatchers cannot trace a load"']],
       [adr, ['documents "Trace claims at ingest"']],
     ]);
     expect(result.assets[0]).toMatchObject({ kind: 'asset', url: DOC, type: 'doc', altitude: 50000 });

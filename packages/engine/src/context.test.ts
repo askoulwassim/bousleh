@@ -34,7 +34,7 @@ beforeEach(async () => {
   home = mkdtempSync(join(tmpdir(), 'bousleh-context-'));
   engine = openEngine({ home });
   ok(await run('scopes.add', { slug: 'northwind', name: 'Northwind', kind: 'company' }));
-  ok(await run('scopes.add', { slug: 'narratives', name: 'Narratives', kind: 'product', parent: 'northwind' }));
+  ok(await run('scopes.add', { slug: 'logistics', name: 'Logistics', kind: 'product', parent: 'northwind' }));
   ok(await run('scopes.add', { slug: 'bousleh', name: 'Bousleh', kind: 'project' }));
 });
 afterEach(() => {
@@ -65,7 +65,7 @@ interface Deposit {
   links?: { kind: string; to: string }[];
 }
 const deposit = (kind: string, title: string, more: Deposit = {}) =>
-  idOf('deposits.write', { kind, title, altitude: 10000, scopes: kind === 'person' ? [] : ['narratives'], ...more });
+  idOf('deposits.write', { kind, title, altitude: 10000, scopes: kind === 'person' ? [] : ['logistics'], ...more });
 const link = async (from: string, kind: string, to: string) => ok(await run('vault.link', { from, kind, to }));
 
 describe('context.brief', () => {
@@ -98,7 +98,7 @@ describe('context.brief', () => {
   it('shows the altitude asked for and one level either side; anchors from every level above', async () => {
     const problems: Record<number, string> = {};
     for (const altitude of [50000, 10000, 1000, 100]) problems[altitude] = await deposit('problem', `Problem at ${altitude}`, { altitude });
-    const company = await deposit('strategy', 'Win the narrative market', { altitude: 50000 });
+    const company = await deposit('strategy', 'Win the mid-market freight lane', { altitude: 50000 });
     const surface = await deposit('principle', 'Every chart cites its source', { altitude: 1000 });
     const detail = await deposit('principle', 'Name tables in the singular', { altitude: 100 });
 
@@ -120,20 +120,20 @@ describe('context.brief', () => {
   });
 
   it('includes child scopes, and anchors of parent scopes', async () => {
-    const child = await deposit('problem', 'Analysts cannot trace a narrative', { scopes: ['narratives'] });
+    const child = await deposit('problem', 'Dispatchers cannot trace a load', { scopes: ['logistics'] });
     const parent = await deposit('problem', 'Churn in the analyst tier', { scopes: ['northwind'] });
     const elsewhere = await deposit('problem', 'Capture is slow', { scopes: ['bousleh'] });
-    const companyStrategy = await deposit('strategy', 'Be the system of record for narratives', { altitude: 50000, scopes: ['northwind'] });
+    const companyStrategy = await deposit('strategy', 'Be the system of record for logistics', { altitude: 50000, scopes: ['northwind'] });
     await deposit('strategy', 'Voice first', { scopes: ['bousleh'] });
 
     const company = await brief({ scopes: ['northwind'] });
-    expect(company.scopes).toEqual(['narratives', 'northwind']);
+    expect(company.scopes).toEqual(['logistics', 'northwind']);
     expect(ids(company.problems).sort()).toEqual([child, parent].sort());
     expect(ids(company.problems)).not.toContain(elsewhere);
-    expect(company.problems.find((p) => p.id === child)?.why).toEqual(['in scope narratives']);
+    expect(company.problems.find((p) => p.id === child)?.why).toEqual(['in scope logistics']);
 
-    const product = await brief({ scopes: ['narratives'] });
-    expect(product.scopes).toEqual(['narratives']);
+    const product = await brief({ scopes: ['logistics'] });
+    expect(product.scopes).toEqual(['logistics']);
     expect(ids(product.problems)).toEqual([child]);
     expect(product.anchors.map((a) => [a.id, a.why])).toEqual([[companyStrategy, ['anchor of parent scope northwind']]]);
   });
@@ -145,7 +145,7 @@ describe('context.brief', () => {
     const meeting = await deposit('meeting', 'Analyst council', { attrs: { held_at: '2026-10-19' } });
     await link(meeting, 'attended_by', rowan);
 
-    const problem = await deposit('problem', 'Analysts cannot trace a narrative', {
+    const problem = await deposit('problem', 'Dispatchers cannot trace a load', {
       body: 'They rebuild the chain of sources by hand every week.',
       links: [{ kind: 'from_moment', to: meeting }],
     });
@@ -175,13 +175,13 @@ describe('context.brief', () => {
     await deposit('commitment', 'Book the offsite', { links: [{ kind: 'owed_by', to: jen }] });
 
     const result = await brief({ ids: [problem] });
-    expect(result.centre).toEqual([{ id: problem, kind: 'problem', title: 'Analysts cannot trace a narrative', why: 'asked for' }]);
+    expect(result.centre).toEqual([{ id: problem, kind: 'problem', title: 'Dispatchers cannot trace a load', why: 'asked for' }]);
     expect(result.problems).toEqual([
       expect.objectContaining({ id: problem, why: ['asked for'], snippet: 'They rebuild the chain of sources by hand every week.' }),
     ]);
     expect(ids(result.problems)).not.toContain(unrelated);
     expect(result.decisions).toEqual([
-      expect.objectContaining({ id: decision, decided_at: '2026-10-18', why: ['linked to "Analysts cannot trace a narrative" (related)'] }),
+      expect.objectContaining({ id: decision, decided_at: '2026-10-18', why: ['linked to "Dispatchers cannot trace a load" (related)'] }),
     ]);
     // The idea is two hops out, through the decision.
     expect(result.ideas).toEqual([]);
@@ -198,14 +198,14 @@ describe('context.brief', () => {
 
     // Evidence: linked to the centre, and linked to what the brief shows.
     expect(result.evidence.map((e) => [e.id, e.why])).toEqual([
-      [signal, ['evidence for "Analysts cannot trace a narrative"']],
+      [signal, ['evidence for "Dispatchers cannot trace a load"']],
       [observation, ['linked to "Build provenance first" (related)']],
     ]);
 
     // People: the owner, the attendee of the meeting it came from, the commitment's counterparties. Not Jen.
     const people = Object.fromEntries(result.people.map((p) => [p.title, p.why]));
     expect(Object.keys(people).sort()).toEqual(['Alex', 'Rowan']);
-    expect(people.Alex).toEqual(['owns "Analysts cannot trace a narrative"', 'owes "Send Rowan the provenance memo"']);
+    expect(people.Alex).toEqual(['owns "Dispatchers cannot trace a load"', 'owes "Send Rowan the provenance memo"']);
     expect(people.Rowan).toEqual(['is owed "Send Rowan the provenance memo"', 'attended "Analyst council"']);
     expect(result.people.find((p) => p.title === 'Rowan')).toMatchObject({ role: 'stakeholder', org: 'Northwind' });
   });
@@ -245,7 +245,7 @@ describe('context.brief', () => {
     const metric = await idOf('metrics.upsert', {
       title: 'Trust score',
       altitude: 10000,
-      scopes: ['narratives'],
+      scopes: ['logistics'],
       cadence: 'weekly',
       unit: 'pts',
     });
@@ -275,7 +275,7 @@ describe('context.brief', () => {
 
   it('adds the metrics that serve the anchors it shows', async () => {
     const strategy = await deposit('strategy', 'Be the system of record', { altitude: 50000, scopes: ['northwind'] });
-    const problem = await deposit('problem', 'Analysts cannot trace a narrative');
+    const problem = await deposit('problem', 'Dispatchers cannot trace a load');
     const metric = await idOf('metrics.upsert', { title: 'Traced claims', altitude: 10000, scopes: ['northwind'], serves: strategy });
 
     const result = await brief({ ids: [problem] });
@@ -292,7 +292,7 @@ describe('context.brief: initiatives and the people map', () => {
       attrs: { started_at: '2026-10-01', target_date: '2027-01-31' },
       links: [{ kind: 'owned_by', to: mira }],
     });
-    const problem = await deposit('problem', 'Analysts cannot trace a narrative', { links: [{ kind: 'part_of', to: provenance }] });
+    const problem = await deposit('problem', 'Dispatchers cannot trace a load', { links: [{ kind: 'part_of', to: provenance }] });
     const unrelated = await deposit('initiative', 'Exports rework');
 
     const result = await brief({ ids: [problem] });
@@ -304,7 +304,7 @@ describe('context.brief: initiatives and the people map', () => {
         started_at: '2026-10-01',
         target_date: '2027-01-31',
         owner: { id: mira, name: 'Mira' },
-        why: ['linked to "Analysts cannot trace a narrative" (part_of)'],
+        why: ['linked to "Dispatchers cannot trace a load" (part_of)'],
       }),
     ]);
     expect(ids(result.initiatives)).not.toContain(unrelated);
@@ -329,7 +329,7 @@ describe('context.brief: initiatives and the people map', () => {
       [proposed, 'proposed', null],
       [paused, 'paused', null],
     ]);
-    expect(result.initiatives[0]?.why).toEqual(['in scope narratives']);
+    expect(result.initiatives[0]?.why).toEqual(['in scope logistics']);
     for (const left of [done, dropped, elsewhere]) expect(ids(result.initiatives)).not.toContain(left);
 
     // Asked for, a done initiative is shown.
@@ -370,7 +370,7 @@ describe('context.brief: initiatives and the people map', () => {
 
 describe('statuses: solved and dropped problems, running ideas', () => {
   it('leaves solved and dropped problems out with no centre, and shows them with their status near the centre', async () => {
-    const open = await deposit('problem', 'Analysts cannot trace a narrative');
+    const open = await deposit('problem', 'Dispatchers cannot trace a load');
     const solved = await deposit('problem', 'Exports time out', { status: 'solved' });
     const dropped = await deposit('problem', 'Nobody reads the weekly email', { status: 'dropped' });
     const decision = await deposit('decision', 'Stream exports', { links: [{ kind: 'related', to: solved }] });
@@ -458,7 +458,7 @@ describe('pulse.today', () => {
   });
 
   it('lists metrics whose last reading moved, most recently read first', async () => {
-    const metric = (title: string, scopes = ['narratives']) =>
+    const metric = (title: string, scopes = ['logistics']) =>
       idOf('metrics.upsert', { title, altitude: 10000, scopes, status: 'measured', unit: 'pts', cadence: 'weekly' });
     const reading = (metric_id: string, value: number, observed_at: string) =>
       run('metrics.reading', { metric_id, value, observed_at }).then(ok);
@@ -495,11 +495,11 @@ describe('pulse.today', () => {
 
   it('lists the stakeholders, PMs and engineers not touched for more than 14 days, never touched first', async () => {
     const alex = await deposit('person', 'Alex', { attrs: { role: 'pm', is_user: true } });
-    const sam = await deposit('person', 'Sam', { attrs: { role: 'engineer' }, scopes: ['narratives'] });
-    const mira = await deposit('person', 'Mira', { attrs: { role: 'pm' }, scopes: ['narratives'] });
-    const jo = await deposit('person', 'Jo', { attrs: { role: 'pm' }, scopes: ['narratives'] });
-    const rowan = await deposit('person', 'Rowan', { attrs: { role: 'stakeholder' }, scopes: ['narratives'] });
-    await deposit('person', 'Ana', { attrs: { role: 'analyst' }, scopes: ['narratives'] });
+    const sam = await deposit('person', 'Sam', { attrs: { role: 'engineer' }, scopes: ['logistics'] });
+    const mira = await deposit('person', 'Mira', { attrs: { role: 'pm' }, scopes: ['logistics'] });
+    const jo = await deposit('person', 'Jo', { attrs: { role: 'pm' }, scopes: ['logistics'] });
+    const rowan = await deposit('person', 'Rowan', { attrs: { role: 'stakeholder' }, scopes: ['logistics'] });
+    await deposit('person', 'Ana', { attrs: { role: 'analyst' }, scopes: ['logistics'] });
     await deposit('person', 'Outside', { attrs: { role: 'pm' }, scopes: ['bousleh'] });
     const meeting = (title: string, held_at: string, who: string) =>
       deposit('meeting', title, { altitude: 1000, attrs: { held_at }, links: [{ kind: 'attended_by', to: who }] });
@@ -844,7 +844,7 @@ describe('pulse.today', () => {
         title,
         status,
         altitude: 10000,
-        scopes: ['narratives'],
+        scopes: ['logistics'],
         ...(cadence ? { cadence } : {}),
       });
       if (observed) ok(await run('metrics.reading', { metric_id: id, value: 1, observed_at: observed }));
@@ -867,10 +867,10 @@ describe('pulse.today', () => {
   });
 
   it('lists findings filed since the start of the day before, and open bets', async () => {
-    ok(await run('watchlists.set', { scope: 'narratives', entries: [{ type: 'competitor', name: 'Graphika' }] }));
+    ok(await run('watchlists.set', { scope: 'logistics', entries: [{ type: 'competitor', name: 'Graphika' }] }));
     const file = async (title: string) =>
       ok<{ filed: { id: string }[] }>(
-        await run('watch.file', { scope: 'narratives', findings: [{ title, url: `https://example.com/${encodeURIComponent(title)}` }] }),
+        await run('watch.file', { scope: 'logistics', findings: [{ title, url: `https://example.com/${encodeURIComponent(title)}` }] }),
       ).filed[0]?.id as string;
     at(2026, 10, 23, 23, 59);
     await file('Two days ago');
