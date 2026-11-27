@@ -39,7 +39,7 @@ export const prompts = {
   briefBand: (altitude: number) => `Brief me at ${feet(altitude)} ft across every scope.`,
   drop: () => 'Drop this: ',
   ask: () => 'Bousleh: ',
-  publishHome: () => 'Publish Home from docs/home.md.',
+  publishHome: () => 'Finish setting up Bousleh from docs/finish-setup.md.',
 } as const;
 
 /** Questions Home answers itself, in Ask. Each launcher that asks one keeps a mode prompt to copy where Ask can't answer. */

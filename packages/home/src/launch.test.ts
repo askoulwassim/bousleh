@@ -52,7 +52,7 @@ describe('reach: the rule, not a setting', () => {
 describe('deep links', () => {
   it('opens a new chat with the prompt typed in, encoded', () => {
     expect(chatUrl('Shape: push back on "Harbor"')).toBe('claude://claude.ai/new?q=Shape%3A%20push%20back%20on%20%22Harbor%22');
-    // Every mode opens a new chat; only Publish Home opens the Code tab, on the repo folder.
+    // Every mode opens a new chat; only Health's Finish setup opens the Code tab, on the repo folder.
     expect(codeUrl('Publish Home from docs/home.md.', '/Volumes/work/bousleh.nosync')).toBe(
       'claude://code/new?q=Publish%20Home%20from%20docs%2Fhome.md.&folder=%2FVolumes%2Fwork%2Fbousleh.nosync',
     );

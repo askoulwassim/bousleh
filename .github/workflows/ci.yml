@@ -20,6 +20,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+      - name: Scheduled task definitions parse
+        run: node scripts/scheduled-tasks.mjs --list
   fresh-install:
     # A fresh install from the lockfile (no cache), then the built MCP server over stdio on a temporary home.
     runs-on: macos-latest

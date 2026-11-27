@@ -48,12 +48,9 @@ Ask nothing you can find out yourself. Stop and ask only where a step says so. N
    1. Quit Claude Desktop (Cmd-Q) and open it again, so the server runs from the new clone.
    2. Quit Bousleh Home from its Dock icon (right-click, Quit), then open it again.
    3. In Home, open Health (the pulse icon in the rail) and press Check setup. The check should run and end without "Operation not permitted".
-   4. From now on, open the Code tab and Claude Code on the new folder. Say "Publish Home from docs/home.md" there after the next `git pull`. It updates the same Home.
+   4. From now on, run `scripts/setup-mac.sh` in the new folder after every `git pull`. Its finish step republishes the same Home and keeps the scheduled tasks in line.
    5. If Full Disk Access or a Files & Folders entry was turned on for Bousleh Home for this, it can be turned off again.
-8. **Scheduled tasks.** The tasks that run on this Mac (the Hourly inbox sweep and the Friday Bousleh tune-up, from docs/scheduled-tasks.md) have the old clone as their working folder.
-   - If this session can see and change scheduled tasks, list the ones whose working folder is the old clone. Ask once before changing them, then point each at the new folder.
-   - If it can't, name them for the user: they change each task's folder in its settings in Claude Desktop.
-   - The tune-up matters most: it edits the repo and opens pull requests, and it would keep doing that in the old clone.
+8. **Scheduled tasks.** The tasks that run on this Mac still have the old clone as their working folder. The setup script in step 4 ends by opening the finish step ([finish-setup.md](finish-setup.md)), which moves them to the new folder. Tell the user to press Enter there. The tune-up matters most: it edits the repo and opens pull requests, and it would keep doing that in the old clone.
 9. **The old clone.** Say that it's no longer used, and that the user can delete it once Health passes in the new one. Name its path. Don't delete it.
 
 Report in a few lines what moved, the snapshot taken, anything left for the user, and the path of the old clone.

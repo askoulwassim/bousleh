@@ -3,7 +3,7 @@ import { chatUrl, clipPrompt, codeUrl, openCommand } from './launch.js';
 
 /*
  * Handing work to Claude. With the installed app and full access, a button opens Claude straight
- * away: a new chat (or, for Publish Home only, the Code tab on the repo) with the prompt typed in and
+ * away: a new chat (or, for Health's Finish setup only, the Code tab on the repo) with the prompt typed in and
  * never sent. Anywhere else the prompt is copied, or shown in a box to copy, and a toast says so.
  */
 
