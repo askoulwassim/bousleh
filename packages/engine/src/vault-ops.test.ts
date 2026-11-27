@@ -395,6 +395,20 @@ describe('commitments.snooze', () => {
     expect(failed(await run('commitments.snooze', { id: 'cmt_01JBX0000000000000000000AB', until: '2026-11-01' })).code).toBe('not_found');
   });
 
+  it('dating a commitment back from its snooze clears surface_on; a snooze still ahead stays', async () => {
+    const back = await write({ kind: 'commitment', title: 'API 101 docs', attrs: { surface_on: '2026-10-25' } });
+    ok(await run('vault.supersede', { id: back, attrs: { due: '2026-10-27' } }));
+    expect(ok(await run('vault.get', { id: back })).version.attrs).toEqual({ due: '2026-10-27' });
+
+    const asleep = await write({ kind: 'commitment', title: 'Later', attrs: { surface_on: '2026-11-03' } });
+    ok(await run('vault.supersede', { id: asleep, attrs: { due: '2026-11-10' } }));
+    expect(ok(await run('vault.get', { id: asleep })).version.attrs).toEqual({ due: '2026-11-10', surface_on: '2026-11-03' });
+
+    const sized = await write({ kind: 'commitment', title: 'Sized', attrs: { surface_on: '2026-10-20' } });
+    ok(await run('vault.supersede', { id: sized, attrs: { size: 'minor' } }));
+    expect(ok(await run('vault.get', { id: sized })).version.attrs).toEqual({ surface_on: '2026-10-20', size: 'minor' });
+  });
+
   it('lists snoozed commitments, leaves them out, or lists only them, judged on as_of (default today)', async () => {
     const awake = await write({ kind: 'commitment', title: 'Awake', attrs: { due: '2026-10-30' } });
     const later = await write({ kind: 'commitment', title: 'Later', attrs: { surface_on: '2026-11-03' } });
