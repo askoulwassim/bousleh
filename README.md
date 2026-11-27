@@ -33,7 +33,7 @@ Bousleh is built for one person, its owner, and for Claude: Claude's apps, Claud
 Before you give it your own work, run it on a fictional cast: Alex Rivera, a group PM at Northwind, with Harbor, Atlas and other scopes, strategies, commitments late and due, meetings, a bet, metrics and a week of Horizon findings. It lives in `~/.bousleh-demo`, apart from any real data.
 
 ```sh
-git clone https://github.com/askoulwassim/bousleh.git && cd bousleh
+git clone https://github.com/askoulwassim/bousleh.git ~/Developer/bousleh && cd ~/Developer/bousleh
 pnpm install && pnpm demo        # seeds ~/.bousleh-demo
 scripts/setup-mac.sh --demo      # adds it to Claude Desktop and Claude Code as "bousleh-demo"
 ```
@@ -46,10 +46,12 @@ To see Home first, with nothing installed in Claude: `pnpm demo:home` serves it 
 
 [SETUP.md](SETUP.md) is the ten-minute walkthrough. In short:
 
-1. `scripts/setup-mac.sh` builds everything, registers the `bousleh` MCP server in Claude Desktop and Claude Code, and installs the plugin in Claude Code. At the end it opens Claude's Code tab with "Finish setting up Bousleh from docs/finish-setup.md." typed in. Press Enter: that publishes Home and creates the scheduled tasks, the same way every time. `--check` shows what is set up and changes nothing. Rerun it after every `git pull`; it brings everything back in line.
-2. Add the plugin to your Claude account once: in Claude Desktop, **Customize > Plugins > Add > Add marketplace > Add from a repository**, enter `askoulwassim/bousleh` (or your fork), then add **Bousleh**.
-3. In a Claude Desktop chat, say **"Bousleh: set me up."** One question at a time, it files who you are, your first two or three scopes with a line of strategy each and a starter watch list per scope.
-4. Open Home, press **Install as app** in its footer, and allow what you want on its first screen.
+1. `scripts/setup-mac.sh` builds everything, registers the `bousleh` MCP server in Claude Desktop and Claude Code, and installs the plugin in Claude Code. `--check` shows what is set up and changes nothing.
+2. It ends by opening Claude's Code tab with **"Finish setting up Bousleh from docs/finish-setup.md."** typed in. Press Enter. On a new Mac it first asks who you are, your first scopes and a starter watch list each ("Bousleh: set me up"); then it publishes Home and creates the scheduled tasks, the same way every time.
+3. Add the plugin to your Claude account once: in Claude Desktop, **Customize > Plugins > Add > Add marketplace > Add from a repository**, enter `askoulwassim/bousleh` (or your fork), then add **Bousleh**.
+4. Quit Claude Desktop (Cmd-Q) and open it again. Open Home, press **Install as app** in its footer, and allow what you want on its first screen.
+
+To update: `git pull`, rerun `scripts/setup-mac.sh`, and press Enter on the same prompt. It brings everything back in line with the repo.
 
 ## The modes
 

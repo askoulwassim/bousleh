@@ -42,6 +42,13 @@ It's safe to rerun: it replaces its own Claude Desktop entry rather than adding 
 5. Open Home once in Claude Desktop, so it saves its first snapshot for the phone. To make it an app, press Install as app in its footer, then allow what you want on its first screen (see docs/home.md).
 6. Phone test: in the Claude app, say "Drop this: test from my phone." Then, in Claude Desktop on the Mac: "Process my Bousleh inbox." The note should be filed (or skipped), and gone from Drive's "Bousleh Inbox".
 
+## Update a Mac that already runs Bousleh
+
+1. If the clone is in Documents, Desktop, Downloads or iCloud Drive, move it first: open Claude Code on it and say "Pull main, then move this clone as docs/move.md says." It does steps 2 and 3 for you, and moves the Mac's scheduled tasks to the new folder.
+2. Otherwise, in the clone: `git pull && scripts/setup-mac.sh`.
+3. Press Enter on "Finish setting up Bousleh from docs/finish-setup.md." in the Code tab that opens. It republishes the same Home and creates, updates or moves each scheduled task to match the repo. Your data in `~/.bousleh` is never touched.
+4. Quit Claude Desktop (Cmd-Q) and open it again. If Home is installed as an app, quit it from its Dock icon and open it again too: a new version may ask for its permissions again.
+
 ## Backups and restore
 
 The MCP server snapshots your data once a day to `~/.bousleh-backups/<date-time>/`, on the same disk; ask for one any time with "take a Bousleh backup" (`vault.backup`). To restore: quit Claude Desktop and Claude Code, rename `~/.bousleh` to `~/.bousleh-broken`, and copy the snapshot folder you want to `~/.bousleh`.

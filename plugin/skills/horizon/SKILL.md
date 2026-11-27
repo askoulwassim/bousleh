@@ -110,7 +110,7 @@ When the user decides on a queued removal (`queue_list` shows them, titled `Remo
 
 ## Flow: setting up the Weekly Horizon scan
 
-The scan is a Claude scheduled task in the cloud named "Weekly Horizon scan", every Monday at 06:40. It is defined in the repo, in `docs/scheduled-tasks.md`, and never set up by hand: to create it or change its schedule or prompt, tell the user to say, in Claude Desktop's Code tab on the repo, "Set up the scheduled tasks in docs/scheduled-tasks.md". Never write the task's prompt yourself.
+The scan is a Claude scheduled task in the cloud named "Weekly Horizon scan", every Monday at 06:40. It is defined in the repo, in `docs/scheduled-tasks.md`, and never set up by hand: to create it or change its schedule or prompt, tell the user to rerun `scripts/setup-mac.sh` in the repo folder and press Enter on "Finish setting up Bousleh from docs/finish-setup.md." (it applies `docs/scheduled-tasks.md` literally). Never write the task's prompt yourself.
 
 Its prompt carries no watch lists: the scan reads them from the Drive file. So after a watch list change, refresh the Drive file (above); there's no need to apply `docs/scheduled-tasks.md` again. "Set up the weekly scan" with no task change means: check the Drive file exists and is current.
 
