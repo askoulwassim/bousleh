@@ -1,5 +1,6 @@
 import { app, refreshReach } from './app.js';
 import { openCapture } from './capture.js';
+import { DECLARED, needsSetup, nextGranted, RECHECK_MS, readGranted, type States, toReask } from './grants.js';
 import { firstLaunchHtml } from './panels.js';
 import type { Desktop, DesktopPermission, PermissionState, TrayMenuItem } from './platform.js';
 import { questions } from './prompts.js';
@@ -12,13 +13,15 @@ import { ask, openSide, startRun } from './side.js';
  * that needs a permission is made only once its state reads granted, or from a click.
  */
 
-const DECLARED: DesktopPermission[] = ['full-access', 'menu-bar', 'shortcuts'];
 const FIRST_PATH = 'app/first-launch';
+/** The permissions you have allowed, kept across versions: an update asks for them again, once, at startup. */
+const GRANTED_PATH = 'app/granted';
 export const SHORTCUT = 'Alt+Shift+B';
 
-let states: Partial<Record<DesktopPermission, PermissionState>> = {};
+let states: States = {};
 let continued = true;
 let showFirst = false;
+let remembered: DesktopPermission[] = [];
 
 const firstEl = () => document.getElementById('first') as HTMLElement;
 
@@ -36,7 +39,60 @@ export async function initShell(d: Desktop | null): Promise<void> {
   app.facts.platform = (await d.os?.platform().catch(() => '')) ?? '';
   void setDockIcon(d);
   continued = await readContinued();
+  remembered = await readRemembered();
   await refreshPermissions();
+  await reaskAfterUpdate(d);
+  recheckWhileUnknown();
+  // Coming back to the window (after System Settings or the app's Permissions menu): read them again.
+  window.addEventListener('focus', () => void refreshPermissions());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void refreshPermissions();
+  });
+}
+
+/**
+ * A newer published version of Home loads with every Allow back to "not asked". Ask again, once, in
+ * one dialog, for exactly what you allowed before; you still answer it. Nothing you turned off is asked.
+ */
+let reasked = false;
+
+async function reaskAfterUpdate(d: Desktop): Promise<void> {
+  const names = toReask(states, remembered);
+  if (reasked || !names.length || !d.permissions) return;
+  reasked = true;
+  await d.permissions.request(names).catch(() => undefined);
+  await refreshPermissions();
+}
+
+/** While full access reads "unavailable" (the app may still be learning the version), read it again a few times. */
+function recheckWhileUnknown(): void {
+  for (const ms of RECHECK_MS) {
+    window.setTimeout(() => {
+      const d = app.caps.desktop;
+      if (states['full-access'] !== 'unavailable' || !inApp(d)) return;
+      void refreshPermissions().then(() => reaskAfterUpdate(d));
+    }, ms);
+  }
+}
+
+async function readRemembered(): Promise<DesktopPermission[]> {
+  try {
+    const snap = await app.caps.db?.doc(GRANTED_PATH).get();
+    return snap?.exists ? readGranted(snap.data()) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function remember(): Promise<void> {
+  const next = nextGranted(states, remembered);
+  if (next.join() === remembered.join()) return;
+  remembered = next;
+  try {
+    await app.caps.db?.doc(GRANTED_PATH).set({ names: next, at: new Date().toISOString() });
+  } catch {
+    // Not remembered: after the next update the footer's Permissions button asks instead.
+  }
 }
 
 /** Read the permissions, then light up what each one allows. Never asks. */
@@ -44,6 +100,7 @@ export async function refreshPermissions(): Promise<void> {
   const d = app.caps.desktop;
   if (!inApp(d) || !d.permissions) return;
   const all = await d.permissions.state().catch(() => ({}) as Record<string, PermissionState>);
+  const was = states['full-access'];
   states = {};
   for (const name of DECLARED) states[name] = all[name] ?? 'unavailable';
   app.facts.fullAccess = states['full-access'] ?? 'unavailable';
@@ -53,8 +110,10 @@ export async function refreshPermissions(): Promise<void> {
   showFirst = !continued && DECLARED.some((n) => states[n] === 'prompt');
   app.ui.app = {
     fullAccess: app.facts.fullAccess === 'granted',
-    needsSetup: DECLARED.some((n) => states[n] === 'prompt' || states[n] === 'denied'),
+    needsSetup: needsSetup(states),
   };
+  void remember();
+  if (was === 'granted' && app.facts.fullAccess !== 'granted') app.facts.repo = null;
   refreshReach();
 }
 
