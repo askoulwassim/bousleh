@@ -1,6 +1,7 @@
 {
   "name": "@bousleh/contracts",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "Object kinds, layers, altitude and scope, and every op's name and zod schemas. Definitions only; imports nothing.",

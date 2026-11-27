@@ -1,0 +1,1 @@
+Thanks for your interest. Bousleh is a personal project, and pull requests from anyone but its owner aren't accepted: a workflow closes them. Please open an issue for a bug or an idea instead, or fork the repo and make it yours. See [CONTRIBUTING.md](https://github.com/askoulwassim/bousleh/blob/main/CONTRIBUTING.md).

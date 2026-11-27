@@ -1,6 +1,7 @@
 {
   "name": "@bousleh/watch",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "Watch lists per scope, filing scan findings, and the digest. Owns watchlists.*, watch.*.",

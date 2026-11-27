@@ -1,6 +1,7 @@
 {
   "name": "@bousleh/mcp-server",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "One MCP tool per op, generated from the ops registry over stdio; no logic of its own.",

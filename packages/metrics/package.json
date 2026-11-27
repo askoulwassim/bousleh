@@ -1,6 +1,7 @@
 {
   "name": "@bousleh/metrics",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "The metrics registry, its lifecycle and readings. Owns metrics.*.",

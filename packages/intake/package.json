@@ -1,6 +1,7 @@
 {
   "name": "@bousleh/intake",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "Inbox files, the Drive sweep, content-hash dedupe, the ambiguity queue, and feedback patterns for v0. Owns inbox.*, queue.*, signals.*.",
