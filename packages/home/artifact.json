@@ -1,7 +1,7 @@
 {
   "title": "Bousleh Home",
   "icon": "compass",
-  "description": "Every scope at every altitude, what needs you, and what Horizon found: live from the bousleh server in the Claude desktop app, the last snapshot elsewhere.",
+  "description": "Every scope at every altitude, what needs you, and what Horizon found: live from the bousleh server in the Claude desktop app, the last snapshot elsewhere. Acts in place (commitments, findings, captures to the inbox), answers read-only questions in Ask, opens Claude with a prompt typed in, and runs Tune and health checks on this Mac. Installable as a desktop app.",
   "file": "packages/home/dist/home.html",
   "capabilities": {
     "mcp": {
@@ -16,7 +16,15 @@
             "queue_list",
             "commitments_list",
             "assets_list",
-            "vault_supersede"
+            "context_brief",
+            "vault_search",
+            "people_get",
+            "vault_health",
+            "vault_supersede",
+            "commitments_close",
+            "commitments_snooze",
+            "inbox_drop",
+            "inbox_settle"
           ]
         },
         { "server": "Google Calendar", "tools": ["list_events"] }
@@ -25,6 +33,10 @@
     "db": {
       "rules": [{ "path": "", "read": "owner", "write": "owner" }]
     },
-    "user": {}
+    "user": {},
+    "desktop": {},
+    "sample": {},
+    "dictation": {},
+    "tts": {}
   }
 }

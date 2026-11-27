@@ -1,6 +1,7 @@
 import {
   ageLabel,
   clip,
+  clock,
   dayLabel,
   daysBetween,
   feet,
@@ -17,7 +18,7 @@ import {
   whenLabel,
 } from './format.js';
 import { glyphOf, glyphState } from './glyph.js';
-import { prompts } from './prompts.js';
+import { prompts, questions } from './prompts.js';
 import type {
   Action,
   Altitude,
@@ -34,6 +35,7 @@ import type {
   HorizonVM,
   ItemVM,
   Launcher,
+  MeetingRowVM,
   MeetingVM,
   MinorVM,
   NeedsVM,
@@ -428,14 +430,15 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
   if (queued > 0) primary = { label: `Answer ${queued}`, prompt: book.add(prompts.captureQueue(queued)) };
   else if (waiting > 0) primary = { label: `File ${waiting}`, prompt: book.add(prompts.captureInbox()) };
   else if (needs > 0) primary = { label: `Close ${needs}`, prompt: book.add(prompts.pulseNeeds(needs)) };
-  else primary = { label: 'Where am I?', prompt: book.add(prompts.pulse()) };
+  else primary = { label: 'Where am I?', prompt: book.add(prompts.pulse()), ask: book.add(questions.where()) };
   let secondary: Action;
   if (upcoming) {
     secondary = {
       label: `Prep ${shortTitle(upcoming.title, scopeNames, 14)}`,
       prompt: book.add(prompts.counselMeeting(upcoming.title, upcoming.when)),
     };
-  } else if (primary.label !== 'Where am I?') secondary = { label: 'Where am I?', prompt: book.add(prompts.pulse()) };
+  } else if (primary.label !== 'Where am I?')
+    secondary = { label: 'Where am I?', prompt: book.add(prompts.pulse()), ask: book.add(questions.where()) };
   else secondary = { label: 'Brain dump', prompt: book.add(prompts.capture()) };
 
   // ------------------------------------------------------------ columns and cells
@@ -549,6 +552,7 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
       items: rows.items,
       more: Math.max(0, cell.count - away - rows.drawn),
       prompt: book.add(prompts.brief(column.name, altitude)),
+      ask: book.add(questions.brief(column.name, altitude)),
       label: `${label}: ${cell.count} ${cell.count === 1 ? 'thing' : 'things'}`,
     };
   }
@@ -574,6 +578,7 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
       here: altitude === hereAlt,
       launchers: launchers[altitude],
       prompt: book.add(prompts.briefBand(altitude)),
+      ask: book.add(questions.band(altitude)),
     };
   });
 
@@ -607,6 +612,7 @@ export function buildViewModel(src: Sources, now: Date): ViewModel {
     stats: { strategies: strategiesLine, empty: strata?.totals.empty_cells ?? 0 },
     ...(pulse ? { focus: focusOf(pulse, now, book, nameOf) } : {}),
     phone: { needs: needsCell?.needs ?? null, meeting: upcoming, bet: betCell?.bet ?? null },
+    meetings: meetingRows(meetings, now, book),
     horizon: horizonOf(src, columns, allObjects, now, book, nameOf),
     docs: (src.assets?.assets ?? [])
       .slice(0, 12)
@@ -633,6 +639,7 @@ export function focusOf(pulse: Pulse, now: Date, book: PromptBook, nameOf: (slug
           : prompts.pulseFocus(f.title);
     return {
       kind: f.kind,
+      id: f.id,
       eyebrow: first,
       title: f.title,
       detail: rest.join(' · '),
@@ -647,7 +654,31 @@ export function focusOf(pulse: Pulse, now: Date, book: PromptBook, nameOf: (slug
   const total = s ? s.by_me + s.to_me + s.other : 0;
   const next = s?.next ? parseWhen(s.next.surface_on) : null;
   const snoozed = total === 0 ? null : `${total} snoozed${next ? ` · next ${monthDay(next)}` : ''}`;
-  return { items, more: pulse.focus_more ?? 0, snoozed, morePrompt: book.add(prompts.pulse()) };
+  return {
+    items,
+    more: pulse.focus_more ?? 0,
+    snoozed,
+    morePrompt: book.add(prompts.pulse()),
+    moreAsk: book.add(questions.first()),
+  };
+}
+
+/** Today's meetings for the row under First: Brief me answers here, Prep with Counsel opens Claude. */
+export function meetingRows(meetings: MeetingVM[], now: Date, book: PromptBook): MeetingRowVM[] {
+  return meetings.map((m) => {
+    const at = parseWhen(m.at);
+    const held = m.held === true;
+    // A meeting already held has nothing left to prep: no buttons.
+    return {
+      title: m.title,
+      time: at && !isDateOnly(m.at) ? clock(at) : 'Today',
+      sub: held ? 'Notes filed' : m.planned ? 'Prep filed' : 'On your calendar',
+      held,
+      ...(held
+        ? {}
+        : { ask: book.add(questions.meeting(m.title)), prompt: book.add(prompts.counselMeeting(m.title, whenLabel(m.at, now))) }),
+    };
+  });
 }
 
 function dedupe(objects: StrataObj[]): StrataObj[] {
@@ -718,7 +749,7 @@ function launchersFor(
   const unwatched = columns.find((c) => !lists.some((l) => l.scopes.includes(c.slug)));
   const horizon: Launcher =
     lists.length > 0 || !unwatched
-      ? { mode: 'Horizon', label: 'Read the scan', prompt: book.add(prompts.horizonScan()) }
+      ? { mode: 'Horizon', label: 'Read the scan', prompt: book.add(prompts.horizonScan()), ask: book.add(questions.outside()) }
       : { mode: 'Horizon', label: 'Start watching', prompt: book.add(prompts.horizonWatch(unwatched.name)) };
 
   const people = objects.filter((o) => o.kind === 'person' && o.id !== meId);
@@ -753,8 +784,8 @@ function launchersFor(
   return {
     50000: [shape],
     10000: [horizon, communicate],
-    1000: [workshop, { mode: 'Pulse', label: 'Where am I?', prompt: book.add(prompts.pulse()) }, coach],
-    100: [counsel, { mode: 'Capture', label: 'Brain dump', prompt: book.add(prompts.capture()) }],
+    1000: [workshop, { mode: 'Pulse', label: 'Where am I?', prompt: book.add(prompts.pulse()), ask: book.add(questions.where()) }, coach],
+    100: [counsel, { mode: 'Capture', label: 'Brain dump', prompt: book.add(prompts.capture()), capture: true }],
   };
 }
 
@@ -864,6 +895,7 @@ function horizonOf(
       .map((c) => ({ slug: c.slug, name: c.name, prompt: book.add(prompts.horizonWatch(c.name)) })),
     readingList: src.reading?.total ?? 0,
     readingPrompt: book.add(prompts.horizonReading()),
+    readingAsk: book.add(questions.reading()),
     filters: watchedScopes.map((slug) => ({ slug, name: nameOf(slug) })),
   };
 }

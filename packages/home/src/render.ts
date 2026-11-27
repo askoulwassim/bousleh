@@ -1,10 +1,27 @@
+import { type Acted, minDay, quickDays } from './acts.js';
 import { esc } from './escape.js';
 import { safeUrl } from './format.js';
 import { glyphSvg, stateColor } from './glyph.js';
 import { icons, logoFull, logoSmall, modeIcon } from './icons.js';
+import { claudeTag, NO_REACH, type Reach, WHERE_LABEL, type Where } from './launch.js';
 import { SHORT_ALT } from './model.js';
 import { tokens } from './tokens.js';
-import type { BetVM, CellVM, FocusVM, ItemVM, Launcher, MeetingVM, NeedsVM, Readout, StoryVM, Tone, ViewModel } from './types.js';
+import type {
+  Action,
+  BetVM,
+  CellVM,
+  FocusItemVM,
+  FocusVM,
+  ItemVM,
+  Launcher,
+  MeetingRowVM,
+  MeetingVM,
+  NeedsVM,
+  Readout,
+  StoryVM,
+  Tone,
+  ViewModel,
+} from './types.js';
 
 /*
  * View model → markup. One string for the whole page: the desktop layout (rail, header, strata,
@@ -26,6 +43,53 @@ export interface UiState {
   approval: boolean;
   /** Story id → what was done with it on this page. */
   done: Record<string, 'saved' | 'skipped' | 'busy'>;
+  /** Commitment id → what was done with it on this page (Done, Date, Snooze, Close), with its Undo. */
+  acted: Record<string, Acted>;
+  /** "id:done" or "id:close": the act waiting for its second press. */
+  confirm: string | null;
+  /** The open day picker: which commitment, which act, where it was opened, and the day typed so far. */
+  picker: Picker | null;
+  /** The Claude desktop app offers to install Home as an app: the footer shows the button. */
+  install: boolean;
+  /** What this view can do beyond copying: open Claude, run on this Mac, answer in place. */
+  reach: Reach;
+  /** Which rail panel is open. */
+  side: 'ask' | 'tune' | 'health' | null;
+  /** In the installed app's window: for the footer note. */
+  app: { fullAccess: boolean; needsSetup: boolean } | null;
+  /** Home's version, for the footer note. */
+  version: string;
+  /** Focus items acted on, kept so a card stays (with its Undo) after a read drops it from First. */
+  kept: Record<string, FocusItemVM>;
+}
+
+export interface Picker {
+  id: string;
+  act: 'date' | 'snooze';
+  surface: 'first' | 'ask';
+  value: string;
+}
+
+/** The page state before anything has loaded. */
+export function initialUi(): UiState {
+  return {
+    mode: 'connecting',
+    stamp: '',
+    filter: 'all',
+    docsOpen: false,
+    errors: {},
+    approval: false,
+    done: {},
+    acted: {},
+    confirm: null,
+    picker: null,
+    install: false,
+    reach: NO_REACH,
+    side: null,
+    app: null,
+    version: '',
+    kept: {},
+  };
 }
 
 const c = tokens.color;
@@ -55,12 +119,14 @@ function rail(vm: ViewModel, ui: UiState): string {
   const dot = ui.mode === 'live' ? 'live' : ui.mode === 'snapshot' ? 'snap' : 'off';
   const stampTitle =
     ui.mode === 'live' ? `Live data, read at ${ui.stamp}` : ui.mode === 'snapshot' ? `Snapshot taken at ${ui.stamp}` : 'No data yet';
+  const side = (key: 'ask' | 'tune' | 'health', label: string, icon: string) =>
+    `<button class="ic${ui.side === key ? ' on' : ''}" type="button" data-action="side-${key}" aria-pressed="${ui.side === key}" aria-label="${label}" title="${label}">${icon}</button>`;
   return `<nav class="rail" aria-label="Rail"><div class="rail-in">${logoFull(40)}<span class="rail-gap"></span>
-<button class="ic on" type="button" aria-label="Home" aria-current="page">${icons.home}</button>
-<button class="ic" type="button" data-action="docs" aria-expanded="${ui.docsOpen}" aria-label="Docs and decks, ${vm.docs.length}">${icons.docs}</button>
+<button class="ic${ui.side === null ? ' on' : ''}" type="button" data-action="side-close" aria-label="Home" aria-current="page">${icons.home}</button>
+${side('ask', 'Ask', icons.ask)}${side('tune', 'Tune now', icons.tune)}${side('health', 'Health', icons.health)}
+<button class="ic" type="button" data-action="docs" aria-expanded="${ui.docsOpen}" aria-label="Docs and decks, ${vm.docs.length}" title="Docs and decks">${icons.docs}</button>
 <span class="rail-fill"></span>
-<span class="sweep" title="${esc(stampTitle)}"><span class="sweep-dot ${dot}"></span><span class="mono sweep-t">${esc(ui.stamp || '--:--')}</span></span>
-<button class="ic ask" type="button" data-action="ask" aria-label="Ask Claude">›</button></div></nav>`;
+<span class="sweep" title="${esc(stampTitle)}"><span class="sweep-dot ${dot}"></span><span class="mono sweep-t">${esc(ui.stamp || '--:--')}</span></span></div></nav>`;
 }
 
 function docsPanel(vm: ViewModel): string {
@@ -78,7 +144,7 @@ function docsPanel(vm: ViewModel): string {
 function tabbar(): string {
   return `<nav class="tabbar" aria-label="Tabs"><a class="tab on" href="#top" aria-current="page">${icons.home.replace('width="24" height="24"', 'width="22" height="22"')}<span class="mono">HOME</span></a>
 <button class="drop" type="button" data-action="drop">${icons.mic(20)}Drop</button>
-<button class="tab" type="button" data-action="ask" aria-label="Ask Claude"><span class="tab-ask">›</span><span class="mono">ASK</span></button></nav>`;
+<button class="tab" type="button" data-action="side-ask" aria-label="Ask"><span class="tab-ask">›</span><span class="mono">ASK</span></button></nav>`;
 }
 
 // ---------------------------------------------------------------- desktop
@@ -96,31 +162,133 @@ function readout(r: Readout): string {
   return `<span class="ro"><span class="eb">${esc(r.label)}</span><span class="disp ro-v ${toneClass(r.tone)}">${esc(r.value)}</span></span>`;
 }
 
-function promptBtn(cls: string, key: string | undefined, label: string, extra = ''): string {
+function _promptBtn(cls: string, key: string | undefined, label: string, extra = ''): string {
   if (!key) return '';
   return `<button class="${cls}" type="button" data-prompt="${esc(key)}"${extra}>${esc(label)}</button>`;
 }
 
+/** The small tag on a launcher: Here, In Claude, On this Mac, or Copy (the fallback). */
+export function whereTag(where: Where): string {
+  const out = where === 'claude' ? icons.out : '';
+  return `<span class="where ${where}">${WHERE_LABEL[where]}${out}</span>`;
+}
+
+/** Where a button with a prompt and maybe an Ask question goes, in this view. */
+export function whereOf(action: { ask?: string | undefined; capture?: boolean | undefined }, ui: UiState): Where {
+  if (action.capture) return 'here';
+  if (action.ask) return ui.reach.ask ? 'here' : 'copy';
+  return claudeTag(ui.reach);
+}
+
+/** A button's routing attributes: data-ask (answered here, the prompt as fallback), data-action capture, or data-prompt (Claude). */
+export function routeAttrs(action: { prompt?: string | undefined; ask?: string | undefined; capture?: boolean | undefined }): string {
+  if (action.capture) return 'data-action="capture"';
+  const ask = action.ask ? ` data-ask="${esc(action.ask)}"` : '';
+  return `data-prompt="${esc(action.prompt ?? '')}"${ask}`;
+}
+
+/** A launcher button with its tag. */
+function launchBtn(cls: string, action: Action | undefined | null, ui: UiState, label = action?.label ?? ''): string {
+  if (!action) return '';
+  return `<button class="${cls}" type="button" ${routeAttrs(action)}>${esc(label)}${whereTag(whereOf(action, ui))}</button>`;
+}
+
 function desktop(vm: ViewModel, ui: UiState): string {
+  const capture = `<button class="btn2" type="button" data-action="capture">${icons.mic(18)}Capture</button>`;
   const head = `<header class="hdr" id="top"><div class="hdr-l"><span class="eb">${esc(vm.dateLabel)} · ${esc(vm.instance)} · ${esc(modeWord(ui))}</span><h1 class="disp hero">${hero(vm, ui)}</h1></div>
-<div class="hdr-r"><div class="ros">${vm.readouts.map(readout).join('')}</div>${vm.secondary ? promptBtn('btn2', vm.secondary.prompt, vm.secondary.label) : ''}${vm.primary ? promptBtn('btn', vm.primary.prompt, vm.primary.label) : ''}</div></header>`;
-  return `${head}${banner(ui)}${focusStrip(vm.focus)}${vm.columns.length ? strata(vm, ui) : emptyCard(ui)}${legend()}${horizon(vm, ui)}${footer(ui)}`;
+<div class="hdr-r"><div class="ros">${vm.readouts.map(readout).join('')}</div>${launchBtn('btn2', vm.primary, ui)}${capture}</div></header>`;
+  return `${head}${banner(ui)}${focusStrip(vm.focus, ui)}${meetingsRow(vm.meetings, ui)}${vm.columns.length ? strata(vm, ui) : emptyCard(ui)}${legend()}${horizon(vm, ui)}${footer(ui)}`;
+}
+
+/** Today's meetings under First: Brief me answers here, Prep with Counsel opens Claude. Nothing on a day with none. */
+function meetingsRow(rows: MeetingRowVM[] | undefined, ui: UiState): string {
+  if (!rows?.length) return '';
+  const row = (m: MeetingRowVM) => {
+    const brief = m.ask
+      ? `${whereTag(ui.reach.ask ? 'here' : 'copy')}<button class="btn2 sm" type="button" data-ask="${esc(m.ask)}" data-prompt="${esc(m.ask)}">Brief me</button>`
+      : '';
+    const prep = m.prompt
+      ? `${whereTag(claudeTag(ui.reach))}<button class="btn2 sm" type="button" data-prompt="${esc(m.prompt)}">Prep with Counsel</button>`
+      : '';
+    return `<div class="mt-row${m.held ? ' held' : ''}"><span class="mono mt-time">${esc(m.time)}</span><span class="mt-b"><span class="mt-t trunc">${esc(m.title)}</span><span class="eb sm">${esc(m.sub)}</span></span><span class="mt-a">${brief}${prep}</span></div>`;
+  };
+  return `<section class="card mts" aria-label="Today's meetings">${rows.map(row).join('')}</section>`;
+}
+
+/**
+ * First's cards: the ranked items, plus any commitment acted on here that a read has since dropped,
+ * kept in place while its result and Undo show.
+ */
+export function focusItems(focus: FocusVM, ui: UiState): FocusItemVM[] {
+  const items = [...focus.items];
+  for (const [id, kept] of Object.entries(ui.kept)) {
+    if (ui.acted[id] && !items.some((f) => f.id === id)) items.push(kept);
+  }
+  return items;
 }
 
 /** The few things to do first, above the grid: always there once Pulse is read; nothing when it wasn't. */
-function focusStrip(focus: FocusVM | undefined): string {
+function focusStrip(focus: FocusVM | undefined, ui: UiState): string {
   // Shown whenever Pulse was read, empty or not, so "nothing pressing" never looks like "not working".
   if (!focus) return '';
-  const cards = focus.items
+  const items = focusItems(focus, ui);
+  const cards = items
     .map(
       (f, i) =>
-        `<button class="fc ${f.tone}" type="button" data-prompt="${esc(f.prompt)}" aria-label="${esc(f.label)}"><span class="fc-h"><span class="disp fc-n ${toneClass(f.tone)}">${i + 1}</span><span class="eb xs ${toneClass(f.tone)} trunc">${esc(f.eyebrow)}</span></span><span class="fc-t">${esc(f.title)}</span>${f.detail ? `<span class="fc-d">${esc(f.detail)}</span>` : ''}<span class="eb sm fc-s trunc">${esc(altShort(f.altitude))} · ${esc(f.scopeName)}</span></button>`,
+        `<div class="fc ${f.tone}"><button class="fc-main" type="button" data-prompt="${esc(f.prompt)}" aria-label="${esc(f.label)}"><span class="fc-h"><span class="disp fc-n ${toneClass(f.tone)}">${i + 1}</span><span class="eb xs ${toneClass(f.tone)} trunc">${esc(f.eyebrow)}</span></span><span class="fc-t">${esc(f.title)}</span>${f.detail ? `<span class="fc-d">${esc(f.detail)}</span>` : ''}<span class="eb sm fc-s trunc">${esc(altShort(f.altitude))} · ${esc(f.scopeName)}</span></button>${f.kind === 'commitment' && f.id ? actRow(f.id, f.title, ui, 'first') : ''}</div>`,
     )
     .join('');
-  const empty = focus.items.length === 0 ? '<span class="muted-note">Nothing pressing today.</span>' : '';
-  const more = focus.more > 0 ? promptBtn('chip', focus.morePrompt, `+${focus.more} more`) : '';
+  const empty = items.length === 0 ? '<span class="muted-note">Nothing pressing today.</span>' : '';
+  const more =
+    focus.more > 0
+      ? `<button class="chip" type="button" ${routeAttrs({ prompt: focus.morePrompt, ask: focus.moreAsk })}>+${focus.more} more</button>`
+      : '';
   const snoozed = focus.snoozed ? `<span class="mono fc-z">${esc(focus.snoozed)}</span>` : '';
   return `<section class="focus" aria-label="First"><div class="focus-h"><span class="eb">First</span><span class="focus-r">${snoozed}${more}</span></div><div class="focus-g">${cards}${empty}</div></section>`;
+}
+
+const BUSY: Record<Acted['act'], string> = { done: 'Marking done…', close: 'Closing…', date: 'Dating…', snooze: 'Snoozing…' };
+
+/**
+ * Done, Date, Snooze and Close on a commitment: one op each, live only (snapshots get none). Done and
+ * Close ask for a second press; Date and Snooze open the day picker. Once acted on, the row says what
+ * happened, with Undo for a few seconds; a failure says so, with Retry.
+ */
+export function actRow(id: string, title: string, ui: UiState, surface: 'first' | 'ask', now = new Date()): string {
+  if (ui.mode !== 'live') return '';
+  const key = esc(id);
+  const acted = ui.acted[id];
+  if (acted?.state === 'busy') return `<div class="fa-row"><span class="fa dim">${esc(acted.label || BUSY[acted.act])}</span></div>`;
+  if (acted?.state === 'done') {
+    const undo = acted.undo && acted.undoUntil > now.getTime();
+    return `<div class="done-line"><span class="mono fa-ok">${icons.check}${esc(acted.label)}</span>${undo ? `<button class="fa ghost" type="button" data-act="undo" data-id="${key}" aria-label="${esc(`Undo: ${title}`)}">Undo</button>` : ''}</div>`;
+  }
+  if (acted?.state === 'error') {
+    return `<div class="done-line"><span class="mono fa-err">${icons.warn}${esc(acted.label)}</span><button class="fa" type="button" data-act="retry" data-id="${key}" aria-label="${esc(`Retry: ${title}`)}">Retry</button></div>`;
+  }
+  const confirm = ui.confirm?.startsWith(`${id}:`) ? ui.confirm.slice(id.length + 1) : null;
+  const picker = ui.picker && ui.picker.id === id && ui.picker.surface === surface ? ui.picker : null;
+  const btn = (act: string, label: string, asking?: string) => {
+    const on = confirm === act;
+    const cls = on ? ' ask' : picker?.act === act ? ' on' : confirm || picker ? ' dim' : '';
+    const text = on && asking ? asking : label;
+    return `<button class="fa${cls}" type="button" data-act="${act}" data-id="${key}" data-surface="${surface}" aria-label="${esc(`${text}: ${title}`)}">${esc(text)}</button>`;
+  };
+  const hint = confirm ? '<span class="mono fa-hint">Press again to confirm</span>' : '';
+  return `<div class="fa-row">${btn('done', 'Done', 'Mark done?')}${btn('date', 'Date')}${btn('snooze', 'Snooze')}${btn('close', 'Close', 'Close it?')}</div>${hint}${picker ? dayPicker(picker, now) : ''}`;
+}
+
+/** The day picker under an action row: quick days, any day, Set. */
+function dayPicker(p: Picker, now: Date): string {
+  const id = esc(p.id);
+  const chips = quickDays(p.act, now)
+    .map(
+      (d) =>
+        `<button class="chip${p.value === d.day ? ' on' : ''}" type="button" data-act="pick" data-id="${id}" data-day="${esc(d.day)}">${esc(d.label)}</button>`,
+    )
+    .join('');
+  const min = minDay(p.act, now);
+  return `<div class="dp"><span class="eb">${p.act === 'date' ? 'Due on' : 'Snooze till'}</span><div class="chips">${chips}</div><div class="dp-any"><span class="eb sm">Any day</span><input class="field dp-in" type="date" min="${esc(min)}" value="${esc(p.value)}" data-day-input="${id}" aria-label="${p.act === 'date' ? 'Due on' : 'Snooze till'} any day"><button class="btn sm" type="button" data-act="set" data-id="${id}">Set</button></div></div>`;
 }
 
 function phoneFocus(focus: FocusVM | undefined): string {
@@ -171,17 +339,18 @@ function strata(vm: ViewModel, ui: UiState): string {
   const body = vm.rows
     .map((row, r) => {
       const dots = row.dots.map((s) => `<span class="dot" style="background:${stateColor(s)}"></span>`).join('');
-      const alt = `<button class="alt${row.here ? ' here' : ''}" type="button" data-prompt="${esc(row.prompt)}" aria-label="${esc(row.number)} feet, ${esc(row.label)}${row.here ? ', needs you here' : ''}"><span class="disp alt-n">${esc(row.number)}</span><span class="eb sm">${esc(row.label)}</span><span class="dots">${dots}</span>${row.here ? '<span class="here-mark"></span>' : ''}</button>`;
+      const alt = `<button class="alt${row.here ? ' here' : ''}" type="button" ${routeAttrs(row)} aria-label="${esc(row.number)} feet, ${esc(row.label)}${row.here ? ', needs you here' : ''}"><span class="disp alt-n">${esc(row.number)}</span><span class="eb sm">${esc(row.label)}</span><span class="dots">${dots}</span>${row.here ? '<span class="here-mark"></span>' : ''}</button>`;
       const cells = (vm.cells[r] ?? []).map((cell) => cellHtml(cell)).join('');
-      return `${alt}${cells}<div class="lch">${row.launchers.map(launcher).join('')}</div>`;
+      return `${alt}${cells}<div class="lch">${row.launchers.map((l) => launcher(l, ui)).join('')}</div>`;
     })
     .join('');
   return `<section class="card strata" aria-label="Strata" style="--cols:${n}"><span>${note}</span>${head}<span class="eb launch-h">Launch here</span>${body}</section>`;
 }
 
-function launcher(l: Launcher): string {
+function launcher(l: Launcher, ui: UiState): string {
   const off = !l.prompt;
-  return `<button class="lb${off ? ' off' : ''}" type="button"${off ? ' disabled aria-disabled="true"' : ` data-prompt="${esc(l.prompt)}"`}>${modeIcon(l.mode, off)}<span class="lb-t"><span class="m">${esc(l.mode)}</span><span class="trunc">${esc(l.label)}</span></span></button>`;
+  const tag = off ? '' : whereTag(whereOf(l, ui));
+  return `<button class="lb${off ? ' off' : ''}" type="button"${off ? ' disabled aria-disabled="true"' : ` ${routeAttrs(l)}`}>${modeIcon(l.mode, off)}<span class="lb-t"><span class="m">${esc(l.mode)}${tag}</span><span class="trunc">${esc(l.label)}</span></span></button>`;
 }
 
 function item(i: ItemVM): string {
@@ -202,7 +371,7 @@ function cellHtml(cell: CellVM): string {
 }
 
 function cellButton(cell: CellVM): string {
-  const attrs = `type="button" data-prompt="${esc(cell.prompt)}" aria-label="${esc(cell.label)}"`;
+  const attrs = `type="button" ${routeAttrs(cell)} aria-label="${esc(cell.label)}"`;
   if (cell.variant === 'void') return `<button class="void" ${attrs}>·</button>`;
   const items = cell.items.map(item).join('') + moreRow(cell.more);
   if (cell.variant === 'strategy' && cell.strategy) {
@@ -285,7 +454,7 @@ function storyActions(s: StoryVM, ui: UiState, full: boolean): string {
     const busy = done === 'busy' ? ' disabled' : '';
     ops = `<button class="btn2 sm" type="button" data-op="save" data-id="${esc(s.id)}"${busy}>Save</button><button class="btn2 sm" type="button" data-op="skip" data-id="${esc(s.id)}"${busy}>Skip</button>`;
   } else if (s.status === 'to_read') ops = '<span class="chip t-accent-hi">On the list</span>';
-  return `${open}${ops}${promptBtn('btn2 sm shape', s.shapePrompt, 'For Shape')}`;
+  return `${open}${ops}${launchBtn('btn2 sm shape', { label: 'For Shape', prompt: s.shapePrompt }, ui)}`;
 }
 
 function filtered(vm: ViewModel, ui: UiState): { lead: StoryVM | null; stories: StoryVM[] } {
@@ -315,7 +484,7 @@ function horizon(vm: ViewModel, ui: UiState): string {
         )
         .join('')
     : '';
-  const reading = promptBtn('btn2 sm', h.readingPrompt, `Reading list · ${h.readingList}`);
+  const reading = launchBtn('btn2 sm', { label: `Reading list · ${h.readingList}`, prompt: h.readingPrompt, ask: h.readingAsk }, ui);
   const max = Math.max(1, ...h.dayBars);
   const bars = h.dayBars
     .map((n, i) => {
@@ -358,7 +527,7 @@ function horizon(vm: ViewModel, ui: UiState): string {
         .join('')
     : '<span class="mono chg t-dim">No changes proposed</span>';
   const noWatch = h.noWatch.length
-    ? `<div class="hz-block"><span class="eb">No watch list</span><div class="chips">${h.noWatch.map((s) => `<button class="chip dashed" type="button" data-prompt="${esc(s.prompt)}">+ ${esc(s.name)}</button>`).join('')}</div></div>`
+    ? `<div class="hz-block"><span class="eb">No watch list</span><div class="chips">${h.noWatch.map((s) => `<button class="chip dashed" type="button" data-prompt="${esc(s.prompt)}">+ ${esc(s.name)}${whereTag(claudeTag(ui.reach))}</button>`).join('')}</div></div>`
     : '';
   return `<section class="hz" aria-label="Horizon"><div class="hz-top"><div class="hz-mast"><span class="disp masthead">Horizon</span><span class="eb">${esc(h.eyebrow)}</span></div><div class="hz-tools">${horizonState(vm)}${filters}${reading}</div></div>
 <div class="hz-grid"><article class="hz-lead-col"><span class="eb xs">Findings filed this week · Mon to Sun</span><div class="bars" role="img" aria-label="Findings filed per day this week">${bars}</div>${leadHtml}</article>
@@ -375,7 +544,11 @@ function footer(ui: UiState): string {
         : ui.mode === 'connecting'
           ? 'Connecting to the bousleh server'
           : 'No live data and no snapshot yet';
-  return `<footer class="foot"><span class="lockup"><span class="disp">bousleh</span><span class="ar" lang="ar" dir="rtl">بوصلة</span></span><span class="mono foot-n">${note}</span></footer>`;
+  const install = ui.install ? '<button class="btn sm" type="button" data-action="install">Install as app</button>' : '';
+  const app = ui.app
+    ? `<span class="mono foot-n">Installed app · full access ${ui.app.fullAccess ? 'on' : 'off'}${ui.version ? ` · Home v${esc(ui.version)}` : ''}</span>${ui.app.needsSetup ? '<button class="btn2 sm" type="button" data-action="permissions">Permissions</button>' : ''}`
+    : '';
+  return `<footer class="foot"><span class="lockup"><span class="disp">bousleh</span><span class="ar" lang="ar" dir="rtl">بوصلة</span></span>${install}${app}<span class="mono foot-n">${note}</span></footer>`;
 }
 
 // ---------------------------------------------------------------- phone

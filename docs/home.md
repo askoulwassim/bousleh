@@ -1,6 +1,6 @@
 # Bousleh Home
 
-Home is one Claude page: every scope at every altitude, what needs you, and what Horizon found this week. It is built from `packages/home` into one self-contained file, `packages/home/dist/home.html`, and published with Claude's Artifact tool. This file is the only definition of how it is published; nobody publishes it by hand.
+Home is one Claude page: every scope at every altitude, what needs you, and what Horizon found this week. It acts in place where one op will do, answers read-only questions in Ask, opens Claude for everything else, and runs Tune and health checks on this Mac. Installed as a Claude app, it gets its own window, a Dock icon with the needs-you count, a menu bar item and a Capture shortcut. It is built from `packages/home` into one self-contained file, `packages/home/dist/home.html`, and published with Claude's Artifact tool. This file is the only definition of how it is published; nobody publishes it by hand.
 
 To publish it, or to update it after `git pull`, open the Code tab in Claude Desktop on this repo folder (`bousleh.nosync`) and say:
 
@@ -11,8 +11,38 @@ Saying it again republishes to the same link. (A script can't do this step: publ
 ## What it does
 
 - **In the Claude desktop app, with the bousleh server connected:** live. It reads the engine through the local server (`host:bousleh`): `context_strata`, `pulse_today`, `watch_digest`, `watchlists_get`, `queue_list`, `commitments_list` and `assets_list`, and today's events from the Google Calendar connector (`list_events`), merged with the meetings filed in Bousleh. It refreshes itself every few minutes and stamps the time it last read.
-- **On the phone and on the web:** the last snapshot. Each live load saves one snapshot of what it drew (when it changed) to the page's own storage, readable only by you; elsewhere Home shows that snapshot, stamped "Snapshot 20:43". With no snapshot yet it says so.
-- **Every button is one op or one prompt.** Save and Skip on a Horizon story call `vault_supersede` (status `to_read` or `dismissed`), live only. Every other button copies a ready prompt for the mode it names ("Counsel: prep me for …", "Workshop: let's workshop …") to the clipboard, or shows it in a box to copy if the clipboard is refused. Drop on the phone copies "Drop this: " for the Drop skill. Home never answers in place in v1.
+- **On the phone and on the web:** the last snapshot. Each live load saves one snapshot of what it drew (when it changed) to the page's own storage, readable only by you; elsewhere Home shows that snapshot, stamped "Snapshot 20:43", and every button copies its prompt. With no snapshot yet it says so.
+
+## Where things happen: a rule, not a setting
+
+Home does the work itself when it is **one op on a press**, a **read-only answer**, or a **fixed run on this Mac**. It opens Claude when the work **makes a Claude output** (a Doc, slides, a whiteboard, an artifact), **needs a connector or the web**, or **writes to Bousleh on Claude's judgment**. No toggle changes this. Every launcher that leaves Home carries a small tag saying where it goes: **Here**, **In Claude**, **On this Mac**, or **Copy** (the fallback, below).
+
+**Here, one op on a press (live only):**
+- **First:** each commitment card has Done, Date, Snooze and Close. Done and Close ask for a second press ("Mark done?", "Close it?"), which resets after 4 seconds or Escape. Done is `commitments_close` (`done`); Close is `commitments_close` (`dropped`, note "Closed from Home."). Date opens a day picker (today, the coming Monday, Wednesday and Friday, or any day from today) and sets `due` with `vault_supersede`. Snooze opens one (tomorrow, Monday, in a week, in two weeks, or any day from tomorrow) and calls `commitments_snooze`. The card then says what happened ("Marked done", "Closed", "Due Mon 30 Nov", "Snoozed till Mon 30 Nov") with Undo for 5 seconds; after that the next read takes it out of First. Undo calls the reverse op: Done and Close reopen it (`vault_supersede` status `open`), Date puts back the due date and any snooze it ended (`vault_supersede`), Snooze wakes it (`commitments_snooze` until `null`) or puts back the earlier snooze day. A failure says so on the card, with Retry.
+- **Horizon:** Save and Skip on a story call `vault_supersede` (status `to_read` or `dismissed`).
+- **Capture** (the header's Capture button, the menu bar item's "Capture…", or ⌥⇧B): a focused panel in the Home window. Dictation where the window offers it, with a live transcript; otherwise a box to type in ("Dictation isn't offered in this window: type it"). Send to inbox is `inbox_drop` (named `capture-<YYYY-MM-DD>-<HHMM>-home.md`, source `local`); the next sweep files it. Undo, for a few seconds, takes it back out with `inbox_settle` (`skipped`) and gives the words back. File it now opens a chat with "Capture this: …" instead (after taking it back out of the inbox, if it was already sent, so it is never filed twice).
+
+**Here, a read-only answer: Ask.** Ask is the second icon in the rail. It opens a side panel (440 px) and answers with the `sample` capability: Claude, on your own account, with only the bousleh read tools passed to it as page functions (`pulse_today`, `commitments_list`, `context_brief`, `context_strata`, `watch_digest`, `vault_search`, `people_get`); never a write tool. Its instructions are bundled in at build time from `packages/home/src/ask-prompt.md`, and it answers in a strict JSON shape that Home draws as blocks, escaped. Commitments in an answer get the same Done, Date, Snooze and Close; findings get Save and Skip. When a question needs Claude under the rule, the answer is one line and an Open in Claude button with a prompt that names the mode ("Communicate: …"); Home never opens Claude on its own from what you typed. The footer says which tools it read and that it changed nothing, offers Read it to me (`tts`, where offered) and Continue in Claude. The chips: "What's first today?", "Brief me on <first scope> at 10K", "What's new outside?", and "Clear the queue (n)", which opens Claude (Capture). Cells, altitude labels, "Where am I?", "Read the scan", the reading list, "+N more" and each meeting's Brief me ask here too.
+
+**On this Mac, a fixed run:** Tune and Health are the next two rail icons, in the same side panel, and stream their output.
+- **Tune now** runs, in the repo folder, through your login shell (`/bin/zsh -lc`): `claude -p "Tune: run the Friday tune-up now." --permission-mode acceptEdits --output-format stream-json --verbose --allowedTools "mcp__bousleh" "Bash(git *)" "Bash(gh *)" "Bash(pnpm *)"`. `acceptEdits` lets the Tune skill edit files in the repo; `--allowedTools` lets it call the bousleh MCP tools and run git, gh and pnpm without asking, since nobody is there to answer; `stream-json` (which needs `--verbose` with `-p`) prints each step as it happens, and Home shows what Claude says and each tool it calls. Stop ends it.
+- **Health** reads `vault_health` (server, your data, backups), shows the repo Home knows, and runs `scripts/setup-mac.sh --check`, showing its lines. Rerun setup runs `scripts/setup-mac.sh`. Publish Home opens the Code tab on the repo with "Publish Home from docs/home.md." typed in.
+- Home only ever runs these commands. Where the repo is comes from `~/.bousleh/app.json` (`{ "repo": "<absolute path>", "updated": "<iso>" }`), which `scripts/setup-mac.sh` writes; the path is only ever the working folder, never part of a command. Without that file, Tune and Health say "Run scripts/setup-mac.sh once" and copy that command.
+
+**In Claude:** everything else (Shape, Workshop, Communicate, Coach, Counsel, Horizon's watch lists, Capture's queue, Pulse's "help me close"). A press opens Claude straight away, with no sheet in between: every mode opens a new chat (`claude://claude.ai/new?q=<prompt>`) and only Publish Home opens the Code tab (`claude://code/new?q=<prompt>&folder=<repo>`). The prompt is typed in and never sent; you read it and press Enter. Home opens the link with one fixed command, `open "<url>"` (`start "" "<url>"` on Windows), where the url is built and checked by Home and your data only ever fills its encoded `q` (and `folder`). Prompts stay under 5,000 characters.
+
+**The fallback, not a setting:** without the installed app, or without full access, every Claude-bound button copies its prompt (or shows it in a box to copy) and a toast says so; the tag reads Copy. Runs on this Mac aren't offered, and the Tune and Health panels say why. Phone and web keep the snapshot, where every button copies.
+
+## Install as an app
+
+Where the Claude desktop app offers it (beside a chat, in the Code tab, on the artifact's page), the footer shows **Install as app**. The installed app has its own window, Home's own icon on the Dock (drawn from `assets/app-icon.svg`) with the needs-you count as its badge, and the footer says "Installed app · full access on/off".
+
+The first time it opens, a screen, "Let Bousleh work on this Mac", lists the three permissions Home declares in its page (the `claude-artifacts-manifest` tag: exactly `full-access`, `menu-bar`, `shortcuts`), each optional, each with Allow (which asks the desktop app, from your click) or "Allowed":
+- **Open Claude and run Bousleh** (`full-access`): opens a chat or the Code tab with the prompt typed in, and runs Tune and health checks. Never sends a message for you.
+- **Menu bar item** (`menu-bar`): the needs-you count as its title, and a menu: the things that need you (each brings the window up), Open Home, Capture…, Pulse: where am I? (opens Ask with that question), Run Tune now.
+- **Capture shortcut** (`shortcuts`): ⌥⇧B brings the window up and opens Capture, from anywhere.
+
+Open Home continues; Home remembers that in its own storage (readable only by you) and shows the screen again only while a permission is still to ask and you haven't continued. The footer's Permissions button brings it back, or opens the app's own Permissions dialog. No notifications in v0.2.
 
 ## How to publish it (for Claude)
 
@@ -20,12 +50,13 @@ Saying it again republishes to the same link. (A script can't do this step: publ
    - Run `pnpm build` in the repo (or confirm `scripts/setup-mac.sh` ran since the last `git pull`; `scripts/setup-mac.sh --check` says whether `packages/home/dist/home.html` exists). Never edit `dist/home.html` by hand.
    - Call `vault_health` on the `bousleh` MCP server. It must answer with all Bousleh ops, `context_strata` among them; if it doesn't, stop and say to run `scripts/setup-mac.sh` and restart Claude Desktop.
 2. **Find the existing Home.** Call `assets_list` with `type: "page"` and `scopes: ["bousleh"]`, and look for the asset titled "Bousleh Home". On a second instance, use that instance's own scope instead of `bousleh` (the one Home is registered under, else ask).
-3. **Publish.** Publish `packages/home/dist/home.html` with the Artifact tool, using the title, icon word and the `capabilities` object exactly as `packages/home/artifact.json` gives them (and its description). When step 2 found a Home, publish to its url so the link stays the same; otherwise publish a new one. Read the file first, as the Artifact tool requires; it holds no data, only the page.
+3. **Publish.** Publish `packages/home/dist/home.html` with the Artifact tool, using the title, icon word and the `capabilities` object exactly as `packages/home/artifact.json` gives them (and its description): the bousleh tools Home calls, the Google Calendar connector, `db` (owner only), `user`, `desktop`, `sample`, `dictation` and `tts`. When the page gains a capability, declare it before publishing the code that uses it. When step 2 found a Home, publish to its url so the link stays the same; otherwise publish a new one. Read the file first, as the Artifact tool requires; it holds no data, only the page.
 4. **Register it, on first publish only.** Call `assets_add` with the artifact's url, title "Bousleh Home", `type: "page"`, `scopes: ["bousleh"]`, and `documents` set to the id of the Bousleh strategy (find it with `context_brief` on scope `bousleh` at altitude 50000, or `vault_search` kinds `["strategy"]`). A republish to the same url needs no `assets_add`; calling it again is safe.
 5. **Report** in a few lines: the link, whether it was a new page or an update, and that:
    - live data needs the Claude desktop app with the bousleh server connected (the page asks once to use it and the Google Calendar connector);
    - the phone and the web show the last snapshot, taken the last time Home was open in the desktop app;
-   - the first live open saves the first snapshot, so open it once on the Mac before checking the phone.
+   - the first live open saves the first snapshot, so open it once on the Mac before checking the phone;
+   - to install it as an app, use Install as app in its footer, then allow what you want on the first screen.
 
 ## A second instance
 
@@ -33,7 +64,8 @@ A second Mac, such as a work Mac with its own Claude account and its own data, p
 
 ## Developing Home
 
-- `pnpm --filter @bousleh/home build` builds the page; `pnpm --filter @bousleh/home test` runs its view-model tests.
-- `node packages/home/preview/shoot.mjs [out-dir]` seeds a throwaway engine with fake data (never `~/.bousleh`), renders the page against it with a stand-in for the Claude page runtime (live, snapshot and no-data), and screenshots it at 1440 and 390 px next to the Claude Design boards. Its output (`preview/out/`) is not committed.
+- `pnpm --filter @bousleh/home build` builds the page; `pnpm --filter @bousleh/home test` runs its tests (the view model, the acts and their Undo, deep links and their encoding, Ask's tools and answer parsing, the runs, the fallback, and safe rendering).
+- `node packages/home/preview/shoot.mjs [out-dir]` seeds a throwaway engine with fake data (never `~/.bousleh`), renders the page against it with a stand-in for the Claude page runtime (live, snapshot and no-data; beside a chat, and as the installed app with `desktop`, `sample`, `dictation` and `tts` stand-ins), clicks through the acts, Ask, Capture, Tune and Health, and screenshots each, next to the Claude Design boards. It logs the calls the page made (ops, the open command, the spawned runs, the menu bar and the badge). Its output (`preview/out/`) is not committed.
+- The parts of `src/`: `model.ts` (op outputs to the view model, also the snapshot), `render.ts` (the page), `launch.ts` (the rule, the tags, deep links and the open command), `acts.ts` and `actions.ts` (Done, Date, Snooze, Close and Undo), `ask.ts`, `ask-prompt.md` and `side.ts` (Ask, Tune and Health), `runs.ts` (the fixed commands), `capture.ts`, `shell.ts` (install, first launch, Dock, menu bar, shortcut), `claude.ts` (open Claude or copy), `panels.ts` (markup outside the grid), `main.ts` (reads and wiring).
 - The design: `docs/design/home.md` and the boards in `docs/design/home/`.
 - `node packages/home/scripts/render-icon.mjs` re-renders `assets/app-icon-1024.png` from `assets/app-icon.svg`.
