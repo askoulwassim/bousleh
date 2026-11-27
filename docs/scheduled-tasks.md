@@ -26,7 +26,7 @@ Apply it exactly. Take every name, cron and prompt from the script's JSON, never
    - **Missing:** create it.
    - Never create a second task with a name already in the JSON.
 5. **Older names.** These were renamed: "Daily inbox sweep" is now the Hourly inbox sweep, and "Daily Horizon scan" is now the Weekly Horizon scan. If one exists, update it in place to the new name, schedule and prompt. Name any other task that looks like a stray copy of these, and leave it alone.
-6. **Report** as a table: each task, created, updated or unchanged, where it runs, and its next run. Then one line: a task that needs the Mac does its work only while the Mac is awake with Claude Desktop open; a run that finds it asleep ends at once, and the next run picks up. If `gh auth status` isn't signed in in this clone, say the Friday tune-up's pull requests come back as proposals in its report until `gh auth login` is run.
+6. **Report** as a table: each task, created, updated or unchanged, where it runs, and its next run. Then one line: a task that needs the Mac does its work only while the Mac is awake with Claude Desktop open; a run that finds it asleep ends at once, and the next run picks up.
 
 ## Why the sweep needs the Mac
 
@@ -163,23 +163,23 @@ Never read, move, rename or delete anything in "Google Meet" or its subfolders; 
 
 ## Task 4: Friday Bousleh tune-up
 
-- **Runs:** as a scheduled task that requires this Mac, with this repo folder as its working folder. It reads your data through the Mac's `bousleh` MCP server, and changes Bousleh itself through pull requests from this folder, on your own clone or fork, never on the upstream repo.
+- **Runs:** as a scheduled task that requires this Mac, with this repo folder as its working folder. It works on your data through the Mac's `bousleh` MCP server, and only reads the repo folder, for the setup check. It never changes the repo.
 - **Schedule:** every Friday at 16:47, local time (end of day; off the hour, since runs on the hour can be delayed).
 - **Cron:** `47 16 * * 5`
-- **Needs:** the Bousleh MCP server on this Mac; `git`, `pnpm` and a signed-in `gh` in this folder for pull requests. No connectors.
-- **Permissions:** runs without asking, for the Bousleh tools and for `git`, `pnpm` and `gh` in this folder.
-- **What it may do on its own:** safe, reversible data fixes that follow rules the user has already set (each with a reason starting `Friday tune-up:`, nothing deleted); judgment calls go to the user's queue; any change to Bousleh itself goes to a pull request, on the user's own clone or fork, for the user to merge. It reports only when it did something.
+- **Needs:** the Bousleh MCP server on this Mac, and `scripts/setup-mac.sh --check` in this folder. No connectors, no `git`, no `gh`.
+- **Permissions:** runs without asking, for the Bousleh tools and the read-only setup check.
+- **What it may do on its own:** safe, reversible data fixes that follow rules the user has already set (each with a reason starting `Friday tune-up:`, nothing deleted); judgment calls (duplicates, stale commitments and plans) go to the user's queue; anything off in the setup goes in its report. It never edits files, runs `git`, `gh` or `pnpm`, or opens a pull request or an issue: changes to Bousleh are the user's, by hand. It reports only when it did something or found something off.
 
 Prompt:
 
 ```text
 Bousleh: Friday Bousleh tune-up. You are running unattended, so ask nothing.
 
-Use the Bousleh plugin's Tune skill (bousleh:tune) and follow it exactly: read the week with vault_activity, fix only what its "What you may fix on your own" table allows (at most ten fixes), queue at most five judgment calls, and open one pull request only for patterns this week's activity shows, never merging it. The Bousleh tools are the `bousleh` MCP server on this Mac. The working folder is the Bousleh repo.
+Use the Bousleh plugin's Tune skill (bousleh:tune) and follow it exactly: read the week with vault_activity, fix only what its "What you may fix on your own" table allows (at most ten fixes), queue at most five judgment calls, and check this Mac's setup with `scripts/setup-mac.sh --check`. The Bousleh tools are the `bousleh` MCP server on this Mac. The working folder is the Bousleh repo, and you only read it.
 
 1. Call vault_health. If the Mac or the Bousleh server doesn't answer, end at once with one line ("Mac not reachable; tune-up skipped this week").
 2. Follow the Tune skill's steps 1 to 5.
-3. If nothing needed fixing, queuing or changing, end with one line: "Nothing to tune this week." Otherwise end with the skill's short report.
+3. If nothing needed fixing or queuing and the setup is in order, end with one line: "Nothing to tune this week." Otherwise end with the skill's short report.
 
-Every write you make to Bousleh carries a reason or note starting "Friday tune-up:". Never delete anything, never change the user's dumps or their own commitments, and never undo something the user did. In the repo, work only on a branch named tune/<date>, push it to this clone's own remote (the user's clone or fork) and open the pull request there; never open one on the upstream Bousleh repo, never push to main and never merge. Never create, change or delete scheduled tasks. Use no connector: never read or send email, chat messages, calendar events, meetings or Drive files.
+Every write you make to Bousleh carries a reason or note starting "Friday tune-up:". Never delete anything, never change the user's dumps or their own commitments, and never undo something the user did. Never change the repo: don't edit any file, don't run git, gh, pnpm or any command other than `scripts/setup-mac.sh --check`, and never open a pull request or an issue. Never create, change or delete scheduled tasks. Use no connector: never read or send email, chat messages, calendar events, meetings or Drive files.
 ```

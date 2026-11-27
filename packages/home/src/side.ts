@@ -49,7 +49,7 @@ export function initSide(): void {
 <div class="sp-h"><span class="disp sp-t">Tune now</span><span class="where mac">On this Mac</span><span class="sp-fill"></span><span class="mono run-status"></span><button class="ic sm" type="button" data-action="side-close" aria-label="Close the panel">${icons.close}</button></div>
 <div class="run-blocked"></div>
 <div class="log mono tune-log" role="log" aria-live="polite"></div>
-<p class="sp-note">Runs Claude Code on this Mac with the Bousleh plugin: the Tune skill, headless. Safe fixes only; judgment calls go to your queue; changes to Bousleh come as a pull request it never merges.</p>
+<p class="sp-note">Runs Claude Code on this Mac with the Bousleh plugin: the Tune skill, headless. Safe fixes to your data only; judgment calls go to your queue; it checks this Mac's setup and never changes the repo.</p>
 <div class="sp-acts tune-acts"></div>
 </section>
 <section class="sp sp-health" aria-label="Health" hidden>

@@ -12,7 +12,7 @@ The nine Bousleh modes, plus Drop for phone captures, as Claude skills in one pl
 | Communicate | One truth rendered per audience | Docs, Slides |
 | Coach | Coaching the PMs you lead; growth notes | Conversation, Docs |
 | Horizon | The outside view: digest, watch lists, the reading queue, the Weekly Horizon scan and the watch list changes it proposes | Home, Docs |
-| Tune | The Friday tune-up: reviews the week's activity, fixes safe noise, queues judgment calls, opens a pull request for repeated corrections | Queue, pull requests |
+| Tune | The Friday tune-up: reviews the week's activity, fixes safe noise in your data, queues judgment calls, checks this Mac's setup; never changes the repo | Queue, its report |
 | Drop | Phone dictation saved verbatim to the Drive folder "Bousleh Inbox" for Capture | Google Drive |
 
 ## Requirements

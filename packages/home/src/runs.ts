@@ -12,12 +12,14 @@ export const APP_JSON = '~/.bousleh/app.json';
 export const SETUP_COMMAND = 'scripts/setup-mac.sh';
 
 /**
- * Tune: Claude Code, headless, on the repo. acceptEdits lets it edit files in the repo; the allowed
- * tools let it call the bousleh MCP tools and run git, gh and pnpm without asking (no one is there to
- * answer); stream-json (which needs --verbose with -p) prints each step as it happens.
+ * Tune: Claude Code, headless, in the repo folder, on your data only. It may call the bousleh MCP tools
+ * and run the one read-only setup check without asking (no one is there to answer). Everything else is
+ * refused: the default permission mode asks, and a headless run can't be answered, so nothing is
+ * edited; git, gh, pnpm and file edits are disallowed outright as well, so Tune never changes the repo.
+ * stream-json (which needs --verbose with -p) prints each step as it happens.
  */
 export const TUNE_COMMAND =
-  'claude -p "Tune: run the Friday tune-up now." --permission-mode acceptEdits --output-format stream-json --verbose --allowedTools "mcp__bousleh" "Bash(git *)" "Bash(gh *)" "Bash(pnpm *)"';
+  'claude -p "Tune: run the Friday tune-up now." --output-format stream-json --verbose --allowedTools "mcp__bousleh" "Bash(scripts/setup-mac.sh --check)" --disallowedTools "Bash(git *)" "Bash(gh *)" "Bash(pnpm *)" "Edit" "Write" "NotebookEdit"';
 
 export const COMMANDS: Record<RunKind, string> = {
   tune: TUNE_COMMAND,

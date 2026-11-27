@@ -57,7 +57,6 @@ The MCP server snapshots your data once a day to `~/.bousleh-backups/<date-time>
 
 Same steps, with the work Claude account and the work Google Drive connected to it. Work captures go to that Drive's own "Bousleh Inbox" (Drop creates it on first use), and work data stays on the work Mac.
 
-Two things to know on a work Mac:
+One thing to know on a work Mac:
 
-- **Pull requests from the Friday tune-up are public** when your clone's remote is a public repo. Tune only opens one when it has a change to Bousleh itself, but its description is written from that week's activity, so it can mention work. On a work Mac, either leave `gh` signed out there (the tune-up then puts its proposals in its report instead of opening a pull request), or point the clone at a private fork.
 - **The plugin** on the work Claude account comes from GitHub, so that account needs to reach this repo: fine once the repo is public, or add it from your fork.
