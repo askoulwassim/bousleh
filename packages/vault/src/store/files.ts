@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import {
+  chmodSync,
   constants,
   copyFileSync,
   existsSync,
-  mkdirSync,
   readdirSync,
   readFileSync,
   renameSync,
@@ -15,6 +15,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path';
+import { makePrivateDir, PRIVATE_FILE_MODE } from './private.js';
 
 /*
  * File writes inside your data home, tied to the op's SQLite transaction.
@@ -69,27 +70,28 @@ export function safeDataPath(home: string, relPath: string, options: { allowVers
   return target;
 }
 
-/** Write a file atomically: a temporary file in `.staging`, then a rename over the target. */
+/** Write a file atomically (0600): a temporary file in `.staging`, then a rename over the target. */
 export function writeAtomic(home: string, target: string, content: string): void {
   const staging = join(home, STAGING_DIR);
-  mkdirSync(staging, { recursive: true });
-  mkdirSync(dirname(target), { recursive: true });
+  makePrivateDir(staging);
+  makePrivateDir(dirname(target));
   const temp = join(staging, `tmp-${randomBytes(8).toString('hex')}`);
-  writeFileSync(temp, content, 'utf8');
+  writeFileSync(temp, content, { encoding: 'utf8', mode: PRIVATE_FILE_MODE });
   renameSync(temp, target);
 }
 
 /**
  * Move a file, also across volumes: `rename` first, and on `EXDEV` (the synced Google Drive folder can
  * sit on another volume) copy to a temporary name beside the target, keep the modification time,
- * rename it into place and only then unlink the source. Never overwrites an existing target.
- * `rename` is injectable so tests can simulate a cross-volume move.
+ * rename it into place and only then unlink the source. Never overwrites an existing target. The
+ * moved file ends up 0600, like every file in your data home. `rename` is injectable so tests can simulate a cross-volume move.
  */
 export function moveFile(source: string, target: string, rename: (from: string, to: string) => void = renameSync): void {
-  mkdirSync(dirname(target), { recursive: true });
+  makePrivateDir(dirname(target));
   if (existsSync(target)) throw new Error(`cannot move ${source}: ${target} already exists`);
   try {
     rename(source, target);
+    chmodSync(target, PRIVATE_FILE_MODE);
     return;
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'EXDEV') throw e;
@@ -97,6 +99,7 @@ export function moveFile(source: string, target: string, rename: (from: string, 
   const partial = `${target}.${randomBytes(6).toString('hex')}.partial`;
   try {
     copyFileSync(source, partial, constants.COPYFILE_EXCL);
+    chmodSync(partial, PRIVATE_FILE_MODE);
     const { atime, mtime } = statSync(source);
     utimesSync(partial, atime, mtime);
     renameSync(partial, target);
@@ -214,9 +217,9 @@ export class FileStager {
   private open(): void {
     if (this.marker) return;
     const staging = join(this.home, STAGING_DIR);
-    mkdirSync(staging, { recursive: true });
+    makePrivateDir(staging);
     this.marker = join(staging, `${OPEN_MARKER_PREFIX}${process.pid}-${randomBytes(6).toString('hex')}`);
-    writeFileSync(this.marker, new Date().toISOString(), 'utf8');
+    writeFileSync(this.marker, new Date().toISOString(), { encoding: 'utf8', mode: PRIVATE_FILE_MODE });
   }
 
   private close(): void {

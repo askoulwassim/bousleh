@@ -18,4 +18,4 @@ export * from './ops/vault.js';
 export * from './ops/watch.js';
 
 /** Engine version, reported by `vault.health` and the MCP server. */
-export const BOUSLEH_VERSION = '0.0.0';
+export const BOUSLEH_VERSION = '0.2.0';

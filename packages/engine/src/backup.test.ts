@@ -1,9 +1,9 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { OpContext, OpOutcome } from '@bousleh/contracts';
 import Database from 'better-sqlite3';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Engine, openEngine } from './engine.js';
 
 /* Backups on the same disk: vault.backup snapshots and the engine's daily automatic one. */
@@ -85,6 +85,38 @@ describe('vault.backup', () => {
       expect((db.prepare("SELECT count(*) AS n FROM objects WHERE kind = 'problem'").get() as { n: number }).n).toBe(1);
     } finally {
       db.close();
+    }
+  });
+});
+
+describe('backup permissions', () => {
+  const mode = (path: string) => statSync(path).mode & 0o777;
+
+  it('makes the backups folder and every snapshot readable only by you', async () => {
+    const id = await seed('Private');
+    // A data home from before v0.2: folders and files other accounts could read.
+    chmodSync(join(home, 'work'), 0o755);
+    chmodSync(join(home, 'work', `${id}.md`), 0o644);
+    const out = ok(await run('vault.backup', {})) as { path: string };
+    expect(mode(backups)).toBe(0o700);
+    expect(mode(out.path)).toBe(0o700);
+    expect(mode(join(out.path, 'work'))).toBe(0o700);
+    expect(mode(join(out.path, 'work', `${id}.md`))).toBe(0o600);
+    expect(mode(join(out.path, 'vault.db'))).toBe(0o600);
+  });
+
+  it('tightens an existing backups folder, with one line on stderr', async () => {
+    await seed('Loose');
+    mkdirSync(backups, { mode: 0o755 });
+    chmodSync(backups, 0o755);
+    const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      ok(await run('vault.backup', {}));
+      expect(mode(backups)).toBe(0o700);
+      expect(stderr).toHaveBeenCalledTimes(1);
+      expect(String(stderr.mock.calls[0]?.[0])).toContain(`bousleh: ${backups} was readable by other accounts (mode 755)`);
+    } finally {
+      stderr.mockRestore();
     }
   });
 });

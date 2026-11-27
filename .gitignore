@@ -20,3 +20,6 @@ coverage/
 
 # Home preview output (fixtures from a throwaway engine, screenshots)
 packages/home/preview/out/
+
+# the private personal-data denylist for scripts/check-personal.sh
+.bousleh-denylist

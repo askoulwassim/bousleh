@@ -1,0 +1,44 @@
+name: ci
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build-test:
+    # Bousleh is macOS-first: both Macs it runs on, and the setup script, are macOS.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+  fresh-install:
+    # A fresh install from the lockfile (no cache), then the built MCP server over stdio on a temporary home.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: pnpm i --frozen-lockfile
+      - run: pnpm build
+      - name: MCP server smoke test
+        run: node scripts/smoke.mjs
+  personal-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: No personal data in the tracked tree
+        env:
+          # Newline-separated, case-insensitive regexes. Empty on forks: the check prints a notice and passes.
+          BOUSLEH_DENYLIST: ${{ secrets.BOUSLEH_DENYLIST }}
+        run: scripts/check-personal.sh

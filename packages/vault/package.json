@@ -1,6 +1,7 @@
 {
   "name": "@bousleh/vault",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "description": "Storage, migrations, history and typed objects in ~/.bousleh. Owns vault.*, deposits.*, commitments.*, people.*.",

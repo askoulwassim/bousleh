@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   type Actor,
@@ -22,6 +22,7 @@ import { VAULT_DB } from '../home.js';
 import { type FileStager, OPEN_MARKER_PREFIX, STAGING_DIR, writeAtomic } from './files.js';
 import { bodyOf, currentPath, renderMarkdown, versionPath } from './markdown.js';
 import { migrate } from './migrations.js';
+import { makePrivateDir, PRIVATE_FILE_MODE, tightenDir } from './private.js';
 import { newId } from './ulid.js';
 
 /*
@@ -42,11 +43,18 @@ export class Vault {
     return this.connection !== undefined;
   }
 
-  /** The connection; opening it creates the data home and applies migrations. */
+  /**
+   * The connection; opening it creates the data home (0700, the database 0600) and applies
+   * migrations. A data home that other accounts can read is set to 0700, with one line on stderr.
+   */
   get db(): Database.Database {
     if (!this.connection) {
-      mkdirSync(this.home, { recursive: true });
-      const db = new Database(join(this.home, VAULT_DB));
+      makePrivateDir(this.home);
+      tightenDir(this.home);
+      const file = join(this.home, VAULT_DB);
+      // SQLite creates the database 0644 and gives -wal and -shm its mode, so create it 0600 first.
+      if (!existsSync(file)) closeSync(openSync(file, 'a', PRIVATE_FILE_MODE));
+      const db = new Database(file);
       db.pragma('journal_mode = WAL');
       db.pragma('foreign_keys = ON');
       db.pragma('busy_timeout = 5000');
