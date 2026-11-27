@@ -1,5 +1,5 @@
 import { captureName, captureText, failure } from './acts.js';
-import { app } from './app.js';
+import { app, dictationNote } from './app.js';
 import { SERVER } from './ask.js';
 import { openClaude } from './claude.js';
 import { icons, logoSmall } from './icons.js';
@@ -44,7 +44,7 @@ export function initCapture(): void {
 <div class="cap-b">
 <div class="cap-listen"><button class="listen" type="button" data-action="cap-mic" aria-label="Stop dictating">${icons.mic(18)}</button><span class="cap-lt"><span>Say it the way you'd tell a colleague</span><span class="mono">Tap the mic to stop and edit · Esc closes, nothing kept</span></span></div>
 <div class="cap-live" aria-live="polite"><span class="cap-final"></span><span class="cap-partial"></span><span class="log-cursor">▍</span></div>
-<span class="eb cap-nodict">Dictation isn't offered in this window: type it</span>
+<span class="muted-note cap-nodict"></span>
 <textarea class="cap-text" aria-label="What to capture" placeholder="Say what you owe, who said what, what you decided…"></textarea>
 <div class="cap-sent"><span class="cap-ok">${icons.check}</span><span class="cap-st"><span class="cap-st-t">In the inbox</span><span class="cap-st-d">The next sweep files it.</span></span></div>
 <div class="cap-excerpt"></div>
@@ -97,8 +97,13 @@ function startDictation(): void {
   app.dictTarget = 'capture';
   state.phase = 'listening';
   // Called straight from the click: nothing awaited before start().
+  app.dictRefused = null;
   d.start().catch((err: { code?: string }) => {
-    if (err?.code === 'not_granted' || err?.code === 'unavailable') app.caps.dictation = null;
+    // A no stays a no (don't ask again this session); anything else can be tried again with Dictate.
+    if (err?.code === 'not_granted') {
+      app.dictRefused = 'not_granted';
+      app.caps.dictation = null;
+    } else app.dictRefused = 'unavailable';
     if (state?.phase === 'listening') state.phase = 'typing';
     paint();
   });
@@ -253,7 +258,9 @@ export function paint(): void {
   part<HTMLElement>('.cap-live').hidden = s.phase !== 'listening';
   part<HTMLElement>('.cap-final').textContent = s.text;
   part<HTMLElement>('.cap-partial').textContent = s.partial ? `${s.text ? ' ' : ''}${s.partial}` : '';
-  part<HTMLElement>('.cap-nodict').hidden = !(typing && app.caps.dictation === null);
+  const note = dictationNote(app.caps.dictation !== null, app.dictRefused);
+  part<HTMLElement>('.cap-nodict').hidden = !(typing && note !== '');
+  part<HTMLElement>('.cap-nodict').textContent = note;
   const area = part<HTMLTextAreaElement>('.cap-text');
   area.hidden = !typing;
   if (typing && area.value !== s.text) area.value = s.text;

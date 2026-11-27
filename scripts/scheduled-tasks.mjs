@@ -16,7 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const repoArg = args.indexOf('--repo');
 const repo = repoArg >= 0 ? args[repoArg + 1] : resolve(here, '..');
-if (!repo || !repo.startsWith('/')) fail('--repo needs an absolute path');
+if (!repo?.startsWith('/')) fail('--repo needs an absolute path');
 
 const text = readFileSync(resolve(here, '..', 'docs', 'scheduled-tasks.md'), 'utf8');
 const sections = text.split(/\n## (?=Task \d+: )/).slice(1);
