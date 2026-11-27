@@ -160,8 +160,7 @@ If the Google Drive connector isn't available in this session, skip this and say
 6. **What is left for them, said, not done.** In a few lines:
    - Google Drive and Google Calendar connected to this Claude account (Settings, Connectors).
    - Two folders at the top of My Drive, named exactly: `Bousleh Inbox` (phone captures and the weekly scan land there; Drop also creates it on first use) and `Bousleh` (it holds `Bousleh Watch Lists.md`, written in step 5 when Drive is connected). In Google Drive: New, New folder, for each.
-   - The scheduled tasks: in Claude Desktop's Code tab, on the repo folder, say "Set up the scheduled tasks in docs/scheduled-tasks.md."
-   - Home: in the same Code tab, say "Publish Home from docs/home.md.", then Install as app in its footer.
+   - Home and the scheduled tasks: rerun `scripts/setup-mac.sh` in the repo folder and press Enter on "Finish setting up Bousleh from docs/finish-setup.md.", then Install as app in Home's footer. Leave this line out when set me up is running inside that finish step: it carries on with them itself.
 7. **Read back** what was filed: who they are, each scope with its line of strategy, each watch list. End with one next move: "Try: Pulse: where am I?", or "Capture this:" and whatever is on their mind.
 
 ## Unattended runs
