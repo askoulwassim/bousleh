@@ -10,9 +10,14 @@ Saying it again republishes to the same link. (A script can't do this step: publ
 
 ## What it does
 
-- **In the Claude desktop app, with the bousleh server connected:** live. It reads the engine through the local server (`host:bousleh`): `context_strata`, `pulse_today`, `watch_digest`, `watchlists_get`, `queue_list`, `commitments_list` and `assets_list`, and today's events from the Google Calendar connector (`list_events`), merged with the meetings filed in Bousleh. It refreshes itself every few minutes and stamps the time it last read.
+- **In the Claude desktop app, with the bousleh server connected:** live. It reads the engine through the local server (`host:bousleh`): `context_strata`, `pulse_today`, `watch_digest`, `watchlists_get`, `queue_list`, `commitments_list` and `assets_list` (and writes with `vault_supersede`, `commitments_close`, `commitments_snooze` and `inbox_drop`, below), and today's events from the Google Calendar connector (`list_events`), merged with the meetings filed in Bousleh. It refreshes itself every few minutes and stamps the time it last read.
 - **On the phone and on the web:** the last snapshot. Each live load saves one snapshot of what it drew (when it changed) to the page's own storage, readable only by you; elsewhere Home shows that snapshot, stamped "Snapshot 20:43". With no snapshot yet it says so.
-- **Every button is one op or one prompt.** Save and Skip on a Horizon story call `vault_supersede` (status `to_read` or `dismissed`), live only. Every other button copies a ready prompt for the mode it names ("Counsel: prep me for …", "Workshop: let's workshop …") to the clipboard, or shows it in a box to copy if the clipboard is refused. Drop on the phone copies "Drop this: " for the Drop skill. Home never answers in place in v1.
+- **Every button is one op or one prompt.** Ops run live only, each on one press:
+  - Save and Skip on a Horizon story call `vault_supersede` (status `to_read` or `dismissed`).
+  - Each commitment in First has Done, Date, Snooze and Drop. Done and Drop call `commitments_close` (`done`, or `dropped` with the note "Dropped from Home.") and ask for a second press. Date opens a day picker and sets `due` with `vault_supersede`; Snooze opens one and calls `commitments_snooze`. The card then says what happened until the next read takes it out of First. Meetings in First keep their Counsel prompt.
+  - Capture and Drop open a box with Send to inbox: the text goes to `inbox_drop` (source `local`, named `capture-<date>-<time>-home.md`) and the Hourly inbox sweep files it. Copy is still there to file it now in a chat.
+  - Every other button copies a ready prompt for the mode it names ("Counsel: prep me for …", "Workshop: let's workshop …") to the clipboard, or shows it in a box to copy if the clipboard is refused. On the phone and the web (a snapshot) every button is a prompt, and Drop copies "Drop this: " for the Drop skill.
+- **Install as app.** Where the Claude desktop app offers it, the footer has Install as app (the `desktop` capability). The installed app has Home's own icon and shows the needs-you count on its Dock tile. It asks for no desktop permission.
 
 ## How to publish it (for Claude)
 

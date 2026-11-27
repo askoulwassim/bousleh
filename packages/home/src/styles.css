@@ -419,6 +419,56 @@ p {
 .fc-s {
   margin-top: auto;
 }
+.fc-main {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.fc-main:focus-visible {
+  outline: 2px solid var(--bsl-accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+/* Done, Date, Snooze, Drop on a commitment in focus (live only). */
+.fc-a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding-top: 8px;
+  margin-top: 2px;
+  border-top: 1px solid var(--bsl-line);
+}
+.fa {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--bsl-line-2);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background var(--bsl-motion-fast),
+    border-color var(--bsl-motion-fast);
+}
+.fa.ask {
+  border-color: var(--bsl-accent);
+  background: var(--bsl-accent-fill);
+  color: var(--bsl-ink);
+}
+.fc-ok {
+  font-size: 11px;
+  color: var(--bsl-moving);
+}
+.pf-row .fc-a {
+  margin-top: 6px;
+}
 .pf {
   gap: 10px;
 }
@@ -936,6 +986,27 @@ p {
 }
 
 /* ------------------------------------------------------------ sheet and toast */
+.sheet-q {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sheet-q[hidden],
+.sheet-day[hidden],
+.sheet textarea[hidden],
+.sheet-a button[hidden] {
+  display: none;
+}
+.sheet-day {
+  height: var(--bsl-size-control);
+  background: var(--bsl-bg-2);
+  color: var(--bsl-fg);
+  border: 1px solid var(--bsl-line-2);
+  border-radius: 10px;
+  padding: 0 12px;
+  font: 500 14px var(--bsl-font-ui);
+  color-scheme: dark;
+}
 .sheet {
   position: fixed;
   inset: 0;
@@ -1310,6 +1381,9 @@ p {
 }
 
 @media (hover: hover) {
+  .fa:hover {
+    border-color: var(--bsl-accent);
+  }
   .fc:hover,
   .cell:hover,
   .void:hover {

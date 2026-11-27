@@ -633,6 +633,7 @@ export function focusOf(pulse: Pulse, now: Date, book: PromptBook, nameOf: (slug
           : prompts.pulseFocus(f.title);
     return {
       kind: f.kind,
+      id: f.id,
       eyebrow: first,
       title: f.title,
       detail: rest.join(' · '),

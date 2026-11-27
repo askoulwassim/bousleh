@@ -17,6 +17,9 @@ const ui = (over: Partial<UiState> = {}): UiState => ({
   errors: {},
   approval: false,
   done: {},
+  acted: {},
+  confirm: null,
+  install: false,
   ...over,
 });
 

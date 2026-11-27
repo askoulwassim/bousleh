@@ -28,6 +28,7 @@ function fakeRuntime(fixtures, mode, stored) {
   const mode = ${JSON.stringify(mode)};
   const stored = ${JSON.stringify(stored ?? null)};
   window.__writes = [];
+  window.__calls = [];
   const later = (fn, ms = 40) => setTimeout(fn, ms);
   const ok = (output) => ({ content: [{ type: 'text', text: JSON.stringify(output) }], structuredContent: { status: 'ok', output } });
   const pick = (tool, input) => (tool === 'watch_digest' && input && input.status ? fixtures.watch_digest_to_read : fixtures[tool]);
@@ -40,7 +41,10 @@ function fakeRuntime(fixtures, mode, stored) {
       });
       return () => {};
     },
-    callTool: async (server, tool, input) => ok({ id: input.id }),
+    callTool: async (server, tool, input) => {
+      window.__calls.push({ server, tool, input });
+      return ok({ id: input.id });
+    },
     invalidate: async () => {},
   });
   const db = Object.freeze({
@@ -50,7 +54,9 @@ function fakeRuntime(fixtures, mode, stored) {
     }),
   });
   const user = Object.freeze({ isOwner: async () => true });
-  window.claude = Object.freeze({ use: (name) => new Promise((r) => later(() => r({ mcp, db, user }[name] ?? null), 20)) });
+  // The desktop capability outside an installed app's window: only install, offered.
+  const desktop = Object.freeze({ install: { state: async () => 'available', request: async () => 'installed' } });
+  window.claude = Object.freeze({ use: (name) => new Promise((r) => later(() => r({ mcp, db, user, desktop }[name] ?? null), 20)) });
 })();
 </script>`;
 }

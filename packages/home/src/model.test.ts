@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { glyphState } from './glyph.js';
 import { abbreviate, buildViewModel, clockDays, mergeMeetings, needsAltitude, needsYouCount, shortTitle } from './model.js';
-import { renderPage } from './render.js';
+import { acts, renderPage } from './render.js';
 import type { Pulse, Sources, Strata, StrataCell, StrataObj } from './types.js';
 
 /* The pure view model: op outputs in, what Home draws out. Data here is invented for the test. */
@@ -331,7 +331,18 @@ describe('buildViewModel', () => {
     expect(drawn?.minor?.needs).toBe(true);
     // The needs-you count stays the strata's.
     expect(vm.hero.needs).toBe(2);
-    const html = renderPage(vm, { mode: 'live', stamp: '09:30', filter: 'all', docsOpen: false, errors: {}, approval: false, done: {} });
+    const html = renderPage(vm, {
+      mode: 'live',
+      stamp: '09:30',
+      filter: 'all',
+      docsOpen: false,
+      errors: {},
+      approval: false,
+      done: {},
+      acted: {},
+      confirm: null,
+      install: false,
+    });
     expect(html).toContain('<details class="minor"><summary class="eb sm t-needs">Small follow-ups (2)</summary>');
     expect(html).not.toContain('<details class="minor" open');
 
@@ -427,6 +438,39 @@ describe('buildViewModel', () => {
     expect(vm.focus?.more).toBe(2);
     expect(vm.focus?.snoozed).toBe('3 snoozed · next Nov 20');
     expect(vm.prompts[vm.focus?.morePrompt ?? '']).toBe('Pulse: where am I?');
+
+    // Live, each commitment in focus carries Done, Date, Snooze and Drop; the meeting and a snapshot carry none.
+    expect(vm.focus?.items.map((f) => f.id)).toEqual([
+      'cmt_01JBX000000000000000000F01',
+      'mtg_01JBX000000000000000000F02',
+      'cmt_01JBX000000000000000000F03',
+    ]);
+    const ui = {
+      mode: 'live' as const,
+      stamp: '09:30',
+      filter: 'all',
+      docsOpen: false,
+      errors: {},
+      approval: false,
+      done: {},
+      acted: {},
+      confirm: null,
+      install: false,
+    };
+    const [first, meeting] = vm.focus?.items ?? [];
+    if (!first || !meeting) throw new Error('focus items expected');
+    const live = acts(first, ui);
+    expect(live).toContain('data-act="done" data-id="cmt_01JBX000000000000000000F01"');
+    for (const label of ['>Done<', '>Date<', '>Snooze<', '>Drop<']) expect(live).toContain(label);
+    expect(acts(meeting, ui)).toBe('');
+    expect(acts(first, { ...ui, mode: 'snapshot' })).toBe('');
+    expect(acts({ ...first, id: undefined }, ui)).toBe('');
+    // Done asks for a second press; once acted on, the row says what happened.
+    expect(acts(first, { ...ui, confirm: 'cmt_01JBX000000000000000000F01:done' })).toContain('class="fa ask"');
+    expect(acts(first, { ...ui, confirm: 'cmt_01JBX000000000000000000F01:done' })).toContain('>Mark done?<');
+    expect(acts(first, { ...ui, acted: { cmt_01JBX000000000000000000F01: 'snoozed' } })).toContain('>Snoozed<');
+    expect(renderPage(vm, ui)).toContain('data-act="snooze"');
+    expect(renderPage(vm, { ...ui, mode: 'snapshot' })).not.toContain('data-act=');
 
     // Nothing snoozed, nothing ranked: an empty focus, which the page leaves out.
     expect(buildViewModel(sources(), NOW).focus).toEqual({ items: [], more: 0, snoozed: null, morePrompt: expect.any(String) });

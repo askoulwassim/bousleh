@@ -1,6 +1,16 @@
+import { type Act, actCall, actDoneState, captureName, captureText, minDay, quickDays } from './acts.js';
 import { clock } from './format.js';
 import { buildViewModel } from './model.js';
-import { type CallToolResult, type Db, type DocumentReference, type Mcp, type McpError, runtime, type WatchEvent } from './platform.js';
+import {
+  type CallToolResult,
+  type Db,
+  type Desktop,
+  type DocumentReference,
+  type Mcp,
+  type McpError,
+  runtime,
+  type WatchEvent,
+} from './platform.js';
 import { prompts } from './prompts.js';
 import { renderPage, type UiState } from './render.js';
 import { readSnapshot, SNAPSHOT_PATH, type SnapshotDoc, shouldWrite, snapshotDoc } from './snapshot.js';
@@ -11,7 +21,9 @@ import type { Sources, ViewModel } from './types.js';
  * Home's runtime. First paint needs nothing: the page draws itself, then lights up as capabilities
  * resolve. Live: the bousleh server on this device (host:bousleh, the Claude desktop app only),
  * read with watchTool so the page stays current; the Google Calendar connector for today's events.
- * Elsewhere: the last snapshot from the db, stamped with its time. Every button is one op or one prompt.
+ * Elsewhere: the last snapshot from the db, stamped with its time. Every button is one op or one prompt:
+ * live, a commitment in focus is closed, dropped, dated or snoozed in place, and a capture goes straight
+ * to the inbox; everything that needs judgment is still a prompt to paste into Claude.
  */
 
 const SERVER = 'host:bousleh';
@@ -45,12 +57,24 @@ const READS: [keyof Sources, string, Record<string, unknown>][] = [
 ];
 
 const sources: Sources = {};
-const ui: UiState = { mode: 'connecting', stamp: '', filter: 'all', docsOpen: false, errors: {}, approval: false, done: {} };
+const ui: UiState = {
+  mode: 'connecting',
+  stamp: '',
+  filter: 'all',
+  docsOpen: false,
+  errors: {},
+  approval: false,
+  done: {},
+  acted: {},
+  confirm: null,
+  install: false,
+};
 let view: ViewModel = buildViewModel({}, new Date());
 let stored: SnapshotDoc | null = null;
 let storedRead: Promise<void> = Promise.resolve();
 let snapshotRef: DocumentReference | null = null;
 let mcp: Mcp | null = null;
+let desktop: Desktop | null = null;
 let unwatch: (() => void)[] = [];
 const settled = new Set<string>();
 let wrote = false;
@@ -78,6 +102,7 @@ function paint(): void {
   } else if (ui.mode === 'snapshot' && stored) {
     view = stored.view;
   }
+  updateBadge();
   const html = renderPage(view, ui);
   if (html === last) return;
   const focus = focusKey(document.activeElement);
@@ -88,7 +113,7 @@ function paint(): void {
 
 function focusKey(el: Element | null): string | null {
   if (!(el instanceof HTMLElement) || !app.contains(el)) return null;
-  for (const attr of ['data-prompt', 'data-filter', 'data-action', 'data-id']) {
+  for (const attr of ['data-prompt', 'data-filter', 'data-action', 'data-act', 'data-id']) {
     const value = el.getAttribute(attr);
     if (value !== null) return `[${attr}="${CSS.escape(value)}"]`;
   }
@@ -108,6 +133,8 @@ function watchRead(key: keyof Sources, tool: string, input: Record<string, unkno
         const out = unwrapBousleh(ev.result);
         if (out.ok) {
           (sources as Record<string, unknown>)[key] = out.output;
+          // A fresh Pulse read shows what the acts changed: drop their "Marked done" lines.
+          if (key === 'pulse') for (const [id, state] of Object.entries(ui.acted)) if (state !== 'busy') delete ui.acted[id];
           delete ui.errors[tool];
           ui.approval = false;
           goLive(ev.result);
@@ -243,30 +270,203 @@ async function copy(text: string): Promise<boolean> {
   }
 }
 
-/** A prompt goes to the clipboard; if the clipboard is refused, it shows in a box to select. */
+/**
+ * A prompt goes to the clipboard; if the clipboard is refused, it shows in a box to select. A capture
+ * prompt ("Capture this: ", "Drop this: ") opens the capture box instead, which sends live.
+ */
 async function launch(text: string): Promise<void> {
+  if (text === prompts.capture() || text === prompts.drop()) {
+    openCapture(text === prompts.drop() ? 'Drop' : 'Capture', text);
+    return;
+  }
   if (await copy(text)) toast('Copied. Paste it into Claude.');
   else openSheet('Copy this prompt', text, false);
 }
 
+type SheetKind = 'copy' | 'compose' | 'capture' | 'when';
+/** For the when sheet: which act and which commitment. */
+let pending: { act: 'date' | 'snooze'; id: string } | null = null;
+
+const part = <T extends HTMLElement>(selector: string) => sheetEl.querySelector(selector) as T;
+
+function showSheet(kind: SheetKind, title: string, note: string): void {
+  part<HTMLElement>('.sheet-t').textContent = title;
+  part<HTMLElement>('.sheet-n').textContent = note;
+  part<HTMLElement>('.sheet-q').hidden = kind !== 'when';
+  part<HTMLInputElement>('.sheet-day').hidden = kind !== 'when';
+  part<HTMLTextAreaElement>('textarea').hidden = kind === 'when';
+  const copyBtn = part<HTMLButtonElement>('[data-action="sheet-copy"]');
+  copyBtn.hidden = kind === 'when';
+  // Copy is the main button unless the sheet can send or set in place.
+  copyBtn.className = kind === 'capture' ? 'btn2 sm' : 'btn';
+  part<HTMLButtonElement>('[data-action="sheet-inbox"]').hidden = kind !== 'capture';
+  part<HTMLButtonElement>('[data-action="sheet-set"]').hidden = kind !== 'when';
+  sheetEl.hidden = false;
+}
+
 function openSheet(title: string, text: string, editable: boolean): void {
-  const titleEl = sheetEl.querySelector('.sheet-t') as HTMLElement;
-  const area = sheetEl.querySelector('textarea') as HTMLTextAreaElement;
-  const note = sheetEl.querySelector('.sheet-n') as HTMLElement;
-  titleEl.textContent = title;
+  showSheet(
+    editable ? 'compose' : 'copy',
+    title,
+    editable ? 'Finish it here, copy it, then paste it into Claude.' : 'The clipboard was not available. Select the text and copy it.',
+  );
+  const area = part<HTMLTextAreaElement>('textarea');
   area.value = text;
   area.readOnly = !editable;
-  note.textContent = editable
-    ? 'Finish it here, copy it, then paste it into Claude.'
-    : 'The clipboard was not available. Select the text and copy it.';
-  sheetEl.hidden = false;
   area.focus();
   if (editable) area.setSelectionRange(text.length, text.length);
   else area.select();
 }
 
+/** Capture or Drop: live, the note goes straight to the inbox, where the Hourly inbox sweep files it. */
+function openCapture(title: string, text: string): void {
+  if (!mcp || ui.mode !== 'live') {
+    openSheet(title, text, true);
+    return;
+  }
+  showSheet('capture', title, 'Send puts it in your Bousleh inbox; the hourly sweep files it. Or copy it into Claude to file it now.');
+  const area = part<HTMLTextAreaElement>('textarea');
+  area.value = text;
+  area.readOnly = false;
+  area.focus();
+  area.setSelectionRange(text.length, text.length);
+}
+
+/** Date or Snooze: pick a day for one commitment. */
+function openWhen(act: 'date' | 'snooze', id: string): void {
+  const now = new Date();
+  pending = { act, id };
+  const quick = part<HTMLElement>('.sheet-q');
+  quick.replaceChildren(
+    ...quickDays(act, now).map(({ label, day }) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.dataset.action = 'sheet-day';
+      b.dataset.day = day;
+      b.textContent = label;
+      return b;
+    }),
+  );
+  const input = part<HTMLInputElement>('.sheet-day');
+  input.min = minDay(act, now);
+  input.value = quickDays(act, now)[act === 'date' ? 1 : 0]?.day ?? input.min;
+  showSheet(
+    'when',
+    act === 'date' ? 'Due when?' : 'Snooze until?',
+    act === 'date' ? 'Sets its due date.' : 'It stays out of sight until that day, then comes back as due.',
+  );
+  input.focus();
+}
+
 function closeSheet(): void {
   sheetEl.hidden = true;
+  pending = null;
+}
+
+async function sendCapture(): Promise<void> {
+  const area = part<HTMLTextAreaElement>('textarea');
+  const content = captureText(area.value);
+  if (!content) {
+    part<HTMLElement>('.sheet-n').textContent = 'Write something first.';
+    return;
+  }
+  if (!mcp) return;
+  const button = part<HTMLButtonElement>('[data-action="sheet-inbox"]');
+  button.disabled = true;
+  try {
+    const out = unwrapBousleh(await mcp.callTool(SERVER, 'inbox_drop', { name: captureName(new Date()), content, source: 'local' }));
+    if (!out.ok) throw { code: out.code };
+    closeSheet();
+    toast('In the inbox. The hourly sweep files it.');
+    void mcp.invalidate(SERVER, 'pulse_today').catch(() => {});
+  } catch (err) {
+    part<HTMLElement>('.sheet-n').textContent = `Not sent (${failure(err)}). Copy it into Claude instead.`;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function failure(err: unknown): string {
+  const code = (err as { code?: string }).code ?? 'error';
+  return code === 'cancelled'
+    ? 'cancelled in the app'
+    : code === 'approval_required'
+      ? 'needs your OK in the Claude app'
+      : code.replace(/_/g, ' ');
+}
+
+let confirmTimer = 0;
+/** Done and Drop ask for a second press; Date and Snooze open the day picker. */
+function onAct(act: Act, id: string): void {
+  if (!mcp || ui.mode !== 'live' || ui.acted[id]) return;
+  if (act === 'date' || act === 'snooze') {
+    openWhen(act, id);
+    return;
+  }
+  const key = `${id}:${act}`;
+  if (ui.confirm !== key) {
+    ui.confirm = key;
+    clearTimeout(confirmTimer);
+    confirmTimer = window.setTimeout(() => {
+      ui.confirm = null;
+      schedule();
+    }, 4000);
+    schedule();
+    return;
+  }
+  ui.confirm = null;
+  void runAct(act, id);
+}
+
+async function runAct(act: Act, id: string, day?: string): Promise<void> {
+  if (!mcp) return;
+  const { tool, input } = actCall(act, id, day);
+  ui.acted[id] = 'busy';
+  schedule();
+  try {
+    const out = unwrapBousleh(await mcp.callTool(SERVER, tool, input));
+    if (!out.ok) throw { code: out.code };
+    ui.acted[id] = actDoneState(act);
+    for (const read of ['pulse_today', 'context_strata', 'commitments_list']) void mcp.invalidate(SERVER, read).catch(() => {});
+  } catch (err) {
+    delete ui.acted[id];
+    toast(`Not changed (${failure(err)})`);
+  }
+  schedule();
+}
+
+async function install(): Promise<void> {
+  if (!desktop) return;
+  const answer = await desktop.install.request().catch(() => 'failed' as const);
+  if (answer === 'installed') ui.install = false;
+  else if (answer === 'failed') toast('Could not install. Try Install as app from the artifact menu.');
+  schedule();
+}
+
+/** In the installed app's window: its own icon, and the number of things that need you on the Dock. */
+async function dressApp(d: Desktop): Promise<void> {
+  if (!d.app) return;
+  const src = document.querySelector<HTMLMetaElement>('meta[name="bousleh-app-icon"]')?.content;
+  if (src) {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 256;
+      canvas.getContext('2d')?.drawImage(img, 0, 0, 256, 256);
+      void d.app?.dock.setIcon(canvas.toDataURL('image/png')).catch(() => {});
+    };
+    img.src = src;
+  }
+}
+
+let badge = '';
+function updateBadge(): void {
+  if (!desktop?.app || ui.mode !== 'live') return;
+  const text = view.hero.needs > 0 ? String(view.hero.needs) : '';
+  if (text === badge) return;
+  badge = text;
+  void desktop.app.dock.setBadge(text).catch(() => {});
 }
 
 async function supersede(id: string, op: 'save' | 'skip'): Promise<void> {
@@ -313,9 +513,11 @@ async function allow(): Promise<void> {
 }
 
 document.addEventListener('click', (event) => {
-  const target = (event.target as HTMLElement).closest<HTMLElement>('[data-prompt],[data-op],[data-filter],[data-action]');
+  const target = (event.target as HTMLElement).closest<HTMLElement>('[data-prompt],[data-op],[data-act],[data-filter],[data-action]');
   if (!target) return;
-  if (target.dataset.prompt !== undefined) {
+  if (target.dataset.act && target.dataset.id) {
+    onAct(target.dataset.act as Act, target.dataset.id);
+  } else if (target.dataset.prompt !== undefined) {
     const text = view.prompts[target.dataset.prompt];
     if (text) void launch(text);
   } else if (target.dataset.op && target.dataset.id) {
@@ -333,13 +535,38 @@ document.addEventListener('click', (event) => {
         openSheet('Ask Claude', prompts.ask(), true);
         break;
       case 'drop':
-        openSheet('Drop', prompts.drop(), true);
+        openCapture('Drop', prompts.drop());
         break;
+      case 'install':
+        void install();
+        break;
+      case 'sheet-inbox':
+        void sendCapture();
+        break;
+      case 'sheet-day':
+        part<HTMLInputElement>('.sheet-day').value = target.dataset.day ?? '';
+        if (pending && target.dataset.day) {
+          const { act, id } = pending;
+          closeSheet();
+          void runAct(act, id, target.dataset.day);
+        }
+        break;
+      case 'sheet-set': {
+        const day = part<HTMLInputElement>('.sheet-day').value;
+        if (!pending || !/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+          part<HTMLElement>('.sheet-n').textContent = 'Pick a day.';
+          break;
+        }
+        const { act, id } = pending;
+        closeSheet();
+        void runAct(act, id, day);
+        break;
+      }
       case 'allow':
         void allow();
         break;
       case 'sheet-copy': {
-        const area = sheetEl.querySelector('textarea') as HTMLTextAreaElement;
+        const area = part<HTMLTextAreaElement>('textarea');
         void copy(area.value).then((done) => {
           if (done) {
             closeSheet();
@@ -362,7 +589,10 @@ document.addEventListener('click', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key !== 'Escape') return;
   if (!sheetEl.hidden) closeSheet();
-  else if (ui.docsOpen) {
+  else if (ui.confirm) {
+    ui.confirm = null;
+    schedule();
+  } else if (ui.docsOpen) {
     ui.docsOpen = false;
     schedule();
   }
@@ -378,6 +608,16 @@ async function boot(): Promise<void> {
     schedule();
     return;
   }
+  void claude
+    .use('desktop')
+    .catch(() => null)
+    .then(async (d) => {
+      desktop = d;
+      if (!d) return;
+      void dressApp(d);
+      ui.install = (await d.install.state().catch(() => 'unavailable')) === 'available';
+      schedule();
+    });
   const dbPromise = claude.use('db').catch(() => null);
   storedRead = dbPromise.then(readStored);
   mcp = await claude.use('mcp').catch(() => null);

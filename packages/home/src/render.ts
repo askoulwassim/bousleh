@@ -1,10 +1,24 @@
+import { ACT_STATE_LABEL, type ActState } from './acts.js';
 import { esc } from './escape.js';
 import { safeUrl } from './format.js';
 import { glyphSvg, stateColor } from './glyph.js';
 import { icons, logoFull, logoSmall, modeIcon } from './icons.js';
 import { SHORT_ALT } from './model.js';
 import { tokens } from './tokens.js';
-import type { BetVM, CellVM, FocusVM, ItemVM, Launcher, MeetingVM, NeedsVM, Readout, StoryVM, Tone, ViewModel } from './types.js';
+import type {
+  BetVM,
+  CellVM,
+  FocusItemVM,
+  FocusVM,
+  ItemVM,
+  Launcher,
+  MeetingVM,
+  NeedsVM,
+  Readout,
+  StoryVM,
+  Tone,
+  ViewModel,
+} from './types.js';
 
 /*
  * View model → markup. One string for the whole page: the desktop layout (rail, header, strata,
@@ -26,6 +40,12 @@ export interface UiState {
   approval: boolean;
   /** Story id → what was done with it on this page. */
   done: Record<string, 'saved' | 'skipped' | 'busy'>;
+  /** Commitment id → what was done with it on this page (done, drop, date, snooze), until the next read. */
+  acted: Record<string, ActState>;
+  /** "id:done" or "id:drop": the act waiting for a second press to confirm. */
+  confirm: string | null;
+  /** The Claude desktop app offers to install Home as an app: show the button. */
+  install: boolean;
 }
 
 const c = tokens.color;
@@ -104,17 +124,17 @@ function promptBtn(cls: string, key: string | undefined, label: string, extra = 
 function desktop(vm: ViewModel, ui: UiState): string {
   const head = `<header class="hdr" id="top"><div class="hdr-l"><span class="eb">${esc(vm.dateLabel)} · ${esc(vm.instance)} · ${esc(modeWord(ui))}</span><h1 class="disp hero">${hero(vm, ui)}</h1></div>
 <div class="hdr-r"><div class="ros">${vm.readouts.map(readout).join('')}</div>${vm.secondary ? promptBtn('btn2', vm.secondary.prompt, vm.secondary.label) : ''}${vm.primary ? promptBtn('btn', vm.primary.prompt, vm.primary.label) : ''}</div></header>`;
-  return `${head}${banner(ui)}${focusStrip(vm.focus)}${vm.columns.length ? strata(vm, ui) : emptyCard(ui)}${legend()}${horizon(vm, ui)}${footer(ui)}`;
+  return `${head}${banner(ui)}${focusStrip(vm.focus, ui)}${vm.columns.length ? strata(vm, ui) : emptyCard(ui)}${legend()}${horizon(vm, ui)}${footer(ui)}`;
 }
 
 /** The few things to do first, above the grid: always there once Pulse is read; nothing when it wasn't. */
-function focusStrip(focus: FocusVM | undefined): string {
+function focusStrip(focus: FocusVM | undefined, ui: UiState): string {
   // Shown whenever Pulse was read, empty or not, so "nothing pressing" never looks like "not working".
   if (!focus) return '';
   const cards = focus.items
     .map(
       (f, i) =>
-        `<button class="fc ${f.tone}" type="button" data-prompt="${esc(f.prompt)}" aria-label="${esc(f.label)}"><span class="fc-h"><span class="disp fc-n ${toneClass(f.tone)}">${i + 1}</span><span class="eb xs ${toneClass(f.tone)} trunc">${esc(f.eyebrow)}</span></span><span class="fc-t">${esc(f.title)}</span>${f.detail ? `<span class="fc-d">${esc(f.detail)}</span>` : ''}<span class="eb sm fc-s trunc">${esc(altShort(f.altitude))} · ${esc(f.scopeName)}</span></button>`,
+        `<div class="fc ${f.tone}"><button class="fc-main" type="button" data-prompt="${esc(f.prompt)}" aria-label="${esc(f.label)}"><span class="fc-h"><span class="disp fc-n ${toneClass(f.tone)}">${i + 1}</span><span class="eb xs ${toneClass(f.tone)} trunc">${esc(f.eyebrow)}</span></span><span class="fc-t">${esc(f.title)}</span>${f.detail ? `<span class="fc-d">${esc(f.detail)}</span>` : ''}<span class="eb sm fc-s trunc">${esc(altShort(f.altitude))} · ${esc(f.scopeName)}</span></button>${acts(f, ui)}</div>`,
     )
     .join('');
   const empty = focus.items.length === 0 ? '<span class="muted-note">Nothing pressing today.</span>' : '';
@@ -123,12 +143,29 @@ function focusStrip(focus: FocusVM | undefined): string {
   return `<section class="focus" aria-label="First"><div class="focus-h"><span class="eb">First</span><span class="focus-r">${snoozed}${more}</span></div><div class="focus-g">${cards}${empty}</div></section>`;
 }
 
-function phoneFocus(focus: FocusVM | undefined): string {
+/**
+ * Done, Date, Snooze and Drop on a commitment in focus: one op each, live only (snapshots and
+ * meetings get none). Done and Drop ask for a second press. Once acted on, the row says what happened.
+ */
+export function acts(f: FocusItemVM, ui: UiState): string {
+  if (ui.mode !== 'live' || f.kind !== 'commitment' || !f.id) return '';
+  const id = esc(f.id);
+  const state = ui.acted[f.id];
+  if (state === 'busy') return '<div class="fc-a"><span class="mono fc-z">Saving…</span></div>';
+  if (state) return `<div class="fc-a"><span class="mono fc-ok">${esc(ACT_STATE_LABEL[state])}</span></div>`;
+  const btn = (act: string, label: string, confirmLabel?: string) => {
+    const asking = confirmLabel !== undefined && ui.confirm === `${f.id}:${act}`;
+    return `<button class="fa${asking ? ' ask' : ''}" type="button" data-act="${act}" data-id="${id}" aria-label="${esc(`${asking ? confirmLabel : label}: ${f.title}`)}">${esc(asking ? confirmLabel : label)}</button>`;
+  };
+  return `<div class="fc-a">${btn('done', 'Done', 'Mark done?')}${btn('date', 'Date')}${btn('snooze', 'Snooze')}${btn('drop', 'Drop', 'Drop it?')}</div>`;
+}
+
+function phoneFocus(focus: FocusVM | undefined, ui: UiState): string {
   if (!focus) return '';
   const rows = focus.items
     .map(
       (f, i) =>
-        `<div class="pf-row"><span class="disp fc-n ${toneClass(f.tone)}">${i + 1}</span><span class="pb"><span class="eb xs ${toneClass(f.tone)}">${esc(f.eyebrow)}</span><span class="pc-m">${esc(f.title)}</span></span></div>`,
+        `<div class="pf-row"><span class="disp fc-n ${toneClass(f.tone)}">${i + 1}</span><span class="pb"><span class="eb xs ${toneClass(f.tone)}">${esc(f.eyebrow)}</span><span class="pc-m">${esc(f.title)}</span>${acts(f, ui)}</span></div>`,
     )
     .join('');
   const foot = [focus.more > 0 ? `+${focus.more} more` : '', focus.snoozed ?? ''].filter(Boolean).join(' · ');
@@ -375,7 +412,8 @@ function footer(ui: UiState): string {
         : ui.mode === 'connecting'
           ? 'Connecting to the bousleh server'
           : 'No live data and no snapshot yet';
-  return `<footer class="foot"><span class="lockup"><span class="disp">bousleh</span><span class="ar" lang="ar" dir="rtl">بوصلة</span></span><span class="mono foot-n">${note}</span></footer>`;
+  const install = ui.install ? '<button class="btn2 sm" type="button" data-action="install">Install as app</button>' : '';
+  return `<footer class="foot"><span class="lockup"><span class="disp">bousleh</span><span class="ar" lang="ar" dir="rtl">بوصلة</span></span>${install}<span class="mono foot-n">${note}</span></footer>`;
 }
 
 // ---------------------------------------------------------------- phone
@@ -440,7 +478,7 @@ function phone(vm: ViewModel, ui: UiState): string {
     )
     .join('');
   const body = vm.columns.length
-    ? `${phoneFocus(vm.focus)}${strataMini(vm)}${vm.phone.needs && !vm.focus?.items.length ? needsCard(vm.phone.needs) : ''}${vm.phone.meeting ? meetingCard(vm.phone.meeting) : ''}${vm.phone.bet ? phoneBet(vm.phone.bet) : ''}`
+    ? `${phoneFocus(vm.focus, ui)}${strataMini(vm)}${vm.phone.needs && !vm.focus?.items.length ? needsCard(vm.phone.needs) : ''}${vm.phone.meeting ? meetingCard(vm.phone.meeting) : ''}${vm.phone.bet ? phoneBet(vm.phone.bet) : ''}`
     : `<div class="card pc"><span class="eb">${ui.mode === 'connecting' ? 'Reading your data' : 'No snapshot yet'}</span>${ui.mode === 'connecting' ? '' : '<p class="hz-sum">Open Home once in the Claude desktop app with Bousleh connected; the phone then shows its last snapshot.</p>'}</div>`;
   return `<div class="ph"><div class="ph-top"><span class="ph-brand">${logoSmall(28)}<span class="disp ph-word">bousleh</span></span>${stamp}</div>
 <div class="ph-hd"><span class="eb">${esc(vm.dateLabel)} · ${esc(vm.instance)}</span><h1 class="disp ph-hero">${hero(vm, ui)}</h1></div>

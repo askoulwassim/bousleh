@@ -1,6 +1,6 @@
 /*
- * The slice of the Claude page runtime Home uses (`claude.use` → mcp, db, user), typed from the
- * platform's own definitions (artifact-capabilities claude.d.ts, mcp.d.ts, db.d.ts, user.d.ts).
+ * The slice of the Claude page runtime Home uses (`claude.use` → mcp, db, user, desktop), typed from the
+ * platform's own definitions (artifact-capabilities claude.d.ts, mcp.d.ts, db.d.ts, user.d.ts, desktop.d.ts).
  * Only what Home calls is declared here.
  */
 
@@ -57,10 +57,23 @@ export interface User {
   isOwner(): Promise<boolean>;
 }
 
+/**
+ * The `desktop` capability (desktop.d.ts): outside an installed app's window only `install` exists;
+ * inside it, `app.dock` too (its icon and badge). Home asks for no desktop permission, so nothing else is used.
+ */
+export interface Desktop {
+  install: {
+    state(): Promise<'available' | 'installed' | 'unavailable'>;
+    request(): Promise<'installed' | 'cancelled' | 'unavailable' | 'failed'>;
+  };
+  app?: { dock: { setIcon(pngDataUrl: string): Promise<{ written: boolean }>; setBadge(text: string): Promise<boolean> } };
+}
+
 export interface CapabilityMap {
   mcp: Mcp;
   db: Db;
   user: User;
+  desktop: Desktop;
 }
 
 export interface ClaudeRuntime {

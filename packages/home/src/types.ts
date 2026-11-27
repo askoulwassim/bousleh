@@ -166,6 +166,8 @@ export interface MeetingVM {
 /** One of the few things to do first, from pulse.today's focus. */
 export interface FocusItemVM {
   kind: 'commitment' | 'meeting';
+  /** The commitment's or meeting's id: Home acts on a commitment by it (done, drop, date, snooze). Absent in older snapshots. */
+  id?: string;
   /** The first reason, as the eyebrow: "2 days late", "follow up with Ian", "today at 14:00". */
   eyebrow: string;
   title: string;

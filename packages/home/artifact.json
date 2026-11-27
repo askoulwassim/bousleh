@@ -1,7 +1,7 @@
 {
   "title": "Bousleh Home",
   "icon": "compass",
-  "description": "Every scope at every altitude, what needs you, and what Horizon found: live from the bousleh server in the Claude desktop app, the last snapshot elsewhere.",
+  "description": "Every scope at every altitude, what needs you, and what Horizon found: live from the bousleh server in the Claude desktop app (where commitments in focus can be closed, dated or snoozed in place, and captures go straight to the inbox), the last snapshot elsewhere. Installable as a desktop app.",
   "file": "packages/home/dist/home.html",
   "capabilities": {
     "mcp": {
@@ -16,15 +16,28 @@
             "queue_list",
             "commitments_list",
             "assets_list",
-            "vault_supersede"
+            "vault_supersede",
+            "commitments_close",
+            "commitments_snooze",
+            "inbox_drop"
           ]
         },
-        { "server": "Google Calendar", "tools": ["list_events"] }
+        {
+          "server": "Google Calendar",
+          "tools": ["list_events"]
+        }
       ]
     },
     "db": {
-      "rules": [{ "path": "", "read": "owner", "write": "owner" }]
+      "rules": [
+        {
+          "path": "",
+          "read": "owner",
+          "write": "owner"
+        }
+      ]
     },
-    "user": {}
+    "user": {},
+    "desktop": {}
   }
 }
