@@ -100,8 +100,8 @@ export async function refreshPermissions(): Promise<void> {
   const d = app.caps.desktop;
   if (!inApp(d) || !d.permissions) return;
   const all = await d.permissions.state().catch(() => ({}) as Record<string, PermissionState>);
-  states = {};
   const was = states['full-access'];
+  states = {};
   for (const name of DECLARED) states[name] = all[name] ?? 'unavailable';
   app.facts.fullAccess = states['full-access'] ?? 'unavailable';
   if (app.facts.fullAccess === 'granted') await readRepo(d);
