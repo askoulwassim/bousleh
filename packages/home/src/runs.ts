@@ -165,9 +165,8 @@ export function privacyHint(lines: readonly { text: string }[], repo: string | n
   if (!lines.some((l) => /operation not permitted/i.test(l.text))) return null;
   const folder = protectedFolder(repo);
   const where = folder ? `your ${folder} folder, where the repo is` : 'the repo folder';
-  const allow = folder && folder !== 'iCloud Drive' ? `turn on ${folder} Folder for Bousleh Home` : 'turn it on for Bousleh Home';
   return {
-    text: `macOS is keeping Bousleh Home out of ${where}. In System Settings → Privacy & Security → Files & Folders, ${allow} (or add Bousleh Home under Full Disk Access), then reopen Home. Or keep the repo outside Documents, Desktop and Downloads and run scripts/setup-mac.sh there.`,
+    text: `macOS is keeping Bousleh Home out of ${where}. Move the clone outside Documents, Desktop, Downloads and iCloud Drive: in Claude Code on the repo, say "Move this clone as docs/move.md says."`,
     tone: 'needs',
   };
 }

@@ -45,7 +45,7 @@ case "$REPO/" in
   "$HOME/Downloads/"*) GUARDED="Downloads" ;;
   "$HOME/Library/Mobile Documents/"*) GUARDED="iCloud Drive" ;;
 esac
-GUARDED_NOTE="Home's Tune and Health run in this repo, and macOS guards your $GUARDED folder per app: allow Bousleh Home in System Settings > Privacy & Security > Files & Folders (or Full Disk Access), or keep the repo outside Documents, Desktop and Downloads."
+GUARDED_NOTE="This repo is in your $GUARDED folder, which macOS guards per app: Home, installed as an app, can't run Tune or its health check here. Move the clone out: in Claude Code on this repo, say \"Move this clone as docs/move.md says.\""
 
 step() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok() { printf '  ✓ %s\n' "$*"; }

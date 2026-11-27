@@ -12,7 +12,7 @@ The first public release. Home becomes an installable Claude app, and the repo i
 - **Commitment actions** in First: Done, Date, Snooze and Close, with a second press for Done and Close, and Undo for 5 seconds.
 - **Ask** in the rail: read-only questions answered with Claude on your own account, using only Bousleh's read tools.
 - **Capture** panel: dictation where offered, a box to type in otherwise, sent to the inbox with Undo, or filed now in a chat.
-- **Tune and Health** run on this Mac and stream into the side panel. `scripts/setup-mac.sh` writes `~/.bousleh/app.json` so Home can find the repo. When the repo is in Documents, Desktop, Downloads or iCloud Drive, both say how to let Home in (macOS guards those folders per app).
+- **Tune and Health** run on this Mac and stream into the side panel. `scripts/setup-mac.sh` writes `~/.bousleh/app.json` so Home can find the repo. macOS guards Documents, Desktop, Downloads and iCloud Drive per app, so Home can't run them in a clone there: both say so, and `docs/move.md` moves a clone out, data untouched.
 - **Demo data:** `pnpm demo` seeds `~/.bousleh-demo` with a fictional cast, `pnpm demo:home` shows Home on it at http://localhost:4173, and `scripts/setup-mac.sh --demo` adds it to Claude as the `bousleh-demo` server (`--demo --remove` takes it out).
 - **First run:** "Bousleh: set me up" in Capture files who you are, your first scopes with a line of strategy each, and a starter watch list per scope. Pulse suggests it when your data is empty.
 - README, brand assets (`docs/assets/`: logos, social preview, screenshots and a GIF of Home), THIRD_PARTY_NOTICES.md, `docs/decisions.md`.

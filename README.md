@@ -128,7 +128,7 @@ More in [SECURITY.md](SECURITY.md).
 - [AGENTS.md](AGENTS.md): how Bousleh is built, for any agent (or person) working in it.
 - [CONTRIBUTING.md](CONTRIBUTING.md): issues, forks, and running your own copy.
 - [SECURITY.md](SECURITY.md): reporting a vulnerability, and what Bousleh promises.
-- [docs/](docs/): [decisions](docs/decisions.md), [Home](docs/home.md), [scheduled tasks](docs/scheduled-tasks.md) and the [design](docs/design/).
+- [docs/](docs/): [decisions](docs/decisions.md), [Home](docs/home.md), [scheduled tasks](docs/scheduled-tasks.md), [moving your clone](docs/move.md) and the [design](docs/design/).
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): the fonts and their licenses.
 
 ## License

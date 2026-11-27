@@ -90,7 +90,7 @@ The calendar is the source for the user's schedule: Pulse and Counsel read it th
     home/                    the Home page (dist/home.html, a Claude page; docs/home.md)
   plugin/
     skills/                  capture, pulse, counsel, shape, workshop, communicate, coach, horizon, tune; drop
-  docs/                      decisions.md, scheduled-tasks.md, home.md
+  docs/                      decisions.md, scheduled-tasks.md, home.md, move.md
   docs/design/               design notes; docs/design/home/ holds the Claude Design boards for Home
 ```
 
